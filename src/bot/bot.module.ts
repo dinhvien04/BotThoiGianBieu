@@ -9,6 +9,7 @@ import { CommandRegistry } from './commands/command-registry';
 import { HelpCommand } from './commands/help.command';
 import { BatDauCommand } from './commands/bat-dau.command';
 import { ThemLichCommand } from './commands/them-lich.command';
+import { SuaLichCommand } from './commands/sua-lich.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
 
@@ -24,6 +25,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     HelpCommand,
     BatDauCommand,
     ThemLichCommand,
+    SuaLichCommand,
   ],
   exports: [BotService, InteractionRegistry],
 })

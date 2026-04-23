@@ -16,15 +16,13 @@ import { UsersService } from '../../users/users.service';
 import { SchedulesService } from '../../schedules/schedules.service';
 import { DateParser } from '../../shared/utils/date-parser';
 import { ScheduleItemType } from '../../schedules/entities/schedule.entity';
+import {
+  findItemTypeOption,
+  isValidItemType,
+  ITEM_TYPES,
+} from '../../schedules/schedules.constants';
 
 const INTERACTION_ID = 'them-lich';
-
-const ITEM_TYPES: Array<{ label: string; value: ScheduleItemType }> = [
-  { label: '📝 Task (công việc)', value: 'task' },
-  { label: '👥 Meeting (họp)', value: 'meeting' },
-  { label: '🎉 Event (sự kiện)', value: 'event' },
-  { label: '🔔 Reminder (nhắc nhở)', value: 'reminder' },
-];
 
 @Injectable()
 export class ThemLichCommand implements BotCommand, InteractionHandler, OnModuleInit {
@@ -63,7 +61,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
 
     const now = new Date();
     const defaultStart = new Date(now.getTime() + 60 * 60 * 1000); // +1h
-    const defaultStartStr = this.toDatetimeLocal(defaultStart);
+    const defaultStartStr = this.dateParser.toDatetimeLocalVietnam(defaultStart);
 
     const embed = new InteractiveBuilder('📋 THÊM LỊCH MỚI')
       .setDescription(
@@ -172,7 +170,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     // Tắt form trước khi gửi thông báo
     await this.closeForm(ctx);
 
-    const typeLabel = ITEM_TYPES.find((t) => t.value === itemType)?.label ?? itemType;
+    const typeLabel = findItemTypeOption(itemType)?.label ?? itemType;
     const lines: string[] = [
       `✅ ĐÃ THÊM LỊCH THÀNH CÔNG!`,
       ``,
@@ -208,7 +206,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     if (!title) {
       return `❌ Thiếu tiêu đề.`;
     }
-    if (!this.isValidItemType(itemTypeRaw)) {
+    if (!isValidItemType(itemTypeRaw)) {
       return `❌ Loại lịch không hợp lệ: \`${itemTypeRaw}\`.`;
     }
     const startTime = this.dateParser.parseVietnamLocal(startRaw);
@@ -239,19 +237,4 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     }
   }
 
-  // ================ Helpers ================
-
-  /** Convert Date (UTC) → "YYYY-MM-DDTHH:MM" giờ VN cho default của datetime-local. */
-  private toDatetimeLocal(date: Date): string {
-    const vn = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return (
-      `${vn.getUTCFullYear()}-${pad(vn.getUTCMonth() + 1)}-${pad(vn.getUTCDate())}` +
-      `T${pad(vn.getUTCHours())}:${pad(vn.getUTCMinutes())}`
-    );
-  }
-
-  private isValidItemType(v: string): v is ScheduleItemType {
-    return ['task', 'meeting', 'event', 'reminder'].includes(v);
-  }
 }

@@ -38,6 +38,19 @@ export class DateParser {
     return new Date(utcMs);
   }
 
+  /**
+   * Convert Date → "YYYY-MM-DDTHH:MM" giờ Việt Nam — đúng format mà HTML
+   * input `datetime-local` yêu cầu, dùng làm `defaultValue` trong form.
+   */
+  toDatetimeLocalVietnam(date: Date): string {
+    const vn = new Date(date.getTime() + DateParser.VN_OFFSET_MS);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return (
+      `${vn.getUTCFullYear()}-${pad(vn.getUTCMonth() + 1)}-${pad(vn.getUTCDate())}` +
+      `T${pad(vn.getUTCHours())}:${pad(vn.getUTCMinutes())}`
+    );
+  }
+
   /** Định dạng Date → "DD/MM/YYYY HH:mm" giờ Việt Nam. */
   formatVietnam(date: Date, withTime = true): string {
     const vn = new Date(date.getTime() + DateParser.VN_OFFSET_MS);
