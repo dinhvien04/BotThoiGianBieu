@@ -2,11 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   OneToOne,
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { UserSettings } from './user-settings.entity';
+import { Schedule } from '../../schedules/entities/schedule.entity';
 
 @Entity('users')
 export class User {
@@ -27,4 +29,7 @@ export class User {
 
   @OneToOne(() => UserSettings, (settings) => settings.user)
   settings?: UserSettings;
+
+  @OneToMany(() => Schedule, (schedule) => schedule.user)
+  schedules?: Schedule[];
 }
