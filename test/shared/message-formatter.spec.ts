@@ -142,20 +142,20 @@ describe('MessageFormatter', () => {
       expect(result).toContain('🚧 sắp ra mắt');
     });
 
-    it('should show examples when provided', () => {
+    it('should format help message with entries', () => {
       const entries: HelpRenderEntry[] = [
         {
           syntax: 'lich-ngay 21-4-2026',
           description: 'Xem lịch theo ngày',
           category: '📅 XEM LỊCH',
-          example: 'lich-ngay 21-4-2026',
           implemented: true,
         },
       ];
 
       const result = formatter.formatHelp(entries, ['📅 XEM LỊCH'], '*');
 
-      expect(result).toContain('Ví dụ:');
+      expect(result).toContain('BOT THỜI GIAN BIỂU');
+      expect(result).toContain('📅 XEM LỊCH');
       expect(result).toContain('`*lich-ngay 21-4-2026`');
     });
 

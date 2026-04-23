@@ -51,10 +51,7 @@ export class ReminderService {
           try {
             await this.sendStartReminder(schedule, now);
           } catch (err) {
-            this.logger.error(
-              `Lỗi gửi start reminder #${schedule.id}: ${(err as Error).message}`,
-              (err as Error).stack,
-            );
+            this.logError(`Lỗi gửi start reminder #${schedule.id}`, err);
           }
         }
       }
@@ -67,10 +64,7 @@ export class ReminderService {
           try {
             await this.sendEndNotification(schedule, now);
           } catch (err) {
-            this.logger.error(
-              `Lỗi gửi end notification #${schedule.id}: ${(err as Error).message}`,
-              (err as Error).stack,
-            );
+            this.logError(`Lỗi gửi end notification #${schedule.id}`, err);
           }
         }
       }
@@ -216,5 +210,19 @@ export class ReminderService {
     }
     const days = Math.floor(minutes / (60 * 24));
     return `${days} ngày`;
+  }
+
+  /** Log error dạng chi tiết — bất kể err có phải Error instance hay không. */
+  private logError(prefix: string, err: unknown): void {
+    if (err instanceof Error) {
+      this.logger.error(`${prefix}: ${err.message || '(empty message)'}`, err.stack);
+      return;
+    }
+    try {
+      const dump = JSON.stringify(err, Object.getOwnPropertyNames(err ?? {}));
+      this.logger.error(`${prefix}: [non-Error] ${dump || String(err)}`);
+    } catch {
+      this.logger.error(`${prefix}: [non-Error, unstringifiable] ${String(err)}`);
+    }
   }
 }
