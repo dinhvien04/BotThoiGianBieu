@@ -1,7 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { BotService } from './bot.service';
-import { CommandRouter } from './commands/command-router';
-import { MezonChannelMessage } from './commands/command.types';
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { BotService } from "./bot.service";
+import { CommandRouter } from "./commands/command-router";
+import { MezonChannelMessage } from "./commands/command.types";
 
 @Injectable()
 export class BotGateway implements OnModuleInit {
@@ -21,10 +21,14 @@ export class BotGateway implements OnModuleInit {
       try {
         await this.commandRouter.handle(message);
       } catch (err) {
-        this.logger.error(`Lỗi không bắt được khi xử lý message: ${(err as Error).message}`);
+        this.logger.error(
+          `Lỗi không bắt được khi xử lý message: ${(err as Error).message}`,
+        );
       }
     });
 
-    this.logger.log(`🎧 Bot đang lắng nghe lệnh (prefix: "${this.commandRouter.getPrefix()}")`);
+    this.logger.log(
+      `🎧 Bot đang lắng nghe lệnh (prefix: "${this.commandRouter.getPrefix()}")`,
+    );
   }
 }

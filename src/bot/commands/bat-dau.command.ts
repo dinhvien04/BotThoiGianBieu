@@ -1,17 +1,17 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { UsersService } from '../../users/users.service';
-import { MessageFormatter } from '../../shared/utils/message-formatter';
-import { CommandRegistry } from './command-registry';
-import { BotCommand, CommandContext } from './command.types';
+import { Injectable, OnModuleInit } from "@nestjs/common";
+import { UsersService } from "../../users/users.service";
+import { MessageFormatter } from "../../shared/utils/message-formatter";
+import { CommandRegistry } from "./command-registry";
+import { BotCommand, CommandContext } from "./command.types";
 
 @Injectable()
 export class BatDauCommand implements BotCommand, OnModuleInit {
-  readonly name = 'bat-dau';
-  readonly aliases = ['batdau', 'start'];
-  readonly description = 'Khởi tạo tài khoản và cài đặt mặc định';
-  readonly category = '🆕 Khởi tạo';
-  readonly syntax = 'bat-dau';
-  readonly example = 'bat-dau';
+  readonly name = "bat-dau";
+  readonly aliases = ["batdau", "start"];
+  readonly description = "Khởi tạo tài khoản và cài đặt mặc định";
+  readonly category = "🆕 Khởi tạo";
+  readonly syntax = "bat-dau";
+  readonly example = "bat-dau";
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -33,7 +33,12 @@ export class BatDauCommand implements BotCommand, OnModuleInit {
       default_channel_id: message.channel_id,
     });
 
-    const reply = this.formatter.formatWelcome(result.user, result.settings, result.isNew, ctx.prefix);
+    const reply = this.formatter.formatWelcome(
+      result.user,
+      result.settings,
+      result.isNew,
+      ctx.prefix,
+    );
     await ctx.reply(reply);
   }
 }

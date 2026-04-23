@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { MessageFormatter } from './utils/message-formatter';
+import { Module } from "@nestjs/common";
+import { MessageFormatter } from "./utils/message-formatter";
 
 @Module({
   providers: [MessageFormatter],
