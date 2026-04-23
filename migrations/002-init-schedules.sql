@@ -1,27 +1,3 @@
-<<<<<<< HEAD
--- Migration 002: Khoi tao bang schedules
--- Chay sau migrations/001-init-users.sql
-
-CREATE TABLE IF NOT EXISTS schedules (
-  id SERIAL PRIMARY KEY,
-  user_id VARCHAR(50) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  item_type VARCHAR(20) NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  description TEXT,
-  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  end_time TIMESTAMP WITH TIME ZONE,
-  status VARCHAR(20) DEFAULT 'pending',
-  remind_at TIMESTAMP WITH TIME ZONE,
-  is_reminded BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON schedules(user_id);
-CREATE INDEX IF NOT EXISTS idx_schedules_start_time ON schedules(start_time);
-CREATE INDEX IF NOT EXISTS idx_schedules_status ON schedules(status);
-CREATE INDEX IF NOT EXISTS idx_schedules_remind_at ON schedules(remind_at, is_reminded);
-=======
 -- Migration 002: Khởi tạo bảng schedules
 -- Chạy trên Neon PostgreSQL
 
@@ -49,4 +25,3 @@ CREATE INDEX IF NOT EXISTS idx_schedules_remind
 
 CREATE INDEX IF NOT EXISTS idx_schedules_status
   ON schedules(status);
->>>>>>> origin/develop

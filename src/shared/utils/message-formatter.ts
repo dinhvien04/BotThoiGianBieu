@@ -63,53 +63,52 @@ export class MessageFormatter {
     }
 
     const orderedCategories = [
-      ...categoryOrder.filter((c) => grouped.has(c)),
-      ...[...grouped.keys()].filter((c) => !categoryOrder.includes(c)),
+      ...categoryOrder.filter((category) => grouped.has(category)),
+      ...[...grouped.keys()].filter(
+        (category) => !categoryOrder.includes(category),
+      ),
     ];
 
-    let message = `🗓️ BOT THỜI GIAN BIỂU - DANH SÁCH LỆNH 🗓️\n\n`;
+    let message = `🗺️ BOT THỜI GIAN BIỂU - DANH SÁCH LỆNH 🗺️\n\n`;
 
     for (const category of orderedCategories) {
       const items = grouped.get(category) ?? [];
-      message += `${category}:\n`;
-      for (const item of items) {
-        const tail = item.implemented ? "" : " 🚧";
-        message += `- \`${prefix}${item.syntax}\`: ${item.description}.${tail}\n`;
-      }
+      message += `${category}\n`;
+      message += this.formatHelpCategoryBlock(items, prefix);
       message += `\n`;
     }
 
     message += `💡 Chú thích: 🚧 = sắp ra mắt.`;
-    return message;
+    return message.trimEnd();
   }
 
   formatScheduleList(schedules: Schedule[], title: string): string {
+    const header = this.formatDailyScheduleHeader(title);
+    const grouped = this.groupSchedulesByStatus(schedules);
+    const separator = "━━━━━━━━━━━━━━━━━━━━";
+
     if (schedules.length === 0) {
-      return `📅 **${title}**\n\nKhông có lịch nào.`;
+      return `${header}\n${separator}\n\nKhông có lịch nào.\n💡 Chúc bạn một ngày làm việc hiệu quả!`;
     }
 
-    let message = `📅 **${title}**\n\n`;
-    const statusGroups: Array<{ status: ScheduleStatus; title: string }> = [
-      { status: "pending", title: "Đang chờ" },
-      { status: "completed", title: "Đã hoàn thành" },
-      { status: "cancelled", title: "Đã hủy" },
-    ];
+    let message = `${header}\n${separator}\n\n`;
 
-    for (const group of statusGroups) {
-      const items = schedules.filter(
-        (schedule) => schedule.status === group.status,
-      );
-      if (!items.length) {
-        continue;
-      }
-
-      message += `${this.getStatusIcon(group.status)} ${group.title}:\n`;
-      items.forEach((schedule, index) => {
-        message += this.formatScheduleDetailLine(schedule, index + 1);
-      });
-      message += "\n";
+    const pending = grouped.get("pending") ?? [];
+    if (pending.length > 0) {
+      message += `${this.formatDailyStatusSection("Đang chờ", pending)}\n\n`;
     }
 
+    const completed = grouped.get("completed") ?? [];
+    if (completed.length > 0) {
+      message += `${this.formatDailyStatusSection("Đã hoàn thành", completed)}\n\n`;
+    }
+
+    const cancelled = grouped.get("cancelled") ?? [];
+    if (cancelled.length > 0) {
+      message += `${this.formatDailyStatusSection("Đã hủy", cancelled)}\n\n`;
+    }
+
+    message += "💡 Chúc bạn một ngày làm việc hiệu quả!";
     return message.trimEnd();
   }
 
@@ -118,8 +117,11 @@ export class MessageFormatter {
     title: string,
     weekStart: Date,
   ): string {
+    const header = this.formatDailyScheduleHeader(title);
+    const separator = "━━━━━━━━━━━━━━━━━━━━";
+
     if (schedules.length === 0) {
-      return `📆 **${title}**\n\nKhông có lịch nào.`;
+      return `${header}\n${separator}\n\nKhông có lịch nào.\n💡 Chúc bạn một ngày làm việc hiệu quả!`;
     }
 
     const schedulesByDate = new Map<string, Schedule[]>();
@@ -139,7 +141,8 @@ export class MessageFormatter {
       "Thứ 7",
       "Chủ nhật",
     ];
-    let message = `📆 **${title}**\n\n`;
+
+    const sections: string[] = [header, separator];
 
     for (let i = 0; i < 7; i += 1) {
       const day = new Date(
@@ -153,14 +156,29 @@ export class MessageFormatter {
         continue;
       }
 
-      message += `📌 ${dayNames[i]} (${formatDateNoYear(day)}):\n`;
-      for (const schedule of daySchedules) {
-        message += this.formatScheduleCompactLine(schedule, "  ");
+      const dayGrouped = this.groupSchedulesByStatus(daySchedules);
+      const daySection: string[] = [`❖ ${dayNames[i]} (${formatDateNoYear(day)})`];
+
+      const pending = dayGrouped.get("pending") ?? [];
+      if (pending.length > 0) {
+        daySection.push(this.formatDailyStatusSection("Đang chờ", pending));
       }
-      message += "\n";
+
+      const completed = dayGrouped.get("completed") ?? [];
+      if (completed.length > 0) {
+        daySection.push(this.formatDailyStatusSection("Đã hoàn thành", completed));
+      }
+
+      const cancelled = dayGrouped.get("cancelled") ?? [];
+      if (cancelled.length > 0) {
+        daySection.push(this.formatDailyStatusSection("Đã hủy", cancelled));
+      }
+
+      sections.push(daySection.join("\n\n"));
     }
 
-    return message.trimEnd();
+    sections.push("💡 Chúc bạn một ngày làm việc hiệu quả!");
+    return sections.join("\n\n").trimEnd();
   }
 
   formatInvalidDate(input: string, prefix: string, command: string): string {
@@ -177,44 +195,125 @@ export class MessageFormatter {
     );
   }
 
-  private formatScheduleDetailLine(schedule: Schedule, index: number): string {
-    const statusIcon = this.getStatusIcon(schedule.status);
-    const endTime = schedule.end_time
-      ? ` - ${formatTime(schedule.end_time)}`
-      : "";
-    let message = `${statusIcon} **${index}. ${schedule.title}**\n`;
-    message += `   ⏰ ${formatTime(schedule.start_time)}${endTime}\n`;
-    if (schedule.description) {
-      message += `   📝 ${schedule.description}\n`;
+  private formatDailyScheduleHeader(title: string): string {
+    const normalized = title.trim();
+    const lower = normalized.toLowerCase();
+
+    if (
+      lower.includes("ngày hôm nay") ||
+      lower.includes("hôm nay") ||
+      lower.includes("hom nay")
+    ) {
+      return "【 LỊCH TRÌNH HÔM NAY 】";
     }
-    message += `   🆔 ID: \`${schedule.id}\`\n`;
-    return message;
+
+    const upper = normalized.toUpperCase();
+    if (upper.startsWith("LỊCH ")) {
+      return `【 LỊCH TRÌNH ${upper.slice(5).trim()} 】`;
+    }
+
+    return `【 ${upper} 】`;
   }
 
-  private formatScheduleCompactLine(schedule: Schedule, indent = ""): string {
-    const statusIcon = this.getStatusIcon(schedule.status);
-    const endTime = schedule.end_time
-      ? ` - ${formatTime(schedule.end_time)}`
-      : "";
-    const description = schedule.description
-      ? `\n${indent}   📝 ${schedule.description}`
-      : "";
-
-    return (
-      `${indent}${statusIcon} ${formatTime(schedule.start_time)}${endTime} - ${schedule.title}` +
-      `${description}\n`
+  private formatDailyStatusSection(
+    statusLabel: string,
+    schedules: Schedule[],
+  ): string {
+    const items = schedules.map((schedule) =>
+      this.formatDailyScheduleItem(schedule),
     );
+
+    return `❖ Trạng thái: ${statusLabel} (${schedules.length})\n\n${items.join("\n\n")}`;
   }
 
-  private getStatusIcon(status: ScheduleStatus): string {
-    switch (status) {
-      case "completed":
-        return "✅";
-      case "cancelled":
-        return "🚫";
-      case "pending":
-      default:
-        return "⏳";
+  private formatDailyScheduleItem(schedule: Schedule): string {
+    const lines = [
+      `➤ 『 ${formatTime(schedule.start_time)} 』 **${schedule.title}**`,
+    ];
+
+    if (schedule.description) {
+      lines.push(`   ID: ${schedule.id} ✦ Ghi chú: ${schedule.description}`);
+    } else {
+      lines.push(`   ID: ${schedule.id}`);
     }
+
+    return lines.join("\n");
+  }
+
+  private formatScheduleHeader(title: string): string {
+    return `📅 ${title.toUpperCase()}\n${"─".repeat(22)}`;
+  }
+
+  private formatStatusSection(
+    icon: string,
+    label: string,
+    schedules: Schedule[],
+  ): string {
+    const lines = [`${icon} ${label} (${schedules.length})`];
+
+    schedules.forEach((schedule, index) => {
+      lines.push(this.formatScheduleBlock(schedule, index + 1));
+    });
+
+    return lines.join("\n");
+  }
+
+  private formatStatusSectionInline(
+    icon: string,
+    label: string,
+    schedules: Schedule[],
+  ): string {
+    const lines = [`${icon} ${label} (${schedules.length})`];
+
+    schedules.forEach((schedule, index) => {
+      lines.push(this.formatScheduleBlock(schedule, index + 1));
+    });
+
+    return lines.join("\n");
+  }
+
+  private formatScheduleBlock(schedule: Schedule, index: number): string {
+    const endTime = schedule.end_time
+      ? ` - ${formatTime(schedule.end_time)}`
+      : "";
+    const lines = [`${index}️⃣ **${formatTime(schedule.start_time)}${endTime} | ${schedule.title}**`];
+
+    if (schedule.description) {
+      lines.push(`↳ 📝 Ghi chú: ${schedule.description}`);
+    }
+
+    lines.push(`↳ 🆔 ID: ${schedule.id}`);
+    return lines.join("\n");
+  }
+
+  private groupSchedulesByStatus(schedules: Schedule[]): Map<ScheduleStatus, Schedule[]> {
+    const grouped = new Map<ScheduleStatus, Schedule[]>();
+    for (const schedule of schedules) {
+      const list = grouped.get(schedule.status) ?? [];
+      list.push(schedule);
+      grouped.set(schedule.status, list);
+    }
+    return grouped;
+  }
+
+  private formatHelpCategoryBlock(
+    items: HelpRenderEntry[],
+    prefix: string,
+  ): string {
+    if (items.length === 0) {
+      return "```text\n```";
+    }
+
+    const commands = items.map((item) => `${prefix}${item.syntax}`);
+    const maxWidth = Math.max(...commands.map((command) => command.length));
+
+    const lines = items.map((item, index) => {
+      const command = commands[index];
+      const tail = item.implemented ? "" : "  🚧";
+      const padding = " ".repeat(maxWidth - command.length + 2);
+      return `${command}${padding}${item.description}${tail}`;
+    });
+
+    return "```text\n" + lines.join("\n") + "\n```";
   }
 }
