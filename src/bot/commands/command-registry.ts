@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { BotCommand } from './command.types';
+import { Injectable, Logger } from "@nestjs/common";
+import { BotCommand } from "./command.types";
 
 @Injectable()
 export class CommandRegistry {
@@ -9,7 +9,7 @@ export class CommandRegistry {
 
   register(command: BotCommand): void {
     if (!command?.name) {
-      this.logger.warn('Bỏ qua command không hợp lệ (thiếu `name`).');
+      this.logger.warn("Bỏ qua command không hợp lệ (thiếu `name`).");
       return;
     }
 

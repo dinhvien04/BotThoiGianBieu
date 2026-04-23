@@ -1,6 +1,6 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { IInteractiveMessageProps, MezonClient, TypeMessage } from 'mezon-sdk';
+import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { IInteractiveMessageProps, MezonClient, TypeMessage } from "mezon-sdk";
 
 /**
  * Wrapper mỏng quanh `MezonClient`:
@@ -14,11 +14,13 @@ export class BotService implements OnModuleDestroy {
   private _client: MezonClient | null = null;
   private isReady = false;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) { }
 
   get client(): MezonClient {
     if (!this._client) {
-      throw new Error('MezonClient chưa được khởi tạo. Gọi initialize() trước.');
+      throw new Error(
+        "MezonClient chưa được khởi tạo. Gọi initialize() trước.",
+      );
     }
     return this._client;
   }
@@ -28,19 +30,19 @@ export class BotService implements OnModuleDestroy {
       return;
     }
 
-    const token = this.config.get<string>('APPLICATION_TOKEN');
-    const botId = this.config.get<string>('APPLICATION_ID');
+    const token = this.config.get<string>("APPLICATION_TOKEN");
+    const botId = this.config.get<string>("APPLICATION_ID");
     if (!token) {
-      throw new Error('Thiếu biến môi trường APPLICATION_TOKEN');
+      throw new Error("Thiếu biến môi trường APPLICATION_TOKEN");
     }
     if (!botId) {
-      throw new Error('Thiếu biến môi trường APPLICATION_ID (Bot ID)');
+      throw new Error("Thiếu biến môi trường APPLICATION_ID (Bot ID)");
     }
 
     this._client = new MezonClient({ botId, token });
     await this._client.login();
     this.isReady = true;
-    this.logger.log('✅ MezonClient đã đăng nhập thành công');
+    this.logger.log("✅ MezonClient đã đăng nhập thành công");
   }
 
   async sendMessage(channelId: string, text: string): Promise<void> {

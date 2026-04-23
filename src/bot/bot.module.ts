@@ -15,7 +15,7 @@ import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
 
 @Module({
-  imports: [SharedModule, UsersModule, SchedulesModule],
+  imports: [SharedModule, UsersModule, SchedulesModule, ScheduleModule],
   providers: [
     BotService,
     CommandRegistry,
@@ -25,6 +25,11 @@ import { InteractionRouter } from './interactions/interaction-router';
     BotGateway,
     HelpCommand,
     BatDauCommand,
+    LichHomNayCommand,
+    LichNgayCommand,
+    LichTuanCommand,
+    LichTuanTruocCommand,
+    LichTuanSauCommand,
     ThemLichCommand,
     SuaLichCommand,
     XoaLichCommand,
