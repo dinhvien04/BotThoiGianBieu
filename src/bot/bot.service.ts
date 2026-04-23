@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { MezonClient } from "mezon-sdk";
+import { IInteractiveMessageProps, MezonClient, TypeMessage } from "mezon-sdk";
 
 /**
  * Wrapper mỏng quanh `MezonClient`:
@@ -60,9 +60,79 @@ export class BotService implements OnModuleDestroy {
     await message.reply({ t: text });
   }
 
+  async deleteMessage(channelId: string, messageId: string): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    const message = await channel.messages.fetch(messageId);
+    await message.delete();
+  }
+
   async sendDirectMessage(userId: string, text: string): Promise<void> {
     const user = await this.client.users.fetch(userId);
     await user.sendDM({ t: text });
+  }
+
+  /**
+   * Gửi message có embed interactive + các button (action row).
+   * `components` là mảng các button do `ButtonBuilder.build()` trả về;
+   * sẽ tự wrap vào 1 action row.
+   */
+  async sendInteractive(
+    channelId: string,
+    embed: IInteractiveMessageProps,
+    components: unknown[],
+    text?: string,
+  ): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    await channel.send({
+      t: text,
+      embed: [embed],
+      components: [{ components }],
+    });
+  }
+
+  /**
+   * Gửi message kiểu BUZZ (rung/notify mạnh) kèm embed + button.
+   * Dùng cho reminder: `code = TypeMessage.MessageBuzz (8)`.
+   */
+  async sendBuzzInteractive(
+    channelId: string,
+    embed: IInteractiveMessageProps,
+    components: unknown[],
+    text?: string,
+  ): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    await channel.send(
+      {
+        t: text,
+        embed: [embed],
+        components: [{ components }],
+      },
+      undefined, // mentions
+      undefined, // attachments
+      false, // mention_everyone
+      false, // anonymous_message
+      undefined, // topic_id
+      TypeMessage.MessageBuzz,
+    );
+  }
+
+  /** Gửi DM tới user có embed + button (dùng khi user bật notify_via_dm). */
+  async sendDmInteractive(
+    userId: string,
+    embed: IInteractiveMessageProps,
+    components: unknown[],
+    text?: string,
+    buzz = false,
+  ): Promise<void> {
+    const user = await this.client.users.fetch(userId);
+    await user.sendDM(
+      {
+        t: text,
+        embed: [embed],
+        components: [{ components }],
+      },
+      buzz ? TypeMessage.MessageBuzz : undefined,
+    );
   }
 
   onModuleDestroy(): void {

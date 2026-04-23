@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -10,8 +11,11 @@ import {
 import { User } from "../../users/entities/user.entity";
 
 export type ScheduleStatus = "pending" | "completed" | "cancelled";
+export type ScheduleItemType = "task" | "meeting" | "event" | "reminder";
 
 @Entity("schedules")
+@Index(["user_id", "start_time"])
+@Index(["remind_at", "is_reminded"])
 export class Schedule {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -19,8 +23,8 @@ export class Schedule {
   @Column({ type: "varchar", length: 50 })
   user_id!: string;
 
-  @Column({ type: "varchar", length: 20 })
-  item_type!: string;
+  @Column({ type: "varchar", length: 20, default: "task" })
+  item_type!: ScheduleItemType;
 
   @Column({ type: "varchar", length: 255 })
   title!: string;
@@ -40,8 +44,24 @@ export class Schedule {
   @Column({ type: "timestamp with time zone", nullable: true })
   remind_at!: Date | null;
 
+  /**
+   * Cờ "đã gửi reminder gần nhất". Hiện chưa dùng tích cực — giữ để
+   * tương thích với migration cũ. Logic mới dùng `acknowledged_at` +
+   * tự đẩy `remind_at` sau mỗi lần gửi.
+   */
   @Column({ type: "boolean", default: false })
   is_reminded!: boolean;
+
+  /** User đã bấm "Đã nhận" lúc nào. null = chưa, tiếp tục nhắc. */
+  @Column({ type: "timestamp with time zone", nullable: true })
+  acknowledged_at!: Date | null;
+
+  /**
+   * Đã gửi notification kết thúc (end_time) lúc nào. null = chưa gửi,
+   * cron sẽ gửi 1 lần khi `end_time <= NOW`.
+   */
+  @Column({ type: "timestamp with time zone", nullable: true })
+  end_notified_at!: Date | null;
 
   @CreateDateColumn({ type: "timestamp with time zone" })
   created_at!: Date;
