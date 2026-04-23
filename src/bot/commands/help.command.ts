@@ -1,16 +1,16 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { MessageFormatter, CommandHelpEntry } from '../../shared/utils/message-formatter';
+import { MessageFormatter, HelpRenderEntry } from '../../shared/utils/message-formatter';
 import { CommandRegistry } from './command-registry';
 import { BotCommand, CommandContext } from './command.types';
+import { CATEGORY_ORDER, COMMAND_CATALOG } from './command-catalog';
 
 @Injectable()
 export class HelpCommand implements BotCommand, OnModuleInit {
   readonly name = 'help';
   readonly aliases = ['huong-dan', 'trogiup'];
-  readonly description = 'Xem hướng dẫn sử dụng bot';
+  readonly description = 'Xem hướng dẫn';
   readonly category = '❓ Hỗ trợ';
   readonly syntax = 'help';
-  readonly example = 'help';
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -22,20 +22,14 @@ export class HelpCommand implements BotCommand, OnModuleInit {
   }
 
   async execute(ctx: CommandContext): Promise<void> {
-    const commands = this.registry
-      .getAll()
-      .filter((c) => !c.hidden)
-      .sort((a, b) => a.category.localeCompare(b.category, 'vi'));
-
-    const entries: CommandHelpEntry[] = commands.map((c) => ({
-      name: c.name,
+    const entries: HelpRenderEntry[] = COMMAND_CATALOG.map((c) => ({
       syntax: c.syntax,
       description: c.description,
       category: c.category,
-      example: c.example,
+      implemented: this.registry.resolve(c.name) !== undefined,
     }));
 
-    const message = this.formatter.formatHelp(entries, ctx.prefix);
+    const message = this.formatter.formatHelp(entries, CATEGORY_ORDER, ctx.prefix);
     await ctx.reply(message);
   }
 }
