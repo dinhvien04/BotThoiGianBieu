@@ -23,9 +23,8 @@ export class BotGateway implements OnModuleInit {
       try {
         await this.commandRouter.handle(message);
       } catch (err) {
-        this.logger.error(
-          `Lỗi không bắt được khi xử lý message: ${(err as Error).message}`,
-        );
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Lỗi không bắt được khi xử lý message: ${msg}`);
       }
     });
 
@@ -35,9 +34,8 @@ export class BotGateway implements OnModuleInit {
           event as MezonButtonClickEvent,
         );
       } catch (err) {
-        this.logger.error(
-          `Lỗi không bắt được khi xử lý button: ${(err as Error).message}`,
-        );
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Lỗi không bắt được khi xử lý button: ${msg}`);
       }
     });
 

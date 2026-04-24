@@ -185,9 +185,9 @@ describe('CommandRouter', () => {
 
       await router.handle(message);
 
-      expect(mockBotService.replyToMessage).toHaveBeenCalledWith(
+      // Đổi từ reply sang send (fallback safer khi SDK cache miss)
+      expect(mockBotService.sendMessage).toHaveBeenCalledWith(
         '456',
-        '123',
         '❌ Có lỗi xảy ra: Test error',
       );
     });

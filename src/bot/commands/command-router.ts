@@ -51,11 +51,11 @@ export class CommandRouter {
         err instanceof Error ? err.stack : undefined,
       );
       try {
-        await ctx.reply(`❌ Có lỗi xảy ra: ${errorMessage}`);
+        await ctx.send(`❌ Có lỗi xảy ra: ${errorMessage}`);
       } catch (replyErr) {
-        this.logger.error(
-          `Không thể gửi message lỗi: ${(replyErr as Error).message}`,
-        );
+        const replyErrMsg =
+          replyErr instanceof Error ? replyErr.message : String(replyErr);
+        this.logger.error(`Không thể gửi message lỗi: ${replyErrMsg}`);
       }
     }
   }

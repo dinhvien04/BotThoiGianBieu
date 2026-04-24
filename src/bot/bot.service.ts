@@ -39,15 +39,18 @@ export class BotService implements OnModuleDestroy {
       throw new Error("Thiếu biến môi trường APPLICATION_ID (Bot ID)");
     }
 
-    this._client = new MezonClient({ botId, token });
+    // timeout=30s (default 10s) — cần tăng vì Railway (US) → Mezon (VN) có latency cao
+    this._client = new MezonClient({ botId, token, timeout: 30000 });
     await this._client.login();
     this.isReady = true;
     this.logger.log("✅ MezonClient đã đăng nhập thành công");
   }
 
   async sendMessage(channelId: string, text: string): Promise<void> {
-    const channel = await this.client.channels.fetch(channelId);
-    await channel.send({ t: text });
+    await this.withRetry(async () => {
+      const channel = await this.client.channels.fetch(channelId);
+      await channel.send({ t: text });
+    });
   }
 
   /**
@@ -182,5 +185,32 @@ export class BotService implements OnModuleDestroy {
         this.logger.warn(`Lỗi khi đóng MezonClient: ${(err as Error).message}`);
       }
     }
+  }
+
+  /**
+   * Retry tối đa `maxRetries` lần với delay tăng dần.
+   * Dùng cho các API call qua Mezon SDK dễ bị timeout khi Railway ↔ Mezon.
+   */
+  private async withRetry<T>(
+    fn: () => Promise<T>,
+    maxRetries = 2,
+    delayMs = 1000,
+  ): Promise<T> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        if (attempt < maxRetries) {
+          const wait = delayMs * (attempt + 1);
+          this.logger.warn(
+            `Attempt ${attempt + 1} fail, retry sau ${wait}ms: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          await new Promise((r) => setTimeout(r, wait));
+        }
+      }
+    }
+    throw lastErr;
   }
 }
