@@ -92,6 +92,7 @@ describe('CommandRegistry', () => {
 
     it('should ignore invalid commands without name', () => {
       const invalidCommand = {
+        name: '',
         description: 'No name',
         category: 'Test',
         syntax: 'test',
