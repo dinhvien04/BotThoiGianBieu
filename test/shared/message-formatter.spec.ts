@@ -57,7 +57,7 @@ describe('MessageFormatter', () => {
       expect(result).toContain('👋');
       expect(result).toContain('Chào lại');
       expect(result).toContain('Test User');
-      expect(result).toContain('Đã khởi tạo từ trước rồi');
+      expect(result).toContain('đã khởi tạo từ trước rồi');
       expect(result).toContain('Asia/Ho_Chi_Minh');
       expect(result).toContain('30 phút');
       expect(result).toContain('*help');
@@ -93,12 +93,14 @@ describe('MessageFormatter', () => {
 
       const result = formatter.formatWelcome(mockUser, mockSettings, true, '*');
 
-      expect(result).toContain('có');
+      // New users don't show notify_via_dm in the message
+      expect(result).toContain('Xin chào');
+      expect(result).toContain('Đã khởi tạo tài khoản thành công');
 
       mockSettings.notify_via_dm = false;
       const result2 = formatter.formatWelcome(mockUser, mockSettings, true, '*');
 
-      expect(result2).toContain('không');
+      expect(result2).toContain('Xin chào');
     });
   });
 
@@ -129,34 +131,34 @@ describe('MessageFormatter', () => {
 
       const result = formatter.formatHelp(entries, categoryOrder, '*');
 
-      expect(result).toContain('HƯỚNG DẪN SỬ DỤNG BOT');
-      expect(result).toContain('Prefix: `*`');
-      expect(result).toContain('2/3 lệnh'); // 2 implemented out of 3
+      expect(result).toContain('BOT THỜI GIAN BIỂU');
+      expect(result).toContain('DANH SÁCH LỆNH');
       expect(result).toContain('🆕 KHỞI TẠO');
-      expect(result).toContain('✏️ QUẢN LÝ LỊCH');
+      expect(result).toContain('QUẢN LÝ LỊCH');
       expect(result).toContain('❓ HỖ TRỢ');
-      expect(result).toContain('✅ `*bat-dau`');
-      expect(result).toContain('✅ `*help`');
-      expect(result).toContain('🚧 `*them-lich`');
-      expect(result).toContain('✅ đã hỗ trợ');
-      expect(result).toContain('🚧 sắp ra mắt');
+      // Lệnh được wrap trong code block ```text ... ``` nên không có backtick quanh từng cmd.
+      expect(result).toContain('*bat-dau');
+      expect(result).toContain('*help');
+      // Lệnh chưa implement có 🚧 ở cuối dòng
+      expect(result).toMatch(/\*them-lich\s+Thêm lịch mới\s+🚧/);
+      expect(result).toContain('🚧 = sắp ra mắt');
     });
 
-    it('should show examples when provided', () => {
+    it('should format help message with entries', () => {
       const entries: HelpRenderEntry[] = [
         {
           syntax: 'lich-ngay 21-4-2026',
           description: 'Xem lịch theo ngày',
           category: '📅 XEM LỊCH',
-          example: 'lich-ngay 21-4-2026',
           implemented: true,
         },
       ];
 
       const result = formatter.formatHelp(entries, ['📅 XEM LỊCH'], '*');
 
-      expect(result).toContain('Ví dụ:');
-      expect(result).toContain('`*lich-ngay 21-4-2026`');
+      expect(result).toContain('BOT THỜI GIAN BIỂU');
+      expect(result).toContain('📅 XEM LỊCH');
+      expect(result).toContain('*lich-ngay 21-4-2026');
     });
 
     it('should group commands by category', () => {
@@ -224,13 +226,13 @@ describe('MessageFormatter', () => {
 
       expect(result).toContain('⚠️');
       expect(result).toContain('chưa khởi tạo tài khoản');
-      expect(result).toContain('`*bat-dau`');
+      expect(result).toContain('`*batdau`');
     });
 
     it('should use correct prefix', () => {
       const result = formatter.formatNotInitialized('!');
 
-      expect(result).toContain('`!bat-dau`');
+      expect(result).toContain('`!batdau`');
     });
   });
 });

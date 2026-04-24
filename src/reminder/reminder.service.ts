@@ -51,10 +51,7 @@ export class ReminderService {
           try {
             await this.sendStartReminder(schedule, now);
           } catch (err) {
-            this.logger.error(
-              `Lỗi gửi start reminder #${schedule.id}: ${(err as Error).message}`,
-              (err as Error).stack,
-            );
+            this.logError(`Lỗi gửi start reminder #${schedule.id}`, err);
           }
         }
       }
@@ -67,10 +64,7 @@ export class ReminderService {
           try {
             await this.sendEndNotification(schedule, now);
           } catch (err) {
-            this.logger.error(
-              `Lỗi gửi end notification #${schedule.id}: ${(err as Error).message}`,
-              (err as Error).stack,
-            );
+            this.logError(`Lỗi gửi end notification #${schedule.id}`, err);
           }
         }
       }
@@ -106,23 +100,55 @@ export class ReminderService {
     this.logger.log(`🏁 Đã gửi end notification #${schedule.id}`);
   }
 
-  /** Gửi qua DM hoặc channel mặc định tuỳ `notify_via_dm`. */
+  /**
+   * Gửi reminder theo cài đặt user. Có thể gửi:
+   *   - Chỉ DM                       (notify_via_dm=true, notify_via_channel=false)
+   *   - Chỉ channel mặc định          (notify_via_dm=false, notify_via_channel=true)
+   *   - Cả hai (song song)            (cả 2 = true)
+   * Nếu user chọn channel nhưng chưa đặt `default_channel_id` → fallback DM
+   * để không bị mất thông báo.
+   */
   private async dispatch(
     userId: string,
-    settings: { notify_via_dm?: boolean; default_channel_id?: string | null } | undefined,
+    settings:
+      | {
+          notify_via_dm?: boolean;
+          notify_via_channel?: boolean;
+          default_channel_id?: string | null;
+        }
+      | undefined,
     embed: ReturnType<InteractiveBuilder['build']>,
     buttons: unknown[],
   ): Promise<void> {
-    const notifyViaDm = settings?.notify_via_dm === true;
+    const wantDm = settings?.notify_via_dm === true;
+    const wantChannel = settings?.notify_via_channel !== false; // default true
     const channelId = settings?.default_channel_id ?? null;
 
-    if (notifyViaDm) {
-      await this.botService.sendDmInteractive(userId, embed, buttons, undefined, true);
-    } else if (channelId) {
-      await this.botService.sendBuzzInteractive(channelId, embed, buttons);
-    } else {
-      // Fallback: DM nếu user chưa đặt channel mặc định
-      await this.botService.sendDmInteractive(userId, embed, buttons, undefined, true);
+    const tasks: Array<Promise<void>> = [];
+
+    if (wantChannel && channelId) {
+      tasks.push(this.botService.sendBuzzInteractive(channelId, embed, buttons));
+    }
+    if (wantDm) {
+      tasks.push(
+        this.botService.sendDmInteractive(userId, embed, buttons, undefined, true),
+      );
+    }
+
+    // Fallback: nếu không có route nào (vd user chọn "chỉ channel" nhưng chưa
+    // set default_channel_id) → gửi DM để user ít nhất nhận được.
+    if (tasks.length === 0) {
+      tasks.push(
+        this.botService.sendDmInteractive(userId, embed, buttons, undefined, true),
+      );
+    }
+
+    // Gửi song song. Một route lỗi không ảnh hưởng route khác.
+    const results = await Promise.allSettled(tasks);
+    for (const r of results) {
+      if (r.status === 'rejected') {
+        this.logError('Reminder dispatch lỗi 1 route', r.reason);
+      }
     }
   }
 
@@ -170,7 +196,7 @@ export class ReminderService {
       : 0;
     const passedText = minutesPassed === 0
       ? 'vừa kết thúc'
-      : `kết thúc cách đây **${this.formatMinutes(minutesPassed)}**`;
+      : `kết thúc cách đây **${this.dateParser.formatMinutes(minutesPassed)}**`;
 
     const builder = new InteractiveBuilder('🏁 LỊCH ĐÃ KẾT THÚC')
       .setDescription(`Lịch **${schedule.title}** ${passedText}.`)
@@ -202,19 +228,22 @@ export class ReminderService {
     if (minutes <= 0) {
       const passed = Math.abs(minutes);
       if (passed === 0) return '**đang bắt đầu ngay bây giờ**';
-      return `đã **bắt đầu ${this.formatMinutes(passed)} trước**`;
+      return `đã **bắt đầu ${this.dateParser.formatMinutes(passed)} trước**`;
     }
-    return `sẽ diễn ra sau **${this.formatMinutes(minutes)}**`;
+    return `sẽ diễn ra sau **${this.dateParser.formatMinutes(minutes)}**`;
   }
 
-  private formatMinutes(minutes: number): string {
-    if (minutes < 60) return `${minutes} phút`;
-    if (minutes < 60 * 24) {
-      const h = Math.floor(minutes / 60);
-      const m = minutes % 60;
-      return m > 0 ? `${h} giờ ${m} phút` : `${h} giờ`;
+  /** Log error dạng chi tiết — bất kể err có phải Error instance hay không. */
+  private logError(prefix: string, err: unknown): void {
+    if (err instanceof Error) {
+      this.logger.error(`${prefix}: ${err.message || '(empty message)'}`, err.stack);
+      return;
     }
-    const days = Math.floor(minutes / (60 * 24));
-    return `${days} ngày`;
+    try {
+      const dump = JSON.stringify(err, Object.getOwnPropertyNames(err ?? {}));
+      this.logger.error(`${prefix}: [non-Error] ${dump || String(err)}`);
+    } catch {
+      this.logger.error(`${prefix}: [non-Error, unstringifiable] ${String(err)}`);
+    }
   }
 }

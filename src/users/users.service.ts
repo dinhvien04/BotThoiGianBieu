@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
-import { UserSettings } from './entities/user-settings.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { User } from "./entities/user.entity";
+import { UserSettings } from "./entities/user-settings.entity";
 
 export interface CreateUserInput {
   user_id: string;
@@ -15,6 +15,14 @@ export interface RegisterUserResult {
   user: User;
   settings: UserSettings;
   isNew: boolean;
+}
+
+export interface UpdateSettingsPatch {
+  timezone?: string;
+  default_channel_id?: string | null;
+  default_remind_minutes?: number;
+  notify_via_dm?: boolean;
+  notify_via_channel?: boolean;
 }
 
 @Injectable()
@@ -31,7 +39,7 @@ export class UsersService {
   async findByUserId(userId: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { user_id: userId },
-      relations: ['settings'],
+      relations: ["settings"],
     });
   }
 
@@ -39,7 +47,12 @@ export class UsersService {
     const existing = await this.findByUserId(input.user_id);
 
     if (existing) {
-      const settings = existing.settings ?? (await this.ensureSettings(existing.user_id, input.default_channel_id ?? null));
+      const settings =
+        existing.settings ??
+        (await this.ensureSettings(
+          existing.user_id,
+          input.default_channel_id ?? null,
+        ));
       return { user: existing, settings, isNew: false };
     }
 
@@ -50,25 +63,51 @@ export class UsersService {
     });
     await this.userRepository.save(user);
 
-    const settings = await this.ensureSettings(user.user_id, input.default_channel_id ?? null);
+    const settings = await this.ensureSettings(
+      user.user_id,
+      input.default_channel_id ?? null,
+    );
 
-    this.logger.log(`Đã khởi tạo user mới: ${user.user_id} (${user.display_name ?? user.username ?? 'unknown'})`);
+    this.logger.log(
+      `Đã khởi tạo user mới: ${user.user_id} (${user.display_name ?? user.username ?? "unknown"})`,
+    );
 
     return { user, settings, isNew: true };
   }
 
-  private async ensureSettings(userId: string, defaultChannelId: string | null): Promise<UserSettings> {
-    const existing = await this.settingsRepository.findOne({ where: { user_id: userId } });
+  /**
+   * Patch các field trong `user_settings`. Chỉ update những field có trong
+   * `patch`, giữ nguyên field khác. Trả về record sau update.
+   */
+  async updateSettings(
+    userId: string,
+    patch: UpdateSettingsPatch,
+  ): Promise<UserSettings | null> {
+    if (Object.keys(patch).length === 0) {
+      return this.settingsRepository.findOne({ where: { user_id: userId } });
+    }
+    await this.settingsRepository.update({ user_id: userId }, patch);
+    return this.settingsRepository.findOne({ where: { user_id: userId } });
+  }
+
+  private async ensureSettings(
+    userId: string,
+    defaultChannelId: string | null,
+  ): Promise<UserSettings> {
+    const existing = await this.settingsRepository.findOne({
+      where: { user_id: userId },
+    });
     if (existing) {
       return existing;
     }
 
     const settings = this.settingsRepository.create({
       user_id: userId,
-      timezone: 'Asia/Ho_Chi_Minh',
+      timezone: "Asia/Ho_Chi_Minh",
       default_channel_id: defaultChannelId,
       default_remind_minutes: 30,
       notify_via_dm: false,
+      notify_via_channel: true,
     });
     return this.settingsRepository.save(settings);
   }

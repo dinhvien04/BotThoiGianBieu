@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, IsNull, LessThanOrEqual, Repository } from 'typeorm';
-import { Schedule, ScheduleItemType } from './entities/schedule.entity';
+import { Schedule, ScheduleItemType, ScheduleStatus } from './entities/schedule.entity';
 
 export interface CreateScheduleInput {
   user_id: string;
@@ -11,6 +11,19 @@ export interface CreateScheduleInput {
   start_time: Date;
   end_time?: Date | null;
   remind_at?: Date | null;
+}
+
+export interface UpdateSchedulePatch {
+  item_type?: ScheduleItemType;
+  title?: string;
+  description?: string | null;
+  start_time?: Date;
+  end_time?: Date | null;
+  status?: ScheduleStatus;
+  remind_at?: Date | null;
+  acknowledged_at?: Date | null;
+  end_notified_at?: Date | null;
+  is_reminded?: boolean;
 }
 
 @Injectable()
@@ -148,6 +161,13 @@ export class SchedulesService {
 
   async updateStatus(id: number, status: Schedule['status']): Promise<void> {
     await this.scheduleRepository.update(id, { status });
+  }
+
+  /** Patch các field của schedule. Trả về record sau update. */
+  async update(id: number, patch: UpdateSchedulePatch): Promise<Schedule | null> {
+    if (Object.keys(patch).length === 0) return this.findById(id);
+    await this.scheduleRepository.update(id, patch);
+    return this.findById(id);
   }
 
   async delete(id: number): Promise<void> {
