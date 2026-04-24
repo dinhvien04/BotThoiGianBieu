@@ -1,17 +1,19 @@
 import { Injectable } from "@nestjs/common";
-import {
-  Schedule,
-  ScheduleStatus,
-} from "../../schedules/entities/schedule.entity";
+import { Schedule, ScheduleStatus } from "../../schedules/entities/schedule.entity";
 import { User } from "../../users/entities/user.entity";
 import { UserSettings } from "../../users/entities/user-settings.entity";
-import { formatDateNoYear, formatDateShort, formatTime } from "./date-utils";
+import {
+  formatDateNoYear,
+  formatDateShort,
+  formatTime,
+} from "./date-utils";
 
 export interface HelpRenderEntry {
   syntax: string;
   description: string;
   category: string;
   implemented: boolean;
+  example?: string;
 }
 
 @Injectable()
@@ -240,52 +242,6 @@ export class MessageFormatter {
     return lines.join("\n");
   }
 
-  private formatScheduleHeader(title: string): string {
-    return `📅 ${title.toUpperCase()}\n${"─".repeat(22)}`;
-  }
-
-  private formatStatusSection(
-    icon: string,
-    label: string,
-    schedules: Schedule[],
-  ): string {
-    const lines = [`${icon} ${label} (${schedules.length})`];
-
-    schedules.forEach((schedule, index) => {
-      lines.push(this.formatScheduleBlock(schedule, index + 1));
-    });
-
-    return lines.join("\n");
-  }
-
-  private formatStatusSectionInline(
-    icon: string,
-    label: string,
-    schedules: Schedule[],
-  ): string {
-    const lines = [`${icon} ${label} (${schedules.length})`];
-
-    schedules.forEach((schedule, index) => {
-      lines.push(this.formatScheduleBlock(schedule, index + 1));
-    });
-
-    return lines.join("\n");
-  }
-
-  private formatScheduleBlock(schedule: Schedule, index: number): string {
-    const endTime = schedule.end_time
-      ? ` - ${formatTime(schedule.end_time)}`
-      : "";
-    const lines = [`${index}️⃣ **${formatTime(schedule.start_time)}${endTime} | ${schedule.title}**`];
-
-    if (schedule.description) {
-      lines.push(`↳ 📝 Ghi chú: ${schedule.description}`);
-    }
-
-    lines.push(`↳ 🆔 ID: ${schedule.id}`);
-    return lines.join("\n");
-  }
-
   private groupSchedulesByStatus(schedules: Schedule[]): Map<ScheduleStatus, Schedule[]> {
     const grouped = new Map<ScheduleStatus, Schedule[]>();
     for (const schedule of schedules) {
@@ -311,7 +267,10 @@ export class MessageFormatter {
       const command = commands[index];
       const tail = item.implemented ? "" : "  🚧";
       const padding = " ".repeat(maxWidth - command.length + 2);
-      return `${command}${padding}${item.description}${tail}`;
+      const example = item.example
+        ? `\n  Ví dụ: \`${prefix}${item.example}\``
+        : "";
+      return `${command}${padding}${item.description}${tail}${example}`;
     });
 
     return "```text\n" + lines.join("\n") + "\n```";
