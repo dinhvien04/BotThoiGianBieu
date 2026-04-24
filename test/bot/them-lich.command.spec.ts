@@ -91,6 +91,7 @@ describe('ThemLichCommand', () => {
         reply: jest.fn(),
         send: jest.fn(),
         sendDM: jest.fn(),
+        ephemeralReply: jest.fn(),
       };
     });
 
@@ -351,3 +352,4 @@ describe('ThemLichCommand', () => {
     });
   });
 });
+

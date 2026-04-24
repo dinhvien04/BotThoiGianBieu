@@ -89,7 +89,7 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
   async execute(ctx: CommandContext): Promise<void> {
     const user = await this.usersService.findByUserId(ctx.message.sender_id);
     if (!user) {
-      await ctx.reply(
+      await ctx.ephemeralReply(
         `⚠️ Bạn chưa khởi tạo tài khoản.\n` +
           `Vui lòng dùng lệnh \`${ctx.prefix}batdau\` trước.`,
       );
@@ -98,23 +98,30 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
 
     const settings = user.settings;
     if (!settings) {
-      await ctx.reply(
+      await ctx.ephemeralReply(
         `⚠️ Không tìm thấy cài đặt. Vui lòng dùng lại \`${ctx.prefix}batdau\`.`,
       );
       return;
     }
 
-    await this.renderForm(ctx.message.channel_id, settings);
+    await this.renderForm(ctx.message.channel_id, ctx.message.sender_id, settings);
   }
 
   // ================ BUTTON INTERACTION ================
 
   async handleButton(ctx: ButtonInteractionContext): Promise<void> {
-    const actionType = ctx.action;
+    // action format: "save:<ownerId>" | "cancel:<ownerId>"
+    const [actionType, ownerId] = ctx.action.split(':');
+
+    // Ownership check — chặn người khác bấm hộ
+    if (!ownerId || ownerId !== ctx.clickerId) {
+      await ctx.ephemeralSend(`⚠️ Form này không phải của bạn.`);
+      return;
+    }
 
     if (actionType === 'cancel') {
       await this.closeForm(ctx);
-      await ctx.send(`❌ Đã hủy thay đổi cài đặt.`);
+      await ctx.ephemeralSend(`❌ Đã hủy thay đổi cài đặt.`);
       return;
     }
     if (actionType !== 'save') return;
@@ -122,14 +129,16 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
     const user = await this.usersService.findByUserId(ctx.clickerId);
     if (!user?.settings) {
       await this.closeForm(ctx);
-      await ctx.send(`⚠️ Không tìm thấy cài đặt của bạn. Gõ \`*batdau\` trước.`);
+      await ctx.ephemeralSend(
+        `⚠️ Không tìm thấy cài đặt của bạn. Gõ \`*batdau\` trước.`,
+      );
       return;
     }
 
     const result = this.buildPatch(ctx.formData, user.settings);
     if (result.error) {
       await this.closeForm(ctx);
-      await ctx.send(
+      await ctx.ephemeralSend(
         `${result.error}\n\n💡 Gõ lại \`*cai-dat\` để thử lại.`,
       );
       return;
@@ -137,7 +146,7 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
 
     if (Object.keys(result.data).length === 0) {
       await this.closeForm(ctx);
-      await ctx.send(`ℹ️ Bạn không thay đổi gì cả, cài đặt giữ nguyên.`);
+      await ctx.ephemeralSend(`ℹ️ Bạn không thay đổi gì cả, cài đặt giữ nguyên.`);
       return;
     }
 
@@ -145,16 +154,20 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
     await this.closeForm(ctx);
 
     if (!updated) {
-      await ctx.send(`❌ Lỗi khi cập nhật cài đặt.`);
+      await ctx.ephemeralSend(`❌ Lỗi khi cập nhật cài đặt.`);
       return;
     }
 
-    await ctx.send(this.formatSummary(updated, result.data));
+    await ctx.ephemeralSend(this.formatSummary(updated, result.data));
   }
 
   // ================ FORM RENDERING ================
 
-  private async renderForm(channelId: string, settings: UserSettings): Promise<void> {
+  private async renderForm(
+    channelId: string,
+    ownerId: string,
+    settings: UserSettings,
+  ): Promise<void> {
     const currentMode = deriveMode(settings);
     const selectedMode =
       NOTIFY_MODE_OPTIONS.find((o) => o.value === currentMode) ?? NOTIFY_MODE_OPTIONS[0];
@@ -194,12 +207,22 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
       )
       .build();
 
+    // Encode ownerId vào button_id → chỉ chủ form click được
     const buttons = new ButtonBuilder()
-      .addButton(`${INTERACTION_ID}:save`, '💾 Lưu', EButtonMessageStyle.SUCCESS)
-      .addButton(`${INTERACTION_ID}:cancel`, '❌ Hủy', EButtonMessageStyle.DANGER)
+      .addButton(
+        `${INTERACTION_ID}:save:${ownerId}`,
+        '💾 Lưu',
+        EButtonMessageStyle.SUCCESS,
+      )
+      .addButton(
+        `${INTERACTION_ID}:cancel:${ownerId}`,
+        '❌ Hủy',
+        EButtonMessageStyle.DANGER,
+      )
       .build();
 
-    await this.botService.sendInteractive(channelId, embed, buttons);
+    // Gửi ephemeral — chỉ chủ form thấy, người khác không thấy
+    await this.botService.sendEphemeralInteractive(channelId, ownerId, embed, buttons);
   }
 
   // ================ VALIDATION + PATCH BUILDING ================
@@ -281,7 +304,7 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
 
   private async closeForm(ctx: ButtonInteractionContext): Promise<void> {
     try {
-      await ctx.deleteForm();
+      await ctx.deleteEphemeralForm();
     } catch {
       // best-effort
     }

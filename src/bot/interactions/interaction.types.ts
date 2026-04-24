@@ -34,6 +34,10 @@ export interface ButtonInteractionContext {
   reply(text: string): Promise<void>;
   /** Xóa message chứa form (tắt form đi sau khi xử lý xong). */
   deleteForm(): Promise<void>;
+  /** Gửi ephemeral — chỉ người click thấy, người khác không thấy. */
+  ephemeralSend(text: string): Promise<void>;
+  /** Xóa ephemeral form — dùng khi form gốc đã gửi bằng ephemeral. */
+  deleteEphemeralForm(): Promise<void>;
 }
 
 export interface InteractionHandler {

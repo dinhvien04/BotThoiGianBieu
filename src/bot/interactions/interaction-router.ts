@@ -45,6 +45,10 @@ export class InteractionRouter {
       send: (text) => this.botService.sendMessage(event.channel_id, text),
       reply: (text) => this.botService.replyToMessage(event.channel_id, event.message_id, text),
       deleteForm: () => this.botService.deleteMessage(event.channel_id, event.message_id),
+      ephemeralSend: (text) =>
+        this.botService.sendEphemeral(event.channel_id, event.user_id, text),
+      deleteEphemeralForm: () =>
+        this.botService.deleteEphemeralMessage(event.channel_id, event.user_id, event.message_id),
     };
 
     try {

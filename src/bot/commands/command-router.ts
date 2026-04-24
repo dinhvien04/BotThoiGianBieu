@@ -79,6 +79,8 @@ export class CommandRouter {
       send: (text) => this.botService.sendMessage(message.channel_id, text),
       sendDM: (text) =>
         this.botService.sendDirectMessage(message.sender_id, text),
+      ephemeralReply: (text) =>
+        this.botService.sendEphemeral(message.channel_id, message.sender_id, text),
     };
   }
 }

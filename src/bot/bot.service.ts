@@ -79,6 +79,37 @@ export class BotService implements OnModuleDestroy {
     await user.sendDM({ t: text });
   }
 
+  // ================== EPHEMERAL ==================
+
+  async sendEphemeral(channelId: string, receiverId: string, text: string): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    await channel.sendEphemeral(receiverId, { t: text });
+  }
+
+  async sendEphemeralInteractive(
+    channelId: string,
+    receiverId: string,
+    embed: IInteractiveMessageProps,
+    components: unknown[],
+    text?: string,
+  ): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    await channel.sendEphemeral(receiverId, {
+      t: text,
+      embed: [embed],
+      components: [{ components }],
+    });
+  }
+
+  async deleteEphemeralMessage(
+    channelId: string,
+    receiverId: string,
+    messageId: string,
+  ): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    await channel.deleteEphemeral(receiverId, messageId);
+  }
+
   /**
    * Gửi message có embed interactive + các button (action row).
    * `components` là mảng các button do `ButtonBuilder.build()` trả về;

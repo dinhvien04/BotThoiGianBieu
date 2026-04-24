@@ -26,6 +26,8 @@ export interface CommandContext {
   send(text: string): Promise<void>;
   /** Gửi DM tới sender. */
   sendDM(text: string): Promise<void>;
+  /** Gửi ephemeral — chỉ sender thấy, người khác trong channel không thấy. */
+  ephemeralReply(text: string): Promise<void>;
 }
 
 export interface BotCommand {

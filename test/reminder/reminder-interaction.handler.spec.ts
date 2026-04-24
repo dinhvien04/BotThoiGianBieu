@@ -94,6 +94,8 @@ describe('ReminderInteractionHandler', () => {
         send: jest.fn(),
         reply: jest.fn(),
         deleteForm: jest.fn(),
+        ephemeralSend: jest.fn(),
+        deleteEphemeralForm: jest.fn(),
       };
     });
 
