@@ -32,21 +32,9 @@ Chỉnh `.env`:
 - `DATABASE_URL` — connection string Neon PostgreSQL
 - `BOT_PREFIX` — mặc định `*`
 
-### 3. Tạo bảng database
 
-Chạy tất cả migrations trên Neon console hoặc bằng `psql`:
 
-```bash
-# Chạy tất cả migrations theo thứ tự
-psql "$DATABASE_URL" -f migrations/001-init-users.sql
-psql "$DATABASE_URL" -f migrations/002-init-schedules.sql
-psql "$DATABASE_URL" -f migrations/003-add-acknowledged-at.sql
-psql "$DATABASE_URL" -f migrations/004-add-end-notified-at.sql
-psql "$DATABASE_URL" -f migrations/005-fix-status-to-varchar.sql
-psql "$DATABASE_URL" -f migrations/006-add-notify-via-channel.sql
-```
-
-### 4. Chạy bot
+### 3. Chạy bot
 
 ```bash
 npm run start:dev      # dev với watch mode
