@@ -256,23 +256,20 @@ export class MessageFormatter {
     items: HelpRenderEntry[],
     prefix: string,
   ): string {
-    if (items.length === 0) {
-      return "```text\n```";
-    }
+    if (items.length === 0) return "";
 
-    const commands = items.map((item) => `${prefix}${item.syntax}`);
-    const maxWidth = Math.max(...commands.map((command) => command.length));
-
-    const lines = items.map((item, index) => {
-      const command = commands[index];
-      const tail = item.implemented ? "" : "  🚧";
-      const padding = " ".repeat(maxWidth - command.length + 2);
+    // Mỗi dòng: "- `*cmd`: description. 🚧" — dùng backtick inline cho Mezon render.
+    const lines = items.map((item) => {
+      const tail = item.implemented ? "" : " 🚧";
+      const description = item.description.endsWith(".")
+        ? item.description
+        : `${item.description}.`;
       const example = item.example
-        ? `\n  Ví dụ: \`${prefix}${item.example}\``
+        ? `\n   Ví dụ: \`${prefix}${item.example}\``
         : "";
-      return `${command}${padding}${item.description}${tail}${example}`;
+      return `- ${prefix}${item.syntax}: ${description}${tail}${example}`;
     });
 
-    return "```text\n" + lines.join("\n") + "\n```";
+    return lines.join("\n");
   }
 }

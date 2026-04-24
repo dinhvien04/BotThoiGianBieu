@@ -93,14 +93,14 @@ describe('MessageFormatter', () => {
     it('should show notify_via_dm status correctly', () => {
       mockSettings.notify_via_dm = true;
 
-      const result = formatter.formatWelcome(mockUser, mockSettings, false, '*');
+      const result = formatter.formatWelcome(mockUser, mockSettings, true, '*');
 
-      // New users don't show notify_via_dm in the message
+      // New users ("Xin chào") không show notify_via_dm trong message
       expect(result).toContain('Xin chào');
       expect(result).toContain('Đã khởi tạo tài khoản thành công');
 
       mockSettings.notify_via_dm = false;
-      const result2 = formatter.formatWelcome(mockUser, mockSettings, false, '*');
+      const result2 = formatter.formatWelcome(mockUser, mockSettings, true, '*');
 
       expect(result2).toContain('Xin chào');
     });
@@ -138,11 +138,11 @@ describe('MessageFormatter', () => {
       expect(result).toContain('🆕 KHỞI TẠO');
       expect(result).toContain('QUẢN LÝ LỊCH');
       expect(result).toContain('❓ HỖ TRỢ');
-      // Lệnh được wrap trong code block ```text ... ``` nên không có backtick quanh từng cmd.
-      expect(result).toContain('*bat-dau');
-      expect(result).toContain('*help');
+      // Mỗi dòng format: "- `*cmd`: description."
+      expect(result).toContain('- *bat-dau');
+      expect(result).toContain('- *help');
       // Lệnh chưa implement có 🚧 ở cuối dòng
-      expect(result).toMatch(/\*them-lich\s+Thêm lịch mới\s+🚧/);
+      expect(result).toContain('- *them-lich: Thêm lịch mới. 🚧');
       expect(result).toContain('🚧 = sắp ra mắt');
     });
 

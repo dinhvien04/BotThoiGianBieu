@@ -21,6 +21,8 @@ import { SuaLichCommand } from './commands/sua-lich.command';
 import { XoaLichCommand } from './commands/xoa-lich.command';
 import { HoanThanhCommand } from './commands/hoan-thanh.command';
 import { CaiDatCommand } from './commands/cai-dat.command';
+import { ChiTietCommand } from './commands/chi-tiet.command';
+import { NhacCommand, TatNhacCommand } from './commands/nhac.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
 
@@ -47,7 +49,6 @@ import { InteractionRouter } from './interactions/interaction-router';
     ThemLichCommand,
     SuaLichCommand,
     XoaLichCommand,
-    HoanThanhCommand,
     CaiDatCommand,
   ],
   exports: [BotService, InteractionRegistry],
