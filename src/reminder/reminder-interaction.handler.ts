@@ -75,8 +75,14 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
   }
 
   private async handleAck(ctx: ButtonInteractionContext, scheduleId: number): Promise<void> {
-    await this.schedulesService.acknowledge(scheduleId);
+    const acknowledged = await this.schedulesService.acknowledge(scheduleId);
     await this.safeDelete(ctx);
+    if (!acknowledged) {
+      await ctx.send(
+        `ℹ️ Lịch #${scheduleId} đã được xử lý ở nơi khác hoặc không còn ở trạng thái chờ.`,
+      );
+      return;
+    }
     await ctx.send(
       `✅ Đã ghi nhận bạn **bắt đầu công việc #${scheduleId}**.\n` +
         `Chúc bạn làm việc năng suất! 💪`,
@@ -89,6 +95,13 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     const nextAt = await this.schedulesService.snooze(scheduleId, minutes);
 
     await this.safeDelete(ctx);
+    if (!nextAt) {
+      await ctx.send(
+        `ℹ️ Lịch #${scheduleId} đã được xác nhận hoặc xử lý ở channel khác, không hoãn nữa.`,
+      );
+      return;
+    }
+
     await ctx.send(
       `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${minutes} phút**.\n` +
         `Sẽ nhắc lại lúc: \`${this.dateParser.formatVietnam(nextAt)}\``,

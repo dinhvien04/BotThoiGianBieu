@@ -153,7 +153,7 @@ describe('ReminderInteractionHandler', () => {
       it('should acknowledge reminder', async () => {
         // Arrange
         mockSchedulesService.findById.mockResolvedValue(mockSchedule);
-        mockSchedulesService.acknowledge.mockResolvedValue();
+        mockSchedulesService.acknowledge.mockResolvedValue(true);
 
         // Act
         await handler.handleButton(mockContext);
@@ -163,6 +163,21 @@ describe('ReminderInteractionHandler', () => {
         expect(mockContext.deleteForm).toHaveBeenCalled();
         expect(mockContext.send).toHaveBeenCalledWith(
           expect.stringContaining('Đã ghi nhận'),
+        );
+      });
+
+      it('should reject stale acknowledge when schedule was already handled elsewhere', async () => {
+        // Arrange
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockSchedulesService.acknowledge.mockResolvedValue(false);
+
+        // Act
+        await handler.handleButton(mockContext);
+
+        // Assert
+        expect(mockContext.deleteForm).toHaveBeenCalled();
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('đã được xử lý'),
         );
       });
     });
@@ -186,6 +201,22 @@ describe('ReminderInteractionHandler', () => {
         expect(mockSchedulesService.snooze).toHaveBeenCalledWith(1, 30);
         expect(mockContext.send).toHaveBeenCalledWith(
           expect.stringContaining('Đã hoãn'),
+        );
+      });
+
+      it('should reject stale snooze when schedule was acknowledged in another channel', async () => {
+        // Arrange
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockUsersService.findByUserId.mockResolvedValue(mockUser);
+        mockSchedulesService.snooze.mockResolvedValue(null);
+
+        // Act
+        await handler.handleButton(mockContext);
+
+        // Assert
+        expect(mockContext.deleteForm).toHaveBeenCalled();
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('không hoãn nữa'),
         );
       });
 
@@ -261,7 +292,7 @@ describe('ReminderInteractionHandler', () => {
     it('should handle deleteForm errors gracefully', async () => {
       // Arrange
       mockSchedulesService.findById.mockResolvedValue(mockSchedule);
-      mockSchedulesService.acknowledge.mockResolvedValue();
+      mockSchedulesService.acknowledge.mockResolvedValue(true);
       (mockContext.deleteForm as jest.Mock).mockRejectedValue(new Error('Delete failed'));
 
       // Act & Assert - should not throw

@@ -93,22 +93,31 @@ export class SchedulesService {
    * User bấm "Đã nhận" — đánh dấu đã xác nhận, dừng nhắc tiếp.
    * Tuỳ chọn set `markInProgress` để đánh dấu status riêng sau này.
    */
-  async acknowledge(id: number, now: Date = new Date()): Promise<void> {
-    await this.scheduleRepository.update(id, {
+  async acknowledge(id: number, now: Date = new Date()): Promise<boolean> {
+    const result = await this.scheduleRepository.update({
+      id,
+      acknowledged_at: IsNull(),
+      status: 'pending',
+    }, {
       acknowledged_at: now,
       remind_at: null,
       is_reminded: true,
     });
+    return (result.affected ?? 0) > 0;
   }
 
   /** User bấm "Hoãn X phút" — đẩy `remind_at` về thời điểm sau X phút. */
-  async snooze(id: number, minutes: number, now: Date = new Date()): Promise<Date> {
+  async snooze(id: number, minutes: number, now: Date = new Date()): Promise<Date | null> {
     const nextAt = new Date(now.getTime() + minutes * 60 * 1000);
-    await this.scheduleRepository.update(id, {
+    const result = await this.scheduleRepository.update({
+      id,
+      acknowledged_at: IsNull(),
+      status: 'pending',
+    }, {
       remind_at: nextAt,
       is_reminded: false,
     });
-    return nextAt;
+    return (result.affected ?? 0) > 0 ? nextAt : null;
   }
 
   /**

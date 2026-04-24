@@ -329,14 +329,18 @@ describe('SchedulesService', () => {
       mockRepository.update.mockResolvedValue({ affected: 1 } as any);
 
       // Act
-      await service.acknowledge(1, now);
+      const result = await service.acknowledge(1, now);
 
       // Assert
-      expect(mockRepository.update).toHaveBeenCalledWith(1, {
-        acknowledged_at: now,
-        remind_at: null,
-        is_reminded: true,
-      });
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        { id: 1, acknowledged_at: IsNull(), status: 'pending' },
+        {
+          acknowledged_at: now,
+          remind_at: null,
+          is_reminded: true,
+        },
+      );
+      expect(result).toBe(true);
     });
 
     it('should acknowledge a reminder with default timestamp', async () => {
@@ -368,6 +372,17 @@ describe('SchedulesService', () => {
       const callArgs = mockRepository.update.mock.calls[0][1];
       expect(callArgs).toHaveProperty('remind_at', null);
     });
+
+    it('should return false when reminder was already handled', async () => {
+      // Arrange
+      mockRepository.update.mockResolvedValue({ affected: 0 } as any);
+
+      // Act
+      const result = await service.acknowledge(1);
+
+      // Assert
+      expect(result).toBe(false);
+    });
   });
 
   describe('snooze', () => {
@@ -382,10 +397,13 @@ describe('SchedulesService', () => {
       const result = await service.snooze(1, minutes, now);
 
       // Assert
-      expect(mockRepository.update).toHaveBeenCalledWith(1, {
-        remind_at: expectedNextAt,
-        is_reminded: false,
-      });
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        { id: 1, acknowledged_at: IsNull(), status: 'pending' },
+        {
+          remind_at: expectedNextAt,
+          is_reminded: false,
+        },
+      );
       expect(result).toEqual(expectedNextAt);
     });
 
@@ -400,6 +418,7 @@ describe('SchedulesService', () => {
 
       // Assert
       const expectedTime = beforeCall + minutes * 60 * 1000;
+      if (!result) throw new Error('Expected snooze to return next reminder time');
       expect(result.getTime()).toBeGreaterThanOrEqual(expectedTime - 100); // Allow 100ms tolerance
       expect(result.getTime()).toBeLessThanOrEqual(expectedTime + 100);
     });
@@ -415,6 +434,17 @@ describe('SchedulesService', () => {
       // Assert
       const callArgs = mockRepository.update.mock.calls[0][1];
       expect(callArgs).toHaveProperty('is_reminded', false);
+    });
+
+    it('should return null when reminder was already acknowledged', async () => {
+      // Arrange
+      mockRepository.update.mockResolvedValue({ affected: 0 } as any);
+
+      // Act
+      const result = await service.snooze(1, 10);
+
+      // Assert
+      expect(result).toBeNull();
     });
   });
 
