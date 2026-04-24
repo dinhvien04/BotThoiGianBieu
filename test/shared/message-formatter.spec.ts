@@ -1,4 +1,5 @@
 import { MessageFormatter } from '../../src/shared/utils/message-formatter';
+import { Schedule } from '../../src/schedules/entities/schedule.entity';
 import { User } from '../../src/users/entities/user.entity';
 import { UserSettings } from '../../src/users/entities/user-settings.entity';
 import { HelpRenderEntry } from '../../src/shared/utils/message-formatter';
@@ -60,6 +61,7 @@ describe('MessageFormatter', () => {
       expect(result).toContain('đã khởi tạo từ trước rồi');
       expect(result).toContain('Asia/Ho_Chi_Minh');
       expect(result).toContain('30 phút');
+      expect(result).toContain('không');
       expect(result).toContain('*help');
     });
 
@@ -91,14 +93,14 @@ describe('MessageFormatter', () => {
     it('should show notify_via_dm status correctly', () => {
       mockSettings.notify_via_dm = true;
 
-      const result = formatter.formatWelcome(mockUser, mockSettings, true, '*');
+      const result = formatter.formatWelcome(mockUser, mockSettings, false, '*');
 
       // New users don't show notify_via_dm in the message
       expect(result).toContain('Xin chào');
       expect(result).toContain('Đã khởi tạo tài khoản thành công');
 
       mockSettings.notify_via_dm = false;
-      const result2 = formatter.formatWelcome(mockUser, mockSettings, true, '*');
+      const result2 = formatter.formatWelcome(mockUser, mockSettings, false, '*');
 
       expect(result2).toContain('Xin chào');
     });
@@ -220,6 +222,120 @@ describe('MessageFormatter', () => {
     });
   });
 
+  describe('schedule formatting', () => {
+    const weekStart = new Date(2026, 3, 20);
+
+    it('should format daily schedule list by status', () => {
+      const schedules = [
+        buildSchedule({
+          id: 1,
+          start_time: new Date(2026, 3, 24, 9, 0),
+          title: 'Họp team',
+          description: 'Daily meeting',
+          status: 'pending',
+        }),
+        buildSchedule({
+          id: 2,
+          start_time: new Date(2026, 3, 24, 10, 30),
+          title: 'Review code',
+          description: 'Review PR',
+          status: 'completed',
+        }),
+      ];
+
+      const result = formatter.formatScheduleList(schedules, 'Lịch hôm nay');
+
+      expect(result).toContain('【 LỊCH TRÌNH HÔM NAY 】');
+      expect(result).toContain('❖ Trạng thái: Đang chờ (1)');
+      expect(result).toContain('❖ Trạng thái: Đã hoàn thành (1)');
+      expect(result).toContain("➤ 『 09:00 』 **Họp team**");
+      expect(result).toContain('ID: 1 ✦ Ghi chú: Daily meeting');
+      expect(result).toContain("➤ 『 10:30 』 **Review code**");
+      expect(result).toContain('ID: 2 ✦ Ghi chú: Review PR');
+    });
+
+    it('should format weekly schedule by day', () => {
+      const schedules = [
+        buildSchedule({
+          id: 1,
+          start_time: new Date(2026, 3, 21, 9, 0),
+          title: 'Họp team',
+          description: 'Daily meeting',
+        }),
+        buildSchedule({
+          id: 2,
+          start_time: new Date(2026, 3, 21, 14, 0),
+          title: 'Review code',
+          description: 'Review PR cho dự án mới',
+        }),
+        buildSchedule({
+          id: 3,
+          start_time: new Date(2026, 3, 23, 15, 40),
+          title: 'Onboarding',
+          description: 'Meeting anh Viễn',
+        }),
+      ];
+
+      const result = formatter.formatWeeklySchedule(
+        schedules,
+        'Lịch tuần này',
+        weekStart,
+      );
+
+      expect(result).toContain('【 LỊCH TRÌNH TUẦN NÀY 】');
+      expect(result).toContain('━━━━━━━━━━━━━━━━━━━━');
+      expect(result).toContain('❖ Thứ 3 (21/4)');
+      expect(result).toContain('❖ Trạng thái: Đang chờ (2)');
+      expect(result).toContain("➤ 『 09:00 』 **Họp team**");
+      expect(result).toContain('ID: 1 ✦ Ghi chú: Daily meeting');
+      expect(result).toContain("➤ 『 14:00 』 **Review code**");
+      expect(result).toContain('ID: 2 ✦ Ghi chú: Review PR cho dự án mới');
+      expect(result).toContain('❖ Thứ 5 (23/4)');
+      expect(result).toContain('❖ Trạng thái: Đang chờ (1)');
+      expect(result).toContain("➤ 『 15:40 』 **Onboarding**");
+      expect(result).toContain('ID: 3 ✦ Ghi chú: Meeting anh Viễn');
+      expect(result).toContain('💡 Chúc bạn một ngày làm việc hiệu quả!');
+    });
+
+    it('should separate mixed weekly statuses', () => {
+      const schedules = [
+        buildSchedule({
+          id: 10,
+          start_time: new Date(2026, 3, 22, 9, 0),
+          title: 'Làm báo cáo',
+          status: 'pending',
+        }),
+        buildSchedule({
+          id: 11,
+          start_time: new Date(2026, 3, 22, 11, 0),
+          title: 'Xong việc',
+          status: 'completed',
+        }),
+      ];
+
+      const result = formatter.formatWeeklySchedule(
+        schedules,
+        'Lịch tuần này',
+        weekStart,
+      );
+
+      expect(result).toContain('❖ Thứ 4 (22/4)');
+      expect(result).toContain('❖ Trạng thái: Đang chờ (1)');
+      expect(result).toContain('❖ Trạng thái: Đã hoàn thành (1)');
+    });
+
+    it('should format empty weekly schedule message', () => {
+      const result = formatter.formatWeeklySchedule(
+        [],
+        'Lịch tuần này',
+        weekStart,
+      );
+
+      expect(result).toContain('Không có lịch nào.');
+      expect(result).toContain('💡 Chúc bạn một ngày làm việc hiệu quả!');
+    });
+  });
+
   describe('formatNotInitialized', () => {
     it('should format not initialized message', () => {
       const result = formatter.formatNotInitialized('*');
@@ -236,3 +352,23 @@ describe('MessageFormatter', () => {
     });
   });
 });
+
+function buildSchedule(overrides: Partial<Schedule>): Schedule {
+  return {
+    id: 1,
+    user_id: '123',
+    item_type: 'task',
+    title: 'Họp team',
+    description: 'Daily meeting',
+    start_time: new Date(2026, 3, 24, 9, 0),
+    end_time: null,
+    status: 'pending',
+    remind_at: null,
+    is_reminded: false,
+    acknowledged_at: null,
+    end_notified_at: null,
+    created_at: new Date(2026, 3, 1),
+    updated_at: new Date(2026, 3, 1),
+    ...overrides,
+  } as Schedule;
+}

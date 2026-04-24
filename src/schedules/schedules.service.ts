@@ -112,6 +112,33 @@ export class SchedulesService {
   }
 
   /**
+   * Bật lại reminder cho lịch với thời điểm nhắc mới.
+   * Reset `acknowledged_at` để cron tiếp tục xử lý.
+   */
+  async setReminder(
+    id: number,
+    remindAt: Date,
+  ): Promise<void> {
+    await this.scheduleRepository.update(id, {
+      remind_at: remindAt,
+      acknowledged_at: null,
+      is_reminded: false,
+    });
+  }
+
+  /**
+   * Tắt reminder start cho lịch.
+   * Đánh dấu `acknowledged_at` để cron bỏ qua schedule này.
+   */
+  async disableReminder(id: number): Promise<void> {
+    await this.scheduleRepository.update(id, {
+      remind_at: null,
+      acknowledged_at: new Date(),
+      is_reminded: true,
+    });
+  }
+
+  /**
    * Sau khi gửi reminder xong — đẩy `remind_at` về future để tránh spam,
    * đồng thời nếu user ignore thì cron sẽ nhắc lại sau `repeatMinutes` phút.
    */
