@@ -62,6 +62,16 @@ function isNotifyMode(v: string): v is NotifyMode {
   return v === 'channel' || v === 'dm' || v === 'both';
 }
 
+function normalizeChannelIds(raw: string): string | null {
+  const ids = raw
+    .split(/[,\s;]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  if (ids.length === 0) return null;
+  return [...new Set(ids)].join(',');
+}
+
 @Injectable()
 export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleInit {
   readonly name = 'cai-dat';
@@ -193,8 +203,8 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
       )
       .addInputField(
         'channel_id',
-        '📍 Channel mặc định',
-        'Channel ID để nhận notification',
+        '📍 Channel nhận thông báo',
+        'Nhập 1 hoặc nhiều Channel ID, cách nhau bằng dấu phẩy/khoảng trắng',
         { defaultValue: settings.default_channel_id ?? '' },
         `Hiện tại: ${settings.default_channel_id ? `\`${settings.default_channel_id}\`` : '_(chưa đặt)_'}. Bỏ trống = giữ nguyên.`,
       )
@@ -254,8 +264,9 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
     // channel_id — bỏ trống = giữ nguyên
     const channelRaw = formData.channel_id?.trim();
     if (channelRaw !== undefined && channelRaw !== '') {
-      if (channelRaw !== current.default_channel_id) {
-        data.default_channel_id = channelRaw;
+      const normalized = normalizeChannelIds(channelRaw);
+      if (normalized && normalized !== current.default_channel_id) {
+        data.default_channel_id = normalized;
       }
     }
 
@@ -283,7 +294,7 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
     }
     if (patch.default_channel_id !== undefined) {
       changes.push(
-        `📍 Channel mặc định → \`${updated.default_channel_id ?? 'chưa đặt'}\``,
+        `📍 Channel nhận thông báo → \`${updated.default_channel_id ?? 'chưa đặt'}\``,
       );
     }
     if (patch.notify_via_dm !== undefined || patch.notify_via_channel !== undefined) {

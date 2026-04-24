@@ -80,7 +80,13 @@ export class ReminderService {
     const embed = this.buildStartEmbed(schedule, now);
     const buttons = this.buildStartButtons(schedule.id, snoozeMinutes);
 
-    await this.dispatch(schedule.user_id, settings, embed, buttons);
+    await this.dispatch(
+      schedule.user_id,
+      settings,
+      embed,
+      buttons,
+      this.buildStartDmText(schedule, now),
+    );
 
     // Đẩy `remind_at` về future → nếu user ignore thì cron sẽ ping lại sau `snoozeMinutes` phút.
     await this.schedulesService.rescheduleAfterPing(schedule.id, snoozeMinutes, now);
@@ -93,7 +99,13 @@ export class ReminderService {
     const embed = this.buildEndEmbed(schedule, now);
     const buttons = this.buildEndButtons(schedule.id);
 
-    await this.dispatch(schedule.user_id, settings, embed, buttons);
+    await this.dispatch(
+      schedule.user_id,
+      settings,
+      embed,
+      buttons,
+      this.buildEndDmText(schedule, now),
+    );
 
     // Chỉ gửi 1 lần — set timestamp để cron không gửi lại.
     await this.schedulesService.markEndNotified(schedule.id, now);
@@ -101,12 +113,10 @@ export class ReminderService {
   }
 
   /**
-   * Gửi reminder theo cài đặt user. Có thể gửi:
-   *   - Chỉ DM                       (notify_via_dm=true, notify_via_channel=false)
-   *   - Chỉ channel mặc định          (notify_via_dm=false, notify_via_channel=true)
-   *   - Cả hai (song song)            (cả 2 = true)
-   * Nếu user chọn channel nhưng chưa đặt `default_channel_id` → fallback DM
-   * để không bị mất thông báo.
+   * Gửi reminder theo cài đặt user.
+   * - Channel là nơi chính: gửi embed có button để user xác nhận/hoãn/hoàn thành.
+   * - DM chỉ nhắc thêm bằng text khi đã có ít nhất một channel nhận được form.
+   * - Nếu không có channel hợp lệ thì fallback DM interactive để user vẫn thao tác được.
    */
   private async dispatch(
     userId: string,
@@ -119,24 +129,32 @@ export class ReminderService {
       | undefined,
     embed: ReturnType<InteractiveBuilder['build']>,
     buttons: unknown[],
+    dmText: string,
   ): Promise<void> {
     const wantDm = settings?.notify_via_dm === true;
     const wantChannel = settings?.notify_via_channel !== false; // default true
-    const channelId = settings?.default_channel_id ?? null;
+    const channelIds = this.parseChannelIds(settings?.default_channel_id ?? null);
 
     const tasks: Array<Promise<void>> = [];
+    let hasInteractiveChannel = false;
 
-    if (wantChannel && channelId) {
-      tasks.push(this.botService.sendBuzzInteractive(channelId, embed, buttons));
+    if (wantChannel && channelIds.length > 0) {
+      for (const channelId of channelIds) {
+        tasks.push(this.botService.sendBuzzInteractive(channelId, embed, buttons));
+      }
+      hasInteractiveChannel = true;
     }
+
     if (wantDm) {
       tasks.push(
-        this.botService.sendDmInteractive(userId, embed, buttons, undefined, true),
+        hasInteractiveChannel
+          ? this.botService.sendDirectMessage(userId, dmText)
+          : this.botService.sendDmInteractive(userId, embed, buttons, undefined, true),
       );
     }
 
     // Fallback: nếu không có route nào (vd user chọn "chỉ channel" nhưng chưa
-    // set default_channel_id) → gửi DM để user ít nhất nhận được.
+    // set channel nào) → gửi DM interactive để user ít nhất nhận được và bấm được.
     if (tasks.length === 0) {
       tasks.push(
         this.botService.sendDmInteractive(userId, embed, buttons, undefined, true),
@@ -150,6 +168,15 @@ export class ReminderService {
         this.logError('Reminder dispatch lỗi 1 route', r.reason);
       }
     }
+  }
+
+  private parseChannelIds(raw: string | null): string[] {
+    if (!raw) return [];
+    const ids = raw
+      .split(/[,\s;]+/)
+      .map((id) => id.trim())
+      .filter(Boolean);
+    return [...new Set(ids)];
   }
 
   // ============== EMBED + BUTTONS: START ==============
@@ -188,6 +215,26 @@ export class ReminderService {
       .build();
   }
 
+  private buildStartDmText(schedule: Schedule, now: Date): string {
+    const minutesUntilStart = Math.round((schedule.start_time.getTime() - now.getTime()) / 60000);
+    const lines = [
+      `⏰ Nhắc lịch: ${schedule.title}`,
+      `ID: ${schedule.id}`,
+      `Bắt đầu: ${this.dateParser.formatVietnam(schedule.start_time)}`,
+    ];
+
+    if (schedule.end_time) {
+      lines.push(`Kết thúc: ${this.dateParser.formatVietnam(schedule.end_time)}`);
+    }
+    if (schedule.description) {
+      lines.push(`Mô tả: ${schedule.description}`);
+    }
+
+    lines.push(`Trạng thái: ${this.formatTimeUntilStart(minutesUntilStart).replace(/\*\*/g, '')}.`);
+    lines.push('Vui lòng bấm xác nhận/hoãn ở message trong channel.');
+    return lines.join('\n');
+  }
+
   // ============== EMBED + BUTTONS: END ==============
 
   private buildEndEmbed(schedule: Schedule, now: Date): ReturnType<InteractiveBuilder['build']> {
@@ -222,6 +269,25 @@ export class ReminderService {
         EButtonMessageStyle.SECONDARY,
       )
       .build();
+  }
+
+  private buildEndDmText(schedule: Schedule, now: Date): string {
+    const minutesPassed = schedule.end_time
+      ? Math.max(0, Math.round((now.getTime() - schedule.end_time.getTime()) / 60000))
+      : 0;
+    const passedText = minutesPassed === 0
+      ? 'vừa kết thúc'
+      : `kết thúc cách đây ${this.dateParser.formatMinutes(minutesPassed)}`;
+
+    return [
+      `🏁 Lịch đã kết thúc: ${schedule.title}`,
+      `ID: ${schedule.id}`,
+      schedule.end_time ? `Kết thúc lúc: ${this.dateParser.formatVietnam(schedule.end_time)}` : null,
+      `Trạng thái: ${passedText}.`,
+      'Vui lòng bấm hoàn thành/để sau ở message trong channel.',
+    ]
+      .filter((line): line is string => Boolean(line))
+      .join('\n');
   }
 
   private formatTimeUntilStart(minutes: number): string {

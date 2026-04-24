@@ -60,6 +60,7 @@ describe('ReminderService', () => {
     mockBotService = {
       sendDmInteractive: jest.fn(),
       sendBuzzInteractive: jest.fn(),
+      sendDirectMessage: jest.fn(),
     } as any;
 
     mockDateParser = {
@@ -256,6 +257,76 @@ describe('ReminderService', () => {
         'channel123',
         expect.any(Object),
         expect.any(Array),
+      );
+      expect(mockBotService.sendDmInteractive).not.toHaveBeenCalled();
+    });
+
+    it('should send interactive reminders to multiple configured channels', async () => {
+      // Arrange
+      const multiChannelSettings = {
+        ...mockSettings,
+        default_channel_id: 'channel123, channel456 channel789',
+      };
+      const scheduleWithChannel = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: multiChannelSettings },
+      };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithChannel]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockResolvedValue(undefined);
+
+      // Act
+      await service.tick();
+
+      // Assert
+      expect(mockBotService.sendBuzzInteractive).toHaveBeenCalledTimes(3);
+      expect(mockBotService.sendBuzzInteractive).toHaveBeenNthCalledWith(
+        1,
+        'channel123',
+        expect.any(Object),
+        expect.any(Array),
+      );
+      expect(mockBotService.sendBuzzInteractive).toHaveBeenNthCalledWith(
+        2,
+        'channel456',
+        expect.any(Object),
+        expect.any(Array),
+      );
+      expect(mockBotService.sendBuzzInteractive).toHaveBeenNthCalledWith(
+        3,
+        'channel789',
+        expect.any(Object),
+        expect.any(Array),
+      );
+    });
+
+    it('should send channel buttons and plain DM text in both mode', async () => {
+      // Arrange
+      const bothSettings = {
+        ...mockSettings,
+        notify_via_dm: true,
+        notify_via_channel: true,
+      };
+      const scheduleWithBoth = { ...mockSchedule, user: { ...mockUser, settings: bothSettings } };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithBoth]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockResolvedValue(undefined);
+      mockBotService.sendDirectMessage.mockResolvedValue(undefined);
+
+      // Act
+      await service.tick();
+
+      // Assert
+      expect(mockBotService.sendBuzzInteractive).toHaveBeenCalledWith(
+        'channel123',
+        expect.any(Object),
+        expect.any(Array),
+      );
+      expect(mockBotService.sendDirectMessage).toHaveBeenCalledWith(
+        'user123',
+        expect.stringContaining('Vui lòng bấm xác nhận/hoãn ở message trong channel.'),
       );
       expect(mockBotService.sendDmInteractive).not.toHaveBeenCalled();
     });
