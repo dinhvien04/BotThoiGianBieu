@@ -64,6 +64,7 @@ describe('ReminderService', () => {
 
     mockDateParser = {
       formatVietnam: jest.fn((date: Date) => date.toISOString()),
+      formatMinutes: jest.fn((n: number) => `${n} phút`),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -217,7 +218,8 @@ describe('ReminderService', () => {
   describe('dispatch', () => {
     it('should send via DM when notify_via_dm is true', async () => {
       // Arrange
-      const dmSettings = { ...mockSettings, notify_via_dm: true };
+      // Mode "DM only" = notify_via_dm=true + notify_via_channel=false
+      const dmSettings = { ...mockSettings, notify_via_dm: true, notify_via_channel: false };
       const scheduleWithDm = { ...mockSchedule, user: { ...mockUser, settings: dmSettings } };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithDm]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);

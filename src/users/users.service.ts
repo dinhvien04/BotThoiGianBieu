@@ -17,6 +17,14 @@ export interface RegisterUserResult {
   isNew: boolean;
 }
 
+export interface UpdateSettingsPatch {
+  timezone?: string;
+  default_channel_id?: string | null;
+  default_remind_minutes?: number;
+  notify_via_dm?: boolean;
+  notify_via_channel?: boolean;
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -67,6 +75,21 @@ export class UsersService {
     return { user, settings, isNew: true };
   }
 
+  /**
+   * Patch các field trong `user_settings`. Chỉ update những field có trong
+   * `patch`, giữ nguyên field khác. Trả về record sau update.
+   */
+  async updateSettings(
+    userId: string,
+    patch: UpdateSettingsPatch,
+  ): Promise<UserSettings | null> {
+    if (Object.keys(patch).length === 0) {
+      return this.settingsRepository.findOne({ where: { user_id: userId } });
+    }
+    await this.settingsRepository.update({ user_id: userId }, patch);
+    return this.settingsRepository.findOne({ where: { user_id: userId } });
+  }
+
   private async ensureSettings(
     userId: string,
     defaultChannelId: string | null,
@@ -84,6 +107,7 @@ export class UsersService {
       default_channel_id: defaultChannelId,
       default_remind_minutes: 30,
       notify_via_dm: false,
+      notify_via_channel: true,
     });
     return this.settingsRepository.save(settings);
   }

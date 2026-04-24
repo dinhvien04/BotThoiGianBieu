@@ -130,6 +130,7 @@ describe('UsersService', () => {
         default_channel_id: '456',
         default_remind_minutes: 30,
         notify_via_dm: false,
+        notify_via_channel: true,
       });
     });
 

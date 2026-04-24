@@ -51,6 +51,22 @@ export class DateParser {
     );
   }
 
+  /**
+   * Format số phút → "X phút" / "Y giờ Z phút" / "D ngày" ở dạng human-readable.
+   * Dùng cho message nhắc/thông báo.
+   */
+  formatMinutes(minutes: number): string {
+    const abs = Math.abs(minutes);
+    if (abs < 60) return `${abs} phút`;
+    if (abs < 60 * 24) {
+      const h = Math.floor(abs / 60);
+      const m = abs % 60;
+      return m > 0 ? `${h} giờ ${m} phút` : `${h} giờ`;
+    }
+    const days = Math.floor(abs / (60 * 24));
+    return `${days} ngày`;
+  }
+
   /** Định dạng Date → "DD/MM/YYYY HH:mm" giờ Việt Nam. */
   formatVietnam(date: Date, withTime = true): string {
     const vn = new Date(date.getTime() + DateParser.VN_OFFSET_MS);

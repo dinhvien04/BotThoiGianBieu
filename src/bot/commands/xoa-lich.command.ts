@@ -158,6 +158,8 @@ export class XoaLichCommand implements BotCommand, InteractionHandler, OnModuleI
 
   private parseId(raw: string | undefined): number | null {
     if (!raw) return null;
+    // Chỉ chấp nhận chuỗi digit thuần (không space, dấu, chữ, dấu chấm thập phân…)
+    if (!/^\d+$/.test(raw)) return null;
     const id = Number(raw);
     return Number.isInteger(id) && id > 0 ? id : null;
   }
