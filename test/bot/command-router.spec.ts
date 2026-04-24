@@ -194,7 +194,7 @@ describe('CommandRouter', () => {
 
     it('should provide context helpers', async () => {
       let capturedContext: any;
-      const mockExecute = jest.fn(async (ctx: any) => {
+      const mockExecute = jest.fn(async (ctx) => {
         capturedContext = ctx;
       });
 

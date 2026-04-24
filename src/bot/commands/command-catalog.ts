@@ -115,6 +115,14 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "🔔 NHẮC NHỞ",
   },
 
+  // ===== ⚙️ Cài đặt =====
+  {
+    name: "cai-dat",
+    syntax: "cai-dat",
+    description: "Xem và chỉnh cài đặt cá nhân",
+    category: "⚙️ CÀI ĐẶT",
+  },
+
   // ===== ❓ Hỗ trợ =====
   {
     name: "help",
@@ -130,5 +138,6 @@ export const CATEGORY_ORDER: string[] = [
   "📅 XEM LỊCH",
   "✏️ QUẢN LÝ LỊCH",
   "🔔 NHẮC NHỞ",
+  "⚙️ CÀI ĐẶT",
   "❓ HỖ TRỢ",
 ];

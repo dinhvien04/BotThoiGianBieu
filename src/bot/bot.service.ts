@@ -14,7 +14,7 @@ export class BotService implements OnModuleDestroy {
   private _client: MezonClient | null = null;
   private isReady = false;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) { }
 
   get client(): MezonClient {
     if (!this._client) {
@@ -50,14 +50,22 @@ export class BotService implements OnModuleDestroy {
     await channel.send({ t: text });
   }
 
-  async replyToMessage(
-    channelId: string,
-    messageId: string,
-    text: string,
-  ): Promise<void> {
-    const channel = await this.client.channels.fetch(channelId);
-    const message = await channel.messages.fetch(messageId);
-    await message.reply({ t: text });
+  /**
+   * Reply (quote) tin nhắn gốc. Nếu không fetch được message (vd Mezon SDK
+   * cache stale, channel trả về id=0, message đã bị xóa) → fallback sang
+   * `sendMessage` để vẫn gửi được nội dung.
+   */
+  async replyToMessage(channelId: string, messageId: string, text: string): Promise<void> {
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      const message = await channel.messages.fetch(messageId);
+      await message.reply({ t: text });
+    } catch (err) {
+      this.logger.warn(
+        `Reply fail, fallback sang sendMessage (channel=${channelId}, msg=${messageId}): ${(err as Error).message}`,
+      );
+      await this.sendMessage(channelId, text);
+    }
   }
 
   async deleteMessage(channelId: string, messageId: string): Promise<void> {

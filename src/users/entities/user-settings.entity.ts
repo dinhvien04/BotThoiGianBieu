@@ -26,6 +26,9 @@ export class UserSettings {
   @Column({ type: "boolean", default: false })
   notify_via_dm!: boolean;
 
+  @Column({ type: "boolean", default: true })
+  notify_via_channel!: boolean;
+
   @CreateDateColumn({ type: "timestamp with time zone" })
   created_at!: Date;
 

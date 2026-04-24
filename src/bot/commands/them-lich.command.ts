@@ -127,18 +127,18 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const startRaw = formData.start_time?.trim();
     const endRaw = formData.end_time?.trim();
 
-    // ===== Validate =====
-    const validationError = this.validate(title, itemTypeRaw, startRaw, endRaw);
-    if (validationError) {
+    // ===== Validate + parse (parse chỉ 1 lần để tái sử dụng) =====
+    const validation = this.validate(title, itemTypeRaw, startRaw, endRaw);
+    if (validation.error) {
       await this.closeForm(ctx);
       await ctx.send(
-        `${validationError}\n\n💡 Gõ lại \`*them-lich\` để thử lại.`,
+        `${validation.error}\n\n💡 Gõ lại \`*them-lich\` để thử lại.`,
       );
       return;
     }
     const itemType = itemTypeRaw as ScheduleItemType;
-    const startTime = this.dateParser.parseVietnamLocal(startRaw)!;
-    const endTime = endRaw ? this.dateParser.parseVietnamLocal(endRaw) : null;
+    const startTime = validation.startTime!;
+    const endTime = validation.endTime;
 
     // ===== User settings để tính remind_at =====
     const user = await this.usersService.findByUserId(clickerId);
@@ -196,36 +196,50 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     await ctx.send(lines.join('\n'));
   }
 
-  /** Validate input, trả về message lỗi đầu tiên gặp phải, hoặc null nếu OK. */
+  /**
+   * Validate input + parse datetime 1 lần duy nhất. Trả:
+   *   - `error`: message lỗi đầu tiên (nếu có)
+   *   - `startTime`, `endTime`: đã parse (khi hợp lệ)
+   */
   private validate(
     title: string | undefined,
     itemTypeRaw: string,
     startRaw: string | undefined,
     endRaw: string | undefined,
-  ): string | null {
+  ): { error?: string; startTime?: Date; endTime: Date | null } {
     if (!title) {
-      return `❌ Thiếu tiêu đề.`;
+      return { error: `❌ Thiếu tiêu đề.`, endTime: null };
     }
     if (!isValidItemType(itemTypeRaw)) {
-      return `❌ Loại lịch không hợp lệ: \`${itemTypeRaw}\`.`;
+      return { error: `❌ Loại lịch không hợp lệ: \`${itemTypeRaw}\`.`, endTime: null };
     }
     const startTime = this.dateParser.parseVietnamLocal(startRaw);
     if (!startTime) {
-      return `❌ Thời gian bắt đầu không hợp lệ: \`${startRaw ?? ''}\`.`;
+      return {
+        error: `❌ Thời gian bắt đầu không hợp lệ: \`${startRaw ?? ''}\`.`,
+        endTime: null,
+      };
     }
     if (startTime.getTime() <= Date.now()) {
-      return `❌ Thời gian bắt đầu phải ở tương lai.`;
+      return { error: `❌ Thời gian bắt đầu phải ở tương lai.`, endTime: null };
     }
+    let endTime: Date | null = null;
     if (endRaw) {
-      const endTime = this.dateParser.parseVietnamLocal(endRaw);
+      endTime = this.dateParser.parseVietnamLocal(endRaw);
       if (!endTime) {
-        return `❌ Thời gian kết thúc không hợp lệ: \`${endRaw}\`.`;
+        return {
+          error: `❌ Thời gian kết thúc không hợp lệ: \`${endRaw}\`.`,
+          endTime: null,
+        };
       }
       if (endTime.getTime() <= startTime.getTime()) {
-        return `❌ Thời gian kết thúc phải sau thời gian bắt đầu.`;
+        return {
+          error: `❌ Thời gian kết thúc phải sau thời gian bắt đầu.`,
+          endTime: null,
+        };
       }
     }
-    return null;
+    return { startTime, endTime };
   }
 
   /** Xóa message chứa form; nuốt lỗi nếu SDK không cho xóa (permission, đã xóa, v.v.). */

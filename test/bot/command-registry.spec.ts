@@ -97,7 +97,7 @@ describe('CommandRegistry', () => {
         category: 'Test',
         syntax: 'test',
         execute: jest.fn(),
-      } as BotCommand;
+      } as unknown as BotCommand;
 
       registry.register(invalidCommand);
 
