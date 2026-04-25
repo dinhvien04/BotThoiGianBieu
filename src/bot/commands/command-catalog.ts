@@ -151,6 +151,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "🔔 NHẮC NHỞ",
   },
   {
+    name: "nhac-sau",
+    syntax: "nhac-sau <ID> <thời gian>",
+    description: "Nhắc sau X phút/giờ/ngày (vd: 30p, 2h, 1d, 2h30p)",
+    category: "🔔 NHẮC NHỞ",
+  },
+  {
     name: "tat-nhac",
     syntax: "tat-nhac <ID>",
     description: "Tắt nhắc lịch",

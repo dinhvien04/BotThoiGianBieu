@@ -42,6 +42,7 @@ describe('ReminderInteractionHandler', () => {
     mockUsersService = { findByUserId: jest.fn() } as any;
     mockDateParser = {
       formatVietnam: jest.fn((date) => date.toISOString()),
+      formatMinutes: jest.fn((minutes: number) => `${minutes} phút`),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -224,6 +225,49 @@ describe('ReminderInteractionHandler', () => {
         // Arrange
         mockSchedulesService.findById.mockResolvedValue(mockSchedule);
         mockUsersService.findByUserId.mockResolvedValue(null);
+        mockSchedulesService.snooze.mockResolvedValue(new Date());
+
+        // Act
+        await handler.handleButton(mockContext);
+
+        // Assert
+        expect(mockSchedulesService.snooze).toHaveBeenCalledWith(1, 30);
+      });
+
+      it('should honor explicit minutes from button_id suffix', async () => {
+        // Arrange
+        mockContext.action = 'snooze:1:60';
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockSchedulesService.snooze.mockResolvedValue(new Date());
+
+        // Act
+        await handler.handleButton(mockContext);
+
+        // Assert
+        expect(mockSchedulesService.snooze).toHaveBeenCalledWith(1, 60);
+        // Should NOT need to hit users service when minutes are explicit
+        expect(mockUsersService.findByUserId).not.toHaveBeenCalled();
+      });
+
+      it('should ignore invalid minutes suffix and fall back to user settings', async () => {
+        // Arrange
+        mockContext.action = 'snooze:1:abc';
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockUsersService.findByUserId.mockResolvedValue(mockUser);
+        mockSchedulesService.snooze.mockResolvedValue(new Date());
+
+        // Act
+        await handler.handleButton(mockContext);
+
+        // Assert
+        expect(mockSchedulesService.snooze).toHaveBeenCalledWith(1, 30);
+      });
+
+      it('should ignore zero minutes suffix and fall back to user settings', async () => {
+        // Arrange
+        mockContext.action = 'snooze:1:0';
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockUsersService.findByUserId.mockResolvedValue(mockUser);
         mockSchedulesService.snooze.mockResolvedValue(new Date());
 
         // Act
