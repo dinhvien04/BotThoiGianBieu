@@ -159,10 +159,7 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
   // ================ FORM RENDERING ================
 
   private async renderEditForm(channelId: string, schedule: Schedule): Promise<void> {
-    const startDefault = this.dateParser.formatVietnam(schedule.start_time);
-    const endDefault = schedule.end_time
-      ? this.dateParser.formatVietnam(schedule.end_time)
-      : '';
+    const endTime = schedule.end_time ?? schedule.start_time;
     const typeOption = findItemTypeOption(schedule.item_type) ?? ITEM_TYPES[0];
 
     const embed = new InteractiveBuilder(`✏️ SỬA LỊCH #${schedule.id}`)
@@ -185,17 +182,31 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
       )
       .addSelectField('item_type', '🏷️ Loại lịch', ITEM_TYPES, typeOption, 'Chọn loại lịch')
       .addInputField(
+        'start_date',
+        '📅 Ngày bắt đầu *',
+        'Vd: 25/04/2026',
+        { defaultValue: this.dateParser.formatVietnamDate(schedule.start_time) },
+        'Bắt buộc',
+      )
+      .addInputField(
         'start_time',
-        '⏰ Bắt đầu *',
-        'Vd: 25/04/2026 09:00',
-        { defaultValue: startDefault },
-        'Bắt buộc — nhập ngày/giờ Việt Nam',
+        '⏰ Giờ bắt đầu *',
+        'Vd: 09:00',
+        { defaultValue: this.dateParser.formatVietnamTime(schedule.start_time) },
+        'Bắt buộc — giờ Việt Nam',
+      )
+      .addInputField(
+        'end_date',
+        '📅 Ngày kết thúc *',
+        'Vd: 25/04/2026',
+        { defaultValue: this.dateParser.formatVietnamDate(endTime) },
+        'Bắt buộc',
       )
       .addInputField(
         'end_time',
-        '⏱️ Kết thúc *',
-        'Vd: 25/04/2026 10:00',
-        { defaultValue: endDefault },
+        '⏱️ Giờ kết thúc *',
+        'Vd: 10:00',
+        { defaultValue: this.dateParser.formatVietnamTime(endTime) },
         'Bắt buộc — phải sau giờ bắt đầu',
       )
       .build();
@@ -249,7 +260,7 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
       }
     }
 
-    const startRaw = formData.start_time?.trim();
+    const startRaw = this.combineDateTime(formData.start_date, formData.start_time);
     let newStart: Date | null = null;
     if (startRaw) {
       newStart = this.dateParser.parseVietnamLocal(startRaw);
@@ -262,28 +273,28 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
         }
         data.start_time = newStart;
       }
+    } else if (formData.start_date !== undefined || formData.start_time !== undefined) {
+      return { data, error: `❌ Thiếu ngày hoặc giờ bắt đầu.` };
     }
 
-    const endRaw = formData.end_time?.trim();
-    if (endRaw !== undefined) {
-      if (endRaw === '') {
-        return { data, error: `❌ Thiếu thời gian kết thúc.` };
-      } else {
-        const newEnd = this.dateParser.parseVietnamLocal(endRaw);
-        if (!newEnd) {
-          return { data, error: `❌ Thời gian kết thúc không hợp lệ: \`${endRaw}\`.` };
-        }
-        const startForCompare = data.start_time ?? current.start_time;
-        if (newEnd.getTime() <= startForCompare.getTime()) {
-          return {
-            data,
-            error: `❌ Thời gian kết thúc phải sau thời gian bắt đầu.`,
-          };
-        }
-        if (!current.end_time || newEnd.getTime() !== current.end_time.getTime()) {
-          data.end_time = newEnd;
-        }
+    const endRaw = this.combineDateTime(formData.end_date, formData.end_time);
+    if (endRaw) {
+      const newEnd = this.dateParser.parseVietnamLocal(endRaw);
+      if (!newEnd) {
+        return { data, error: `❌ Thời gian kết thúc không hợp lệ: \`${endRaw}\`.` };
       }
+      const startForCompare = data.start_time ?? current.start_time;
+      if (newEnd.getTime() <= startForCompare.getTime()) {
+        return {
+          data,
+          error: `❌ Thời gian kết thúc phải sau thời gian bắt đầu.`,
+        };
+      }
+      if (!current.end_time || newEnd.getTime() !== current.end_time.getTime()) {
+        data.end_time = newEnd;
+      }
+    } else if (formData.end_date !== undefined || formData.end_time !== undefined) {
+      return { data, error: `❌ Thiếu ngày hoặc giờ kết thúc.` };
     }
 
     return { data };
@@ -335,6 +346,13 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
     if (!/^\d+$/.test(raw)) return null;
     const id = Number(raw);
     return Number.isInteger(id) && id > 0 ? id : null;
+  }
+
+  private combineDateTime(dateRaw: string | undefined, timeRaw: string | undefined): string | null {
+    const date = dateRaw?.trim();
+    const time = timeRaw?.trim();
+    if (!date || !time) return null;
+    return `${date} ${time}`;
   }
 
   private async closeForm(ctx: ButtonInteractionContext): Promise<void> {

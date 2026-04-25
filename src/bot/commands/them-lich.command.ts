@@ -62,8 +62,6 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const now = new Date();
     const defaultStart = new Date(now.getTime() + 60 * 60 * 1000); // +1h
     const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000); // +1h duration
-    const defaultStartStr = this.dateParser.formatVietnam(defaultStart);
-    const defaultEndStr = this.dateParser.formatVietnam(defaultEnd);
 
     const embed = new InteractiveBuilder('📋 THÊM LỊCH MỚI')
       .setDescription(
@@ -85,17 +83,31 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
         'Mặc định: Task',
       )
       .addInputField(
+        'start_date',
+        '📅 Ngày bắt đầu *',
+        'Vd: 25/04/2026',
+        { defaultValue: this.dateParser.formatVietnamDate(defaultStart) },
+        'Bắt buộc',
+      )
+      .addInputField(
         'start_time',
-        '⏰ Bắt đầu *',
-        'Vd: 25/04/2026 09:00',
-        { defaultValue: defaultStartStr },
-        'Bắt buộc — nhập ngày/giờ Việt Nam',
+        '⏰ Giờ bắt đầu *',
+        'Vd: 09:00',
+        { defaultValue: this.dateParser.formatVietnamTime(defaultStart) },
+        'Bắt buộc — giờ Việt Nam',
+      )
+      .addInputField(
+        'end_date',
+        '📅 Ngày kết thúc *',
+        'Vd: 25/04/2026',
+        { defaultValue: this.dateParser.formatVietnamDate(defaultEnd) },
+        'Bắt buộc',
       )
       .addInputField(
         'end_time',
-        '⏱️ Kết thúc *',
-        'Vd: 25/04/2026 10:00',
-        { defaultValue: defaultEndStr },
+        '⏱️ Giờ kết thúc *',
+        'Vd: 10:00',
+        { defaultValue: this.dateParser.formatVietnamTime(defaultEnd) },
         'Bắt buộc — phải sau giờ bắt đầu',
       )
       .build();
@@ -126,11 +138,13 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const title = formData.title?.trim();
     const description = formData.description?.trim() || null;
     const itemTypeRaw = formData.item_type?.trim() || 'task';
-    const startRaw = formData.start_time?.trim();
-    const endRaw = formData.end_time?.trim();
+    const startDateRaw = formData.start_date?.trim();
+    const startTimeRaw = formData.start_time?.trim();
+    const endDateRaw = formData.end_date?.trim();
+    const endTimeRaw = formData.end_time?.trim();
 
     // ===== Validate + parse (parse chỉ 1 lần để tái sử dụng) =====
-    const validation = this.validate(title, itemTypeRaw, startRaw, endRaw);
+    const validation = this.validate(title, itemTypeRaw, startDateRaw, startTimeRaw, endDateRaw, endTimeRaw);
     if (validation.error) {
       await this.closeForm(ctx);
       await ctx.send(
@@ -204,14 +218,20 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
   private validate(
     title: string | undefined,
     itemTypeRaw: string,
-    startRaw: string | undefined,
-    endRaw: string | undefined,
+    startDateRaw: string | undefined,
+    startTimeRaw: string | undefined,
+    endDateRaw: string | undefined,
+    endTimeRaw: string | undefined,
   ): { error?: string; startTime?: Date; endTime?: Date } {
     if (!title) {
       return { error: `❌ Thiếu tiêu đề.` };
     }
     if (!isValidItemType(itemTypeRaw)) {
       return { error: `❌ Loại lịch không hợp lệ: \`${itemTypeRaw}\`.` };
+    }
+    const startRaw = this.combineDateTime(startDateRaw, startTimeRaw);
+    if (!startRaw) {
+      return { error: `❌ Thiếu ngày hoặc giờ bắt đầu.` };
     }
     const startTime = this.dateParser.parseVietnamLocal(startRaw);
     if (!startTime) {
@@ -222,8 +242,9 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     if (startTime.getTime() <= Date.now()) {
       return { error: `❌ Thời gian bắt đầu phải ở tương lai.` };
     }
+    const endRaw = this.combineDateTime(endDateRaw, endTimeRaw);
     if (!endRaw) {
-      return { error: `❌ Thiếu thời gian kết thúc.` };
+      return { error: `❌ Thiếu ngày hoặc giờ kết thúc.` };
     }
     const endTime = this.dateParser.parseVietnamLocal(endRaw);
     if (!endTime) {
@@ -237,6 +258,13 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       };
     }
     return { startTime, endTime };
+  }
+
+  private combineDateTime(dateRaw: string | undefined, timeRaw: string | undefined): string | null {
+    const date = dateRaw?.trim();
+    const time = timeRaw?.trim();
+    if (!date || !time) return null;
+    return `${date} ${time}`;
   }
 
   /** Xóa message chứa form; nuốt lỗi nếu SDK không cho xóa (permission, đã xóa, v.v.). */

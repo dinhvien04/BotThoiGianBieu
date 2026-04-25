@@ -79,6 +79,19 @@ export class DateParser {
     return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
   }
 
+  /** Định dạng Date → "DD/MM/YYYY" giờ Việt Nam. */
+  formatVietnamDate(date: Date): string {
+    return this.formatVietnam(date, false);
+  }
+
+  /** Định dạng Date → "HH:mm" giờ Việt Nam. */
+  formatVietnamTime(date: Date): string {
+    const vn = new Date(date.getTime() + DateParser.VN_OFFSET_MS);
+    const hh = String(vn.getUTCHours()).padStart(2, '0');
+    const mi = String(vn.getUTCMinutes()).padStart(2, '0');
+    return `${hh}:${mi}`;
+  }
+
   /** Lấy khoảng ngày hôm nay theo giờ VN, trả [startUTC, endUTC]. */
   getTodayRangeVietnam(now: Date = new Date()): { start: Date; end: Date } {
     const vn = new Date(now.getTime() + DateParser.VN_OFFSET_MS);
