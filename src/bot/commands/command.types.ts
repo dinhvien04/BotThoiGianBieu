@@ -6,9 +6,15 @@ export interface MezonChannelMessage {
   message_id: string;
   channel_id: string;
   clan_id?: string;
+  mode?: number;
+  is_public?: boolean;
+  topic_id?: string;
   sender_id: string;
   username?: string;
   display_name?: string;
+  clan_nick?: string;
+  avatar?: string;
+  clan_avatar?: string;
   content?: { t?: string };
   attachments?: Array<{
     filename?: string;

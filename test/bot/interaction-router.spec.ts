@@ -183,13 +183,17 @@ describe('InteractionRouter', () => {
       const ctx = (mockHandler.handleButton as jest.Mock).mock.calls[0][0];
       
       await ctx.send('test message');
-      expect(mockBotService.sendMessage).toHaveBeenCalledWith('channel123', 'test message');
+      expect(mockBotService.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ channelId: 'channel123' }),
+        'test message',
+      );
 
       await ctx.reply('test reply');
       expect(mockBotService.replyToMessage).toHaveBeenCalledWith(
         'channel123',
         'msg123',
         'test reply',
+        expect.objectContaining({ channelId: 'channel123' }),
       );
 
       await ctx.deleteForm();
@@ -215,7 +219,7 @@ describe('InteractionRouter', () => {
 
       // Assert
       expect(mockBotService.sendMessage).toHaveBeenCalledWith(
-        'channel123',
+        expect.objectContaining({ channelId: 'channel123' }),
         expect.stringContaining('Handler error'),
       );
     });

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { BotService } from "../bot.service";
+import { BotService, ChannelSendTarget } from "../bot.service";
 import { CommandRegistry } from "./command-registry";
 import { CommandContext, MezonChannelMessage } from "./command.types";
 
@@ -39,7 +39,8 @@ export class CommandRouter {
     }
 
     const rawArgs = withoutPrefix.slice(head.length).trim();
-    const ctx = this.buildContext(message, rest, rawArgs);
+    const sendTarget = this.buildSendTarget(message);
+    const ctx = this.buildContext(message, rest, rawArgs, sendTarget);
 
     try {
       this.logger.debug(`▶ ${command.name} từ ${message.sender_id}`);
@@ -64,7 +65,9 @@ export class CommandRouter {
     message: MezonChannelMessage,
     args: string[],
     rawArgs: string,
+    sendTarget: ChannelSendTarget,
   ): CommandContext {
+    const replyTarget = this.buildReplyTarget(message, sendTarget);
     return {
       message,
       args,
@@ -75,12 +78,42 @@ export class CommandRouter {
           message.channel_id,
           message.message_id,
           text,
+          replyTarget,
         ),
-      send: (text) => this.botService.sendMessage(message.channel_id, text),
+      send: (text) => this.botService.sendMessage(sendTarget, text),
       sendDM: (text) =>
         this.botService.sendDirectMessage(message.sender_id, text),
       ephemeralReply: (text) =>
         this.botService.sendEphemeral(message.channel_id, message.sender_id, text),
+    };
+  }
+
+  private buildSendTarget(message: MezonChannelMessage): ChannelSendTarget {
+    return {
+      channelId: message.channel_id,
+      clanId: message.clan_id,
+      mode: message.mode,
+      isPublic: message.is_public,
+      topicId: message.topic_id,
+    };
+  }
+
+  private buildReplyTarget(
+    message: MezonChannelMessage,
+    sendTarget: ChannelSendTarget,
+  ): ChannelSendTarget {
+    return {
+      ...sendTarget,
+      replyTo: {
+        messageId: message.message_id,
+        senderId: message.sender_id,
+        username: message.username,
+        displayName: message.display_name,
+        clanNick: message.clan_nick,
+        avatar: message.avatar,
+        clanAvatar: message.clan_avatar,
+        content: message.content,
+      },
     };
   }
 }

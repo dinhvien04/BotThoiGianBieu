@@ -187,7 +187,7 @@ describe('CommandRouter', () => {
 
       // Đổi từ reply sang send (fallback safer khi SDK cache miss)
       expect(mockBotService.sendMessage).toHaveBeenCalledWith(
-        '456',
+        expect.objectContaining({ channelId: '456' }),
         '❌ Có lỗi xảy ra: Test error',
       );
     });
@@ -224,11 +224,19 @@ describe('CommandRouter', () => {
 
       // Test reply helper
       await capturedContext.reply('test reply');
-      expect(mockBotService.replyToMessage).toHaveBeenCalledWith('456', '123', 'test reply');
+      expect(mockBotService.replyToMessage).toHaveBeenCalledWith(
+        '456',
+        '123',
+        'test reply',
+        expect.objectContaining({ channelId: '456' }),
+      );
 
       // Test send helper
       await capturedContext.send('test send');
-      expect(mockBotService.sendMessage).toHaveBeenCalledWith('456', 'test send');
+      expect(mockBotService.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ channelId: '456' }),
+        'test send',
+      );
 
       // Test sendDM helper
       await capturedContext.sendDM('test dm');

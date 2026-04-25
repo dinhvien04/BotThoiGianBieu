@@ -2,6 +2,24 @@ import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { IInteractiveMessageProps, MezonClient, TypeMessage } from "mezon-sdk";
 
+export interface ChannelSendTarget {
+  channelId: string;
+  clanId?: string;
+  mode?: number;
+  isPublic?: boolean;
+  topicId?: string;
+  replyTo?: {
+    messageId: string;
+    senderId: string;
+    username?: string;
+    displayName?: string;
+    clanNick?: string;
+    avatar?: string;
+    clanAvatar?: string;
+    content?: unknown;
+  };
+}
+
 /**
  * Wrapper mỏng quanh `MezonClient`:
  * - Khởi tạo & login
@@ -46,10 +64,16 @@ export class BotService implements OnModuleDestroy {
     this.logger.log("✅ MezonClient đã đăng nhập thành công");
   }
 
-  async sendMessage(channelId: string, text: string): Promise<void> {
+  async sendMessage(channel: string | ChannelSendTarget, text: string): Promise<void> {
+    const target = this.normalizeTarget(channel);
     await this.withRetry(async () => {
-      const channel = await this.client.channels.fetch(channelId);
-      await channel.send({ t: text });
+      if (this.canSendDirect(target)) {
+        await this.sendSocketMessage(target, text);
+        return;
+      }
+
+      const fetchedChannel = await this.client.channels.fetch(target.channelId);
+      await fetchedChannel.send({ t: text });
     });
   }
 
@@ -58,7 +82,24 @@ export class BotService implements OnModuleDestroy {
    * cache stale, channel trả về id=0, message đã bị xóa) → fallback sang
    * `sendMessage` để vẫn gửi được nội dung.
    */
-  async replyToMessage(channelId: string, messageId: string, text: string): Promise<void> {
+  async replyToMessage(
+    channelId: string,
+    messageId: string,
+    text: string,
+    target?: ChannelSendTarget,
+  ): Promise<void> {
+    const sendTarget = target
+      ? {
+          ...target,
+          channelId,
+        }
+      : undefined;
+
+    if (sendTarget && this.canSendDirect(sendTarget)) {
+      await this.withRetry(() => this.sendSocketMessage(sendTarget, text));
+      return;
+    }
+
     try {
       const channel = await this.client.channels.fetch(channelId);
       const message = await channel.messages.fetch(messageId);
@@ -67,7 +108,7 @@ export class BotService implements OnModuleDestroy {
       this.logger.warn(
         `Reply fail, fallback sang sendMessage (channel=${channelId}, msg=${messageId}): ${(err as Error).message}`,
       );
-      await this.sendMessage(channelId, text);
+      await this.sendMessage(target ?? channelId, text);
     }
   }
 
@@ -212,5 +253,61 @@ export class BotService implements OnModuleDestroy {
       }
     }
     throw lastErr;
+  }
+
+  private normalizeTarget(channel: string | ChannelSendTarget): ChannelSendTarget {
+    return typeof channel === "string" ? { channelId: channel } : channel;
+  }
+
+  private canSendDirect(
+    target: ChannelSendTarget,
+  ): target is ChannelSendTarget & { clanId: string; mode: number; isPublic: boolean } {
+    return (
+      Boolean(target.clanId) &&
+      typeof target.mode === "number" &&
+      typeof target.isPublic === "boolean"
+    );
+  }
+
+  private async sendSocketMessage(
+    target: ChannelSendTarget & { clanId: string; mode: number; isPublic: boolean },
+    text: string,
+  ): Promise<void> {
+    const socketManager = (this.client as unknown as {
+      socketManager?: {
+        writeChatMessage(data: unknown): Promise<unknown>;
+      };
+    }).socketManager;
+
+    if (!socketManager) {
+      throw new Error("Mezon socket manager chưa sẵn sàng.");
+    }
+
+    await socketManager.writeChatMessage({
+      clan_id: target.clanId,
+      channel_id: target.channelId,
+      mode: target.mode,
+      is_public: target.isPublic,
+      content: { t: text },
+      mentions: [],
+      attachments: [],
+      references: target.replyTo ? [this.buildReplyReference(target.replyTo)] : [],
+      topic_id: target.topicId,
+    });
+  }
+
+  private buildReplyReference(replyTo: NonNullable<ChannelSendTarget["replyTo"]>): Record<string, unknown> {
+    return {
+      message_id: "",
+      message_ref_id: replyTo.messageId,
+      ref_type: 0,
+      message_sender_id: replyTo.senderId,
+      message_sender_username: replyTo.username,
+      message_sender_avatar: replyTo.avatar,
+      message_sender_clan_nick: replyTo.clanNick,
+      message_sender_display_name: replyTo.displayName,
+      content: JSON.stringify(replyTo.content ?? {}),
+      has_attachment: false,
+    };
   }
 }

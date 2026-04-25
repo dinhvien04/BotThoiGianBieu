@@ -9,6 +9,10 @@
 export interface MezonButtonClickEvent {
   message_id: string;
   channel_id: string;
+  clan_id?: string;
+  mode?: number;
+  is_public?: boolean;
+  topic_id?: string;
   button_id: string;
   /** ID của người gửi message (thường là bot). KHÔNG phải người click! */
   sender_id: string;

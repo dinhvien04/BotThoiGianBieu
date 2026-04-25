@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { BotService } from '../bot.service';
+import { BotService, ChannelSendTarget } from '../bot.service';
 import { InteractionRegistry } from './interaction-registry';
 import { ButtonInteractionContext, MezonButtonClickEvent } from './interaction.types';
 
@@ -36,14 +36,16 @@ export class InteractionRouter {
     }
 
     const formData = this.parseExtraData(event.extra_data);
+    const sendTarget = this.buildSendTarget(event);
+    const replyTarget = this.buildReplyTarget(event, sendTarget);
     const ctx: ButtonInteractionContext = {
       event,
       action: match.action,
       clickerId: event.user_id,
       channelId: event.channel_id,
       formData,
-      send: (text) => this.botService.sendMessage(event.channel_id, text),
-      reply: (text) => this.botService.replyToMessage(event.channel_id, event.message_id, text),
+      send: (text) => this.botService.sendMessage(sendTarget, text),
+      reply: (text) => this.botService.replyToMessage(event.channel_id, event.message_id, text, replyTarget),
       deleteForm: () => this.botService.deleteMessage(event.channel_id, event.message_id),
       ephemeralSend: (text) =>
         this.botService.sendEphemeral(event.channel_id, event.user_id, text),
@@ -91,5 +93,28 @@ export class InteractionRouter {
         this.processedClicks.delete(key);
       }
     }
+  }
+
+  private buildSendTarget(event: MezonButtonClickEvent): ChannelSendTarget {
+    return {
+      channelId: event.channel_id,
+      clanId: event.clan_id,
+      mode: event.mode,
+      isPublic: event.is_public,
+      topicId: event.topic_id,
+    };
+  }
+
+  private buildReplyTarget(
+    event: MezonButtonClickEvent,
+    sendTarget: ChannelSendTarget,
+  ): ChannelSendTarget {
+    return {
+      ...sendTarget,
+      replyTo: {
+        messageId: event.message_id,
+        senderId: event.sender_id,
+      },
+    };
   }
 }
