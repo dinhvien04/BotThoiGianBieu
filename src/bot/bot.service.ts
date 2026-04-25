@@ -90,9 +90,9 @@ export class BotService implements OnModuleDestroy {
   ): Promise<void> {
     const sendTarget = target
       ? {
-          ...target,
-          channelId,
-        }
+        ...target,
+        channelId,
+      }
       : undefined;
 
     if (sendTarget && this.canSendDirect(sendTarget)) {
@@ -298,7 +298,7 @@ export class BotService implements OnModuleDestroy {
 
   private buildReplyReference(replyTo: NonNullable<ChannelSendTarget["replyTo"]>): Record<string, unknown> {
     return {
-      message_id: "",
+      message_id: "0",
       message_ref_id: replyTo.messageId,
       ref_type: 0,
       message_sender_id: replyTo.senderId,
