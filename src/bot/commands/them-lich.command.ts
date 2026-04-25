@@ -15,12 +15,20 @@ import {
 import { UsersService } from '../../users/users.service';
 import { SchedulesService } from '../../schedules/schedules.service';
 import { DateParser } from '../../shared/utils/date-parser';
-import { ScheduleItemType } from '../../schedules/entities/schedule.entity';
+import {
+  RecurrenceType,
+  ScheduleItemType,
+} from '../../schedules/entities/schedule.entity';
 import {
   findItemTypeOption,
   isValidItemType,
   ITEM_TYPES,
 } from '../../schedules/schedules.constants';
+import {
+  formatRecurrence,
+  parseRecurrenceType,
+  RECURRENCE_TYPE_OPTIONS,
+} from '../../shared/utils/recurrence';
 
 const INTERACTION_ID = 'them-lich';
 
@@ -110,6 +118,27 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
         { type: 'time', defaultValue: this.dateParser.formatVietnamTime(defaultEnd) },
         'Bắt buộc — phải sau giờ bắt đầu',
       )
+      .addSelectField(
+        'recurrence_type',
+        '🔁 Lặp lại',
+        RECURRENCE_TYPE_OPTIONS,
+        RECURRENCE_TYPE_OPTIONS[0],
+        'Mặc định: Không lặp',
+      )
+      .addInputField(
+        'recurrence_interval',
+        '🔢 Khoảng lặp',
+        '1',
+        { type: 'number', defaultValue: '1' },
+        'Chỉ áp dụng khi chọn lặp. Vd 2 = mỗi 2 ngày/tuần/tháng.',
+      )
+      .addInputField(
+        'recurrence_until',
+        '🛑 Dừng lặp sau ngày',
+        'Chọn ngày (tuỳ chọn)',
+        { type: 'date' },
+        'Tuỳ chọn — để trống = lặp vô hạn. Chỉ áp dụng khi chọn lặp.',
+      )
       .build();
 
     const buttons = new ButtonBuilder()
@@ -142,9 +171,22 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const startTimeRaw = formData.start_time?.trim();
     const endDateRaw = formData.end_date?.trim();
     const endTimeRaw = formData.end_time?.trim();
+    const recurrenceTypeRaw = formData.recurrence_type?.trim() || 'none';
+    const recurrenceIntervalRaw = formData.recurrence_interval?.trim() || '1';
+    const recurrenceUntilRaw = formData.recurrence_until?.trim() || '';
 
     // ===== Validate + parse (parse chỉ 1 lần để tái sử dụng) =====
-    const validation = this.validate(title, itemTypeRaw, startDateRaw, startTimeRaw, endDateRaw, endTimeRaw);
+    const validation = this.validate(
+      title,
+      itemTypeRaw,
+      startDateRaw,
+      startTimeRaw,
+      endDateRaw,
+      endTimeRaw,
+      recurrenceTypeRaw,
+      recurrenceIntervalRaw,
+      recurrenceUntilRaw,
+    );
     if (validation.error) {
       await this.closeForm(ctx);
       await ctx.send(
@@ -155,6 +197,9 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const itemType = itemTypeRaw as ScheduleItemType;
     const startTime = validation.startTime!;
     const endTime = validation.endTime!;
+    const recurrenceType = validation.recurrenceType!;
+    const recurrenceInterval = validation.recurrenceInterval!;
+    const recurrenceUntil = validation.recurrenceUntil ?? null;
 
     // ===== User settings để tính remind_at =====
     const user = await this.usersService.findByUserId(clickerId);
@@ -181,6 +226,9 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       start_time: startTime,
       end_time: endTime,
       remind_at: remindAt,
+      recurrence_type: recurrenceType,
+      recurrence_interval: recurrenceInterval,
+      recurrence_until: recurrenceUntil,
     });
 
     // Tắt form trước khi gửi thông báo
@@ -206,6 +254,16 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     } else {
       lines.push(`🔔 Sẽ nhắc ngay (thời gian sát quá, cron sẽ ping trong 1 phút tới).`);
     }
+    if (recurrenceType !== 'none') {
+      lines.push(
+        `🔁 Lặp: ${formatRecurrence(recurrenceType, recurrenceInterval)}`,
+      );
+      if (recurrenceUntil) {
+        lines.push(
+          `🛑 Dừng lặp sau: \`${this.dateParser.formatVietnam(recurrenceUntil, false)}\``,
+        );
+      }
+    }
 
     await ctx.send(lines.join('\n'));
   }
@@ -222,7 +280,17 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     startTimeRaw: string | undefined,
     endDateRaw: string | undefined,
     endTimeRaw: string | undefined,
-  ): { error?: string; startTime?: Date; endTime?: Date } {
+    recurrenceTypeRaw: string,
+    recurrenceIntervalRaw: string,
+    recurrenceUntilRaw: string,
+  ): {
+    error?: string;
+    startTime?: Date;
+    endTime?: Date;
+    recurrenceType?: RecurrenceType;
+    recurrenceInterval?: number;
+    recurrenceUntil?: Date | null;
+  } {
     if (!title) {
       return { error: `❌ Thiếu tiêu đề.` };
     }
@@ -257,7 +325,54 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
         error: `❌ Thời gian kết thúc phải sau thời gian bắt đầu.`,
       };
     }
-    return { startTime, endTime };
+
+    const recurrenceType = parseRecurrenceType(recurrenceTypeRaw);
+    if (!recurrenceType) {
+      return {
+        error: `❌ Kiểu lặp không hợp lệ: \`${recurrenceTypeRaw}\`.`,
+      };
+    }
+
+    let recurrenceInterval = 1;
+    let recurrenceUntil: Date | null = null;
+    if (recurrenceType !== 'none') {
+      const parsedInterval = Number.parseInt(recurrenceIntervalRaw, 10);
+      if (
+        !Number.isFinite(parsedInterval) ||
+        parsedInterval < 1 ||
+        String(parsedInterval) !== recurrenceIntervalRaw.replace(/^0+(?=\d)/, '')
+      ) {
+        return {
+          error: `❌ Khoảng lặp không hợp lệ: \`${recurrenceIntervalRaw}\` (phải là số nguyên ≥ 1).`,
+        };
+      }
+      recurrenceInterval = parsedInterval;
+
+      if (recurrenceUntilRaw) {
+        const parsedUntil = this.dateParser.parseVietnamLocal(
+          `${recurrenceUntilRaw} 23:59`,
+        );
+        if (!parsedUntil) {
+          return {
+            error: `❌ Ngày dừng lặp không hợp lệ: \`${recurrenceUntilRaw}\`.`,
+          };
+        }
+        if (parsedUntil.getTime() <= startTime.getTime()) {
+          return {
+            error: `❌ Ngày dừng lặp phải SAU ngày bắt đầu.`,
+          };
+        }
+        recurrenceUntil = parsedUntil;
+      }
+    }
+
+    return {
+      startTime,
+      endTime,
+      recurrenceType,
+      recurrenceInterval,
+      recurrenceUntil,
+    };
   }
 
   private combineDateTime(dateRaw: string | undefined, timeRaw: string | undefined): string | null {

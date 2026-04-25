@@ -1,6 +1,20 @@
 import { RecurrenceType } from "../../schedules/entities/schedule.entity";
 
 /**
+ * Options dùng cho dropdown chọn kiểu lặp trong form (InteractiveBuilder).
+ * Giữ ở đây để mọi form dùng chung cùng label/value.
+ */
+export const RECURRENCE_TYPE_OPTIONS: Array<{
+  label: string;
+  value: RecurrenceType;
+}> = [
+  { label: "🚫 Không lặp", value: "none" },
+  { label: "📅 Hàng ngày", value: "daily" },
+  { label: "📆 Hàng tuần", value: "weekly" },
+  { label: "🗓️ Hàng tháng", value: "monthly" },
+];
+
+/**
  * Cộng thêm `months` tháng vào `date` theo UTC, tự clamp khi target month
  * không có ngày đó (vd Jan 31 + 1 → Feb 28/29 thay vì rolling sang tháng 3).
  */
