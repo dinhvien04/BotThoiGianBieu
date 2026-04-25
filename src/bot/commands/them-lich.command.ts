@@ -85,29 +85,29 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       .addInputField(
         'start_date',
         '📅 Ngày bắt đầu *',
-        'Vd: 25/04/2026',
-        { defaultValue: this.dateParser.formatVietnamDate(defaultStart) },
+        'Chọn ngày bắt đầu',
+        { type: 'date', defaultValue: this.dateParser.toDateInputVietnam(defaultStart) },
         'Bắt buộc',
       )
       .addInputField(
         'start_time',
         '⏰ Giờ bắt đầu *',
-        'Vd: 09:00',
-        { defaultValue: this.dateParser.formatVietnamTime(defaultStart) },
+        'Chọn giờ bắt đầu',
+        { type: 'time', defaultValue: this.dateParser.formatVietnamTime(defaultStart) },
         'Bắt buộc — giờ Việt Nam',
       )
       .addInputField(
         'end_date',
         '📅 Ngày kết thúc *',
-        'Vd: 25/04/2026',
-        { defaultValue: this.dateParser.formatVietnamDate(defaultEnd) },
+        'Chọn ngày kết thúc',
+        { type: 'date', defaultValue: this.dateParser.toDateInputVietnam(defaultEnd) },
         'Bắt buộc',
       )
       .addInputField(
         'end_time',
         '⏱️ Giờ kết thúc *',
-        'Vd: 10:00',
-        { defaultValue: this.dateParser.formatVietnamTime(defaultEnd) },
+        'Chọn giờ kết thúc',
+        { type: 'time', defaultValue: this.dateParser.formatVietnamTime(defaultEnd) },
         'Bắt buộc — phải sau giờ bắt đầu',
       )
       .build();

@@ -184,29 +184,29 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
       .addInputField(
         'start_date',
         '📅 Ngày bắt đầu *',
-        'Vd: 25/04/2026',
-        { defaultValue: this.dateParser.formatVietnamDate(schedule.start_time) },
+        'Chọn ngày bắt đầu',
+        { type: 'date', defaultValue: this.dateParser.toDateInputVietnam(schedule.start_time) },
         'Bắt buộc',
       )
       .addInputField(
         'start_time',
         '⏰ Giờ bắt đầu *',
-        'Vd: 09:00',
-        { defaultValue: this.dateParser.formatVietnamTime(schedule.start_time) },
+        'Chọn giờ bắt đầu',
+        { type: 'time', defaultValue: this.dateParser.formatVietnamTime(schedule.start_time) },
         'Bắt buộc — giờ Việt Nam',
       )
       .addInputField(
         'end_date',
         '📅 Ngày kết thúc *',
-        'Vd: 25/04/2026',
-        { defaultValue: this.dateParser.formatVietnamDate(endTime) },
+        'Chọn ngày kết thúc',
+        { type: 'date', defaultValue: this.dateParser.toDateInputVietnam(endTime) },
         'Bắt buộc',
       )
       .addInputField(
         'end_time',
         '⏱️ Giờ kết thúc *',
-        'Vd: 10:00',
-        { defaultValue: this.dateParser.formatVietnamTime(endTime) },
+        'Chọn giờ kết thúc',
+        { type: 'time', defaultValue: this.dateParser.formatVietnamTime(endTime) },
         'Bắt buộc — phải sau giờ bắt đầu',
       )
       .build();

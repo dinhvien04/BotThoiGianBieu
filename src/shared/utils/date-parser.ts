@@ -51,6 +51,11 @@ export class DateParser {
     );
   }
 
+  /** Convert Date → "YYYY-MM-DD" giờ Việt Nam — đúng format input `date`. */
+  toDateInputVietnam(date: Date): string {
+    return this.toDatetimeLocalVietnam(date).slice(0, 10);
+  }
+
   /**
    * Format số phút → "X phút" / "Y giờ Z phút" / "D ngày" ở dạng human-readable.
    * Dùng cho message nhắc/thông báo.
