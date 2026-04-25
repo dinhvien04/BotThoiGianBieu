@@ -89,6 +89,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "✏️ QUẢN LÝ LỊCH",
   },
   {
+    name: "mau-lich-excel",
+    syntax: "mau-lich-excel",
+    description: "Tải file Excel mẫu để nhập lịch hàng loạt",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
     name: "sua-lich",
     syntax: "sua-lich <ID>",
     description: "Chỉnh sửa lịch",
