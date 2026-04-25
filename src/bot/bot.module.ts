@@ -25,6 +25,9 @@ import { HoanThanhCommand } from './commands/hoan-thanh.command';
 import { CaiDatCommand } from './commands/cai-dat.command';
 import { ChiTietCommand } from './commands/chi-tiet.command';
 import { NhacCommand, TatNhacCommand } from './commands/nhac.command';
+import { TimKiemCommand } from './commands/tim-kiem.command';
+import { SapToiCommand } from './commands/sap-toi.command';
+import { DanhSachCommand } from './commands/danh-sach.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
 
@@ -48,6 +51,9 @@ import { InteractionRouter } from './interactions/interaction-router';
     HoanThanhCommand,
     NhacCommand,
     TatNhacCommand,
+    TimKiemCommand,
+    SapToiCommand,
+    DanhSachCommand,
     ThemLichCommand,
     ThemLichExcelCommand,
     MauLichExcelCommand,

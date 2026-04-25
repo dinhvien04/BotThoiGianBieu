@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, IsNull } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, IsNull, ILike, MoreThanOrEqual } from 'typeorm';
 import { SchedulesService, CreateScheduleInput, UpdateSchedulePatch } from '../../src/schedules/schedules.service';
 import { Schedule, ScheduleStatus, ScheduleItemType } from '../../src/schedules/entities/schedule.entity';
 
@@ -31,6 +31,7 @@ describe('SchedulesService', () => {
       save: jest.fn(),
       findOne: jest.fn(),
       find: jest.fn(),
+      findAndCount: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     } as any;
@@ -255,6 +256,160 @@ describe('SchedulesService', () => {
       // Assert
       const callArgs = mockRepository.find.mock.calls[0]?.[0];
       expect(callArgs?.order).toEqual({ start_time: 'ASC' });
+    });
+  });
+
+  describe('search', () => {
+    it('should search schedules by keyword across title and description', async () => {
+      // Arrange
+      mockRepository.findAndCount.mockResolvedValue([[mockSchedule], 1]);
+
+      // Act
+      const result = await service.search('user123', 'Team');
+
+      // Assert
+      expect(mockRepository.findAndCount).toHaveBeenCalledWith({
+        where: [
+          { user_id: 'user123', title: ILike('%Team%') },
+          { user_id: 'user123', description: ILike('%Team%') },
+        ],
+        order: { start_time: 'ASC', id: 'ASC' },
+        take: 10,
+        skip: 0,
+      });
+      expect(result).toEqual({ items: [mockSchedule], total: 1 });
+    });
+
+    it('should apply custom limit and offset for pagination', async () => {
+      // Arrange
+      mockRepository.findAndCount.mockResolvedValue([[], 25]);
+
+      // Act
+      await service.search('user123', 'demo', 5, 10);
+
+      // Assert
+      const call = mockRepository.findAndCount.mock.calls[0]?.[0];
+      expect(call?.take).toBe(5);
+      expect(call?.skip).toBe(10);
+    });
+
+    it('should return empty result when no matches', async () => {
+      // Arrange
+      mockRepository.findAndCount.mockResolvedValue([[], 0]);
+
+      // Act
+      const result = await service.search('user123', 'nothing');
+
+      // Assert
+      expect(result).toEqual({ items: [], total: 0 });
+    });
+
+    it('should pass keyword containing spaces unchanged', async () => {
+      // Arrange
+      mockRepository.findAndCount.mockResolvedValue([[], 0]);
+
+      // Act
+      await service.search('user123', 'họp khách hàng');
+
+      // Assert
+      const call = mockRepository.findAndCount.mock.calls[0]?.[0];
+      expect(call?.where).toEqual([
+        { user_id: 'user123', title: ILike('%họp khách hàng%') },
+        { user_id: 'user123', description: ILike('%họp khách hàng%') },
+      ]);
+    });
+  });
+
+  describe('findUpcoming', () => {
+    it('should return pending schedules with start_time >= now, ordered asc', async () => {
+      // Arrange
+      const now = new Date('2026-04-23T09:00:00Z');
+      mockRepository.find.mockResolvedValue([mockSchedule]);
+
+      // Act
+      const result = await service.findUpcoming('user123', now);
+
+      // Assert
+      expect(mockRepository.find).toHaveBeenCalledWith({
+        where: {
+          user_id: 'user123',
+          status: 'pending',
+          start_time: MoreThanOrEqual(now),
+        },
+        order: { start_time: 'ASC', id: 'ASC' },
+        take: 5,
+      });
+      expect(result).toEqual([mockSchedule]);
+    });
+
+    it('should honor custom limit', async () => {
+      // Arrange
+      const now = new Date('2026-04-23T09:00:00Z');
+      mockRepository.find.mockResolvedValue([]);
+
+      // Act
+      await service.findUpcoming('user123', now, 12);
+
+      // Assert
+      const call = mockRepository.find.mock.calls[0]?.[0];
+      expect(call?.take).toBe(12);
+    });
+
+    it('should return empty array when no upcoming schedules', async () => {
+      // Arrange
+      mockRepository.find.mockResolvedValue([]);
+
+      // Act
+      const result = await service.findUpcoming(
+        'user123',
+        new Date('2030-01-01T00:00:00Z'),
+      );
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('findAllPending', () => {
+    it('should return all pending schedules for a user with pagination', async () => {
+      // Arrange
+      mockRepository.findAndCount.mockResolvedValue([[mockSchedule], 1]);
+
+      // Act
+      const result = await service.findAllPending('user123');
+
+      // Assert
+      expect(mockRepository.findAndCount).toHaveBeenCalledWith({
+        where: { user_id: 'user123', status: 'pending' },
+        order: { start_time: 'ASC', id: 'ASC' },
+        take: 10,
+        skip: 0,
+      });
+      expect(result).toEqual({ items: [mockSchedule], total: 1 });
+    });
+
+    it('should honor custom limit and offset', async () => {
+      // Arrange
+      mockRepository.findAndCount.mockResolvedValue([[], 25]);
+
+      // Act
+      await service.findAllPending('user123', 5, 10);
+
+      // Assert
+      const call = mockRepository.findAndCount.mock.calls[0]?.[0];
+      expect(call?.take).toBe(5);
+      expect(call?.skip).toBe(10);
+    });
+
+    it('should return zero total when user has no pending schedules', async () => {
+      // Arrange
+      mockRepository.findAndCount.mockResolvedValue([[], 0]);
+
+      // Act
+      const result = await service.findAllPending('user123');
+
+      // Assert
+      expect(result).toEqual({ items: [], total: 0 });
     });
   });
 
