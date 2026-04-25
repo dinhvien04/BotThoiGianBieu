@@ -17,6 +17,13 @@ import { DateParser } from '../shared/utils/date-parser';
  */
 const DEFAULT_SNOOZE_MINUTES = 30;
 
+/**
+ * Các preset snooze nhanh hiển thị dạng button row ngoài cùng với nút "Hoãn
+ * mặc định (theo user settings)". Người dùng có thể chọn hoãn 10p / 1h / 4h
+ * mà không cần gõ lệnh.
+ */
+const SNOOZE_PRESETS_MINUTES: readonly number[] = [10, 60, 240];
+
 export const REMINDER_INTERACTION_ID = 'reminder';
 
 @Injectable()
@@ -201,18 +208,39 @@ export class ReminderService {
   }
 
   private buildStartButtons(scheduleId: number, snoozeMinutes: number): unknown[] {
-    return new ButtonBuilder()
-      .addButton(
-        `${REMINDER_INTERACTION_ID}:ack:${scheduleId}`,
-        '✅ Đã nhận',
-        EButtonMessageStyle.SUCCESS,
-      )
-      .addButton(
-        `${REMINDER_INTERACTION_ID}:snooze:${scheduleId}`,
-        `⏰ Hoãn ${snoozeMinutes} phút`,
+    const builder = new ButtonBuilder().addButton(
+      `${REMINDER_INTERACTION_ID}:ack:${scheduleId}`,
+      '✅ Đã nhận',
+      EButtonMessageStyle.SUCCESS,
+    );
+
+    // Default snooze (theo user settings) — button_id encode minutes để handler
+    // không phải fetch user_settings lại.
+    builder.addButton(
+      `${REMINDER_INTERACTION_ID}:snooze:${scheduleId}:${snoozeMinutes}`,
+      `⏰ ${this.formatSnoozeLabel(snoozeMinutes)}`,
+      EButtonMessageStyle.SECONDARY,
+    );
+
+    // Các preset khác nhau so với default → quick-snooze không trùng.
+    for (const preset of SNOOZE_PRESETS_MINUTES) {
+      if (preset === snoozeMinutes) continue;
+      builder.addButton(
+        `${REMINDER_INTERACTION_ID}:snooze:${scheduleId}:${preset}`,
+        `⏰ ${this.formatSnoozeLabel(preset)}`,
         EButtonMessageStyle.SECONDARY,
-      )
-      .build();
+      );
+    }
+
+    return builder.build();
+  }
+
+  private formatSnoozeLabel(minutes: number): string {
+    if (minutes >= 60 && minutes % 60 === 0) {
+      const hours = minutes / 60;
+      return `Hoãn ${hours}h`;
+    }
+    return `Hoãn ${minutes}p`;
   }
 
   private buildStartDmText(schedule: Schedule, now: Date): string {

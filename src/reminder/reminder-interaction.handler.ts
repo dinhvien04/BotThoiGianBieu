@@ -11,10 +11,11 @@ import { REMINDER_INTERACTION_ID } from './reminder.service';
 
 /**
  * Xử lý button click trên message reminder:
- *   - "reminder:ack:<scheduleId>"    → start reminder: đánh dấu đã nhận, dừng nhắc
- *   - "reminder:snooze:<scheduleId>" → start reminder: hoãn X phút (X từ user_settings)
- *   - "reminder:done:<scheduleId>"   → end notification: mark completed
- *   - "reminder:later:<scheduleId>"  → end notification: đóng form, không làm gì
+ *   - "reminder:ack:<scheduleId>"              → start reminder: đánh dấu đã nhận, dừng nhắc
+ *   - "reminder:snooze:<scheduleId>"           → start reminder: hoãn theo user_settings (legacy)
+ *   - "reminder:snooze:<scheduleId>:<minutes>" → start reminder: hoãn đúng X phút (preset button)
+ *   - "reminder:done:<scheduleId>"             → end notification: mark completed
+ *   - "reminder:later:<scheduleId>"            → end notification: đóng form, không làm gì
  */
 @Injectable()
 export class ReminderInteractionHandler implements InteractionHandler, OnModuleInit {
@@ -34,8 +35,9 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
   }
 
   async handleButton(ctx: ButtonInteractionContext): Promise<void> {
-    // action format: "ack:<id>" hoặc "snooze:<id>"
-    const [actionType, idStr] = ctx.action.split(':');
+    // action format: "ack:<id>" / "snooze:<id>" / "snooze:<id>:<minutes>"
+    const parts = ctx.action.split(':');
+    const [actionType, idStr, minutesStr] = parts;
     const scheduleId = Number(idStr);
 
     if (!scheduleId || Number.isNaN(scheduleId)) {
@@ -61,7 +63,7 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
         await this.handleAck(ctx, scheduleId);
         return;
       case 'snooze':
-        await this.handleSnooze(ctx, scheduleId);
+        await this.handleSnooze(ctx, scheduleId, minutesStr);
         return;
       case 'done':
         await this.handleDone(ctx, scheduleId);
@@ -89,9 +91,12 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     );
   }
 
-  private async handleSnooze(ctx: ButtonInteractionContext, scheduleId: number): Promise<void> {
-    const user = await this.usersService.findByUserId(ctx.clickerId);
-    const minutes = user?.settings?.default_remind_minutes ?? 30;
+  private async handleSnooze(
+    ctx: ButtonInteractionContext,
+    scheduleId: number,
+    minutesStr: string | undefined,
+  ): Promise<void> {
+    const minutes = await this.resolveSnoozeMinutes(ctx, minutesStr);
     const nextAt = await this.schedulesService.snooze(scheduleId, minutes);
 
     await this.safeDelete(ctx);
@@ -103,9 +108,24 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     }
 
     await ctx.send(
-      `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${minutes} phút**.\n` +
+      `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${this.dateParser.formatMinutes(minutes)}**.\n` +
         `Sẽ nhắc lại lúc: \`${this.dateParser.formatVietnam(nextAt)}\``,
     );
+  }
+
+  private async resolveSnoozeMinutes(
+    ctx: ButtonInteractionContext,
+    minutesStr: string | undefined,
+  ): Promise<number> {
+    if (minutesStr !== undefined && /^\d+$/.test(minutesStr)) {
+      const parsed = Number(minutesStr);
+      if (Number.isInteger(parsed) && parsed > 0) {
+        return parsed;
+      }
+      this.logger.warn(`Snooze minutes không hợp lệ: "${minutesStr}", fallback sang default.`);
+    }
+    const user = await this.usersService.findByUserId(ctx.clickerId);
+    return user?.settings?.default_remind_minutes ?? 30;
   }
 
   private async handleDone(ctx: ButtonInteractionContext, scheduleId: number): Promise<void> {
