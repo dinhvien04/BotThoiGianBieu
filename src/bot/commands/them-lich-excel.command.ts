@@ -49,6 +49,11 @@ interface RowError {
   message: string;
 }
 
+interface DateTimeCellResult {
+  value: string;
+  missing?: 'date' | 'time';
+}
+
 interface PendingImport {
   userId: string;
   channelId: string;
@@ -266,16 +271,46 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
     const itemType = this.parseItemType(itemTypeRaw);
     if (!itemType) return { rowNumber, message: `Loại lịch không hợp lệ: ${itemTypeRaw}.` };
 
-    const startRaw = this.getCell(row, ['bat_dau', 'start_time', 'start', 'gio_bat_dau']);
+    const startInput = this.getDateTimeCell(row, {
+      combinedKeys: ['bat_dau', 'start', 'start_at', 'start_datetime'],
+      dateKeys: ['ngay_bat_dau', 'start_date', 'date_start'],
+      timeKeys: ['gio_bat_dau', 'start_time', 'time_start'],
+    });
+    if (startInput.missing) {
+      return {
+        rowNumber,
+        message: startInput.missing === 'date' ? 'Thiếu ngày bắt đầu.' : 'Thiếu giờ bắt đầu.',
+      };
+    }
+    const startRaw = startInput.value;
     const startTime = this.dateParser.parseVietnamLocal(startRaw);
-    if (!startTime) return { rowNumber, message: `Giờ bắt đầu không hợp lệ: ${startRaw || '(trống)'}.` };
+    if (!startTime)
+      return {
+        rowNumber,
+        message: `Giờ bắt đầu không hợp lệ: ${startRaw || '(trống)'}.`,
+      };
     if (startTime.getTime() <= Date.now()) {
       return { rowNumber, message: 'Giờ bắt đầu phải ở tương lai.' };
     }
 
-    const endRaw = this.getCell(row, ['ket_thuc', 'end_time', 'end', 'gio_ket_thuc']);
+    const endInput = this.getDateTimeCell(row, {
+      combinedKeys: ['ket_thuc', 'end', 'end_at', 'end_datetime'],
+      dateKeys: ['ngay_ket_thuc', 'end_date', 'date_end'],
+      timeKeys: ['gio_ket_thuc', 'end_time', 'time_end'],
+    });
+    if (endInput.missing) {
+      return {
+        rowNumber,
+        message: endInput.missing === 'date' ? 'Thiếu ngày kết thúc.' : 'Thiếu giờ kết thúc.',
+      };
+    }
+    const endRaw = endInput.value;
     const endTime = this.dateParser.parseVietnamLocal(endRaw);
-    if (!endTime) return { rowNumber, message: `Giờ kết thúc không hợp lệ: ${endRaw || '(trống)'}.` };
+    if (!endTime)
+      return {
+        rowNumber,
+        message: `Giờ kết thúc không hợp lệ: ${endRaw || '(trống)'}.`,
+      };
     if (endTime.getTime() <= startTime.getTime()) {
       return { rowNumber, message: 'Giờ kết thúc phải sau giờ bắt đầu.' };
     }
@@ -322,6 +357,33 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
       if (value) return value;
     }
     return '';
+  }
+
+  private getDateTimeCell(
+    row: Record<string, string>,
+    options: {
+      combinedKeys: string[];
+      dateKeys: string[];
+      timeKeys: string[];
+    },
+  ): DateTimeCellResult {
+    const date = this.getCell(row, options.dateKeys);
+    const time = this.getCell(row, options.timeKeys);
+
+    if (date || time) {
+      if (date && time) return { value: `${date} ${time}` };
+      if (time && this.looksLikeDateTime(time)) return { value: time };
+      return { value: date || time, missing: date ? 'time' : 'date' };
+    }
+
+    return { value: this.getCell(row, options.combinedKeys) };
+  }
+
+  private looksLikeDateTime(value: string): boolean {
+    return (
+      /^\d{4}-\d{1,2}-\d{1,2}[T ]\d{1,2}:\d{1,2}(?::\d{1,2})?$/.test(value) ||
+      /^\d{1,2}[-/]\d{1,2}[-/]\d{4}\s+\d{1,2}:\d{1,2}$/.test(value)
+    );
   }
 
   private parseItemType(raw: string): ScheduleItemType | null {
@@ -382,8 +444,8 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
       `⚠️ Gửi kèm file \`.xlsx\` rồi gõ \`${prefix}them-lich-excel\`, hoặc dùng:\n` +
       `\`${prefix}them-lich-excel <url_file_xlsx>\`\n\n` +
       `Cột hỗ trợ:\n` +
-      `\`tieu_de | mo_ta | loai | bat_dau | ket_thuc | nhac_truoc_phut\`\n\n` +
-      `Ví dụ thời gian: \`25/04/2026 09:00\` hoặc \`2026-04-25 09:00\`.\n` +
+      `\`tieu_de | mo_ta | loai | ngay_bat_dau | gio_bat_dau | ngay_ket_thuc | gio_ket_thuc | nhac_truoc_phut\`\n\n` +
+      `File cũ có \`bat_dau\` và \`ket_thuc\` dạng \`25/04/2026 09:00\` vẫn dùng được.\n` +
       `Loại lịch: \`task\`, \`meeting\`, \`event\`, \`reminder\`.`
     );
   }

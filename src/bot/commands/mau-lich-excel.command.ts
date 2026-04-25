@@ -32,9 +32,9 @@ export class MauLichExcelCommand implements BotCommand, OnModuleInit {
         `Tải file mẫu tại đây:\n${templateUrl}\n\n` +
         `Điền các cột trong sheet \`lich\`, sau đó gửi file \`.xlsx\` lên kênh này và gõ:\n` +
         `\`${ctx.prefix}them-lich-excel\`\n\n` +
-        `Cột bắt buộc: \`tieu_de\`, \`loai\`, \`bat_dau\`, \`ket_thuc\`\n` +
+        `Cột bắt buộc: \`tieu_de\`, \`loai\`, \`ngay_bat_dau\`, \`gio_bat_dau\`, \`ngay_ket_thuc\`, \`gio_ket_thuc\`\n` +
         `Loại lịch: \`task\`, \`meeting\`, \`event\`, \`reminder\`\n` +
-        `Thời gian nên nhập dạng: \`01/05/2026 09:00\``,
+        `Ngày nên nhập dạng: \`01/05/2026\` hoặc \`2026-05-01\`; giờ dạng: \`09:00\``,
     );
   }
 }

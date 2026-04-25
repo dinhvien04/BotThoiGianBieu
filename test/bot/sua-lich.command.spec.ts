@@ -29,6 +29,8 @@ describe('SuaLichCommand', () => {
   };
   const mockDateParser = {
     toDatetimeLocalVietnam: jest.fn(),
+    toDateInputVietnam: jest.fn(),
+    formatVietnamTime: jest.fn(),
     parseVietnamLocal: jest.fn(),
     formatVietnam: jest.fn(),
   };
@@ -156,7 +158,8 @@ describe('SuaLichCommand', () => {
 
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
       mockSchedulesService.findById.mockResolvedValue(mockSchedule);
-      mockDateParser.toDatetimeLocalVietnam.mockReturnValue('2026-04-25T10:00');
+      mockDateParser.toDateInputVietnam.mockReturnValue('2026-04-25');
+      mockDateParser.formatVietnamTime.mockReturnValue('10:00');
 
       await command.execute(mockContext);
 
@@ -256,7 +259,8 @@ describe('SuaLichCommand', () => {
     it('should reject invalid start time', async () => {
       mockContext.formData = {
         title: 'New Title',
-        start_time: 'invalid-date',
+        start_date: 'invalid-date',
+        start_time: '10:00',
       };
       mockSchedulesService.findById.mockResolvedValue(mockSchedule);
       mockDateParser.parseVietnamLocal.mockReturnValue(null);
@@ -272,7 +276,8 @@ describe('SuaLichCommand', () => {
       const pastDate = new Date(Date.now() - 1000);
       mockContext.formData = {
         title: 'New Title',
-        start_time: '2020-01-01T10:00',
+        start_date: '2020-01-01',
+        start_time: '10:00',
       };
       mockSchedulesService.findById.mockResolvedValue(mockSchedule);
       mockDateParser.parseVietnamLocal.mockReturnValue(pastDate);
@@ -285,13 +290,15 @@ describe('SuaLichCommand', () => {
     });
 
     it('should reject end time before start time', async () => {
-      const startTime = new Date('2026-04-25T10:00');
-      const endTime = new Date('2026-04-25T09:00');
+      const startTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() - 60 * 60 * 1000);
 
       mockContext.formData = {
         title: 'New Title',
-        start_time: '2026-04-25T10:00',
-        end_time: '2026-04-25T09:00',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '09:00',
       };
       mockSchedulesService.findById.mockResolvedValue(mockSchedule);
       mockDateParser.parseVietnamLocal
@@ -341,7 +348,7 @@ describe('SuaLichCommand', () => {
     });
 
     it('should update start time and recalculate remind_at', async () => {
-      const newStartTime = new Date('2026-04-26T10:00');
+      const newStartTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
       const mockUser: User = {
         user_id: '789',
         settings: { default_remind_minutes: 30 } as UserSettings,
@@ -349,7 +356,8 @@ describe('SuaLichCommand', () => {
 
       mockContext.formData = {
         title: 'Original Title',
-        start_time: '2026-04-26T10:00',
+        start_date: '2099-04-26',
+        start_time: '10:00',
       };
 
       mockSchedulesService.findById.mockResolvedValue(mockSchedule);
@@ -374,7 +382,7 @@ describe('SuaLichCommand', () => {
       );
     });
 
-    it('should remove end_time when set to empty', async () => {
+    it('should reject incomplete end time input', async () => {
       mockSchedule.end_time = new Date('2026-04-25T11:00');
       mockContext.formData = {
         title: 'Original Title',
@@ -382,21 +390,14 @@ describe('SuaLichCommand', () => {
       };
 
       mockSchedulesService.findById.mockResolvedValue(mockSchedule);
-      mockSchedulesService.update.mockResolvedValue({
-        ...mockSchedule,
-        end_time: null,
-      });
       mockDateParser.formatVietnam.mockReturnValue('25/04/2026 10:00');
 
       await command.handleButton(mockContext);
 
-      expect(mockSchedulesService.update).toHaveBeenCalledWith(
-        5,
-        expect.objectContaining({
-          end_time: null,
-          end_notified_at: null,
-        }),
+      expect(mockContext.send).toHaveBeenCalledWith(
+        expect.stringContaining('Thiếu ngày hoặc giờ kết thúc'),
       );
+      expect(mockSchedulesService.update).not.toHaveBeenCalled();
     });
 
     it('should handle update failure', async () => {

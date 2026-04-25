@@ -26,6 +26,8 @@ describe('ThemLichCommand', () => {
   const mockSchedulesService = { create: jest.fn() };
   const mockDateParser = {
     toDatetimeLocalVietnam: jest.fn(),
+    toDateInputVietnam: jest.fn(),
+    formatVietnamTime: jest.fn(),
     parseVietnamLocal: jest.fn(),
     formatVietnam: jest.fn(),
   };
@@ -116,7 +118,8 @@ describe('ThemLichCommand', () => {
       } as User;
 
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
-      mockDateParser.toDatetimeLocalVietnam.mockReturnValue('2026-04-25T10:00');
+      mockDateParser.toDateInputVietnam.mockReturnValue('2026-04-25');
+      mockDateParser.formatVietnamTime.mockReturnValue('10:00');
 
       await command.execute(mockContext);
 
@@ -156,7 +159,10 @@ describe('ThemLichCommand', () => {
       mockContext.formData = {
         title: '',
         item_type: 'task',
-        start_time: '2026-04-25T10:00',
+        start_date: '2026-04-25',
+        start_time: '10:00',
+        end_date: '2026-04-25',
+        end_time: '11:00',
       };
 
       await command.handleButton(mockContext);
@@ -171,7 +177,10 @@ describe('ThemLichCommand', () => {
       mockContext.formData = {
         title: 'Test',
         item_type: 'invalid_type',
-        start_time: '2026-04-25T10:00',
+        start_date: '2026-04-25',
+        start_time: '10:00',
+        end_date: '2026-04-25',
+        end_time: '11:00',
       };
 
       mockDateParser.parseVietnamLocal.mockReturnValue(new Date('2026-04-25T10:00'));
@@ -187,7 +196,10 @@ describe('ThemLichCommand', () => {
       mockContext.formData = {
         title: 'Test',
         item_type: 'task',
-        start_time: 'invalid-date',
+        start_date: 'invalid-date',
+        start_time: '10:00',
+        end_date: '2026-04-25',
+        end_time: '11:00',
       };
 
       mockDateParser.parseVietnamLocal.mockReturnValue(null);
@@ -204,7 +216,10 @@ describe('ThemLichCommand', () => {
       mockContext.formData = {
         title: 'Test',
         item_type: 'task',
-        start_time: '2020-01-01T10:00',
+        start_date: '2020-01-01',
+        start_time: '10:00',
+        end_date: '2020-01-01',
+        end_time: '11:00',
       };
 
       mockDateParser.parseVietnamLocal.mockReturnValue(pastDate);
@@ -217,14 +232,16 @@ describe('ThemLichCommand', () => {
     });
 
     it('should validate end time must be after start time', async () => {
-      const startTime = new Date('2026-04-25T10:00');
-      const endTime = new Date('2026-04-25T09:00'); // Before start
+      const startTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() - 60 * 60 * 1000); // Before start
 
       mockContext.formData = {
         title: 'Test',
         item_type: 'task',
-        start_time: '2026-04-25T10:00',
-        end_time: '2026-04-25T09:00',
+        start_date: '2026-04-25',
+        start_time: '10:00',
+        end_date: '2026-04-25',
+        end_time: '09:00',
       };
 
       mockDateParser.parseVietnamLocal
@@ -239,7 +256,8 @@ describe('ThemLichCommand', () => {
     });
 
     it('should create schedule successfully', async () => {
-      const startTime = new Date('2026-04-25T10:00');
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
       const mockUser: User = {
         user_id: '789',
         settings: {
@@ -254,7 +272,7 @@ describe('ThemLichCommand', () => {
         title: 'Test Schedule',
         description: 'Test description',
         start_time: startTime,
-        end_time: null,
+        end_time: endTime,
         status: 'pending',
         remind_at: new Date(startTime.getTime() - 30 * 60 * 1000),
         is_reminded: false,
@@ -266,10 +284,15 @@ describe('ThemLichCommand', () => {
         title: 'Test Schedule',
         description: 'Test description',
         item_type: 'task',
-        start_time: '2026-04-25T10:00',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '11:00',
       };
 
-      mockDateParser.parseVietnamLocal.mockReturnValue(startTime);
+      mockDateParser.parseVietnamLocal
+        .mockReturnValueOnce(startTime)
+        .mockReturnValueOnce(endTime);
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
       mockSchedulesService.create.mockResolvedValue(mockSchedule);
       mockDateParser.formatVietnam.mockReturnValue('25/04/2026 10:00');
@@ -292,15 +315,21 @@ describe('ThemLichCommand', () => {
     });
 
     it('should handle user not initialized during button click', async () => {
-      const startTime = new Date('2026-04-25T10:00');
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
 
       mockContext.formData = {
         title: 'Test',
         item_type: 'task',
-        start_time: '2026-04-25T10:00',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '11:00',
       };
 
-      mockDateParser.parseVietnamLocal.mockReturnValue(startTime);
+      mockDateParser.parseVietnamLocal
+        .mockReturnValueOnce(startTime)
+        .mockReturnValueOnce(endTime);
       mockUsersService.findByUserId.mockResolvedValue(null);
 
       await command.handleButton(mockContext);
@@ -312,8 +341,8 @@ describe('ThemLichCommand', () => {
     });
 
     it('should create schedule with end time', async () => {
-      const startTime = new Date('2026-04-25T10:00');
-      const endTime = new Date('2026-04-25T11:00');
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
       const mockUser: User = {
         user_id: '789',
         settings: { default_remind_minutes: 30 } as UserSettings,
@@ -331,8 +360,10 @@ describe('ThemLichCommand', () => {
       mockContext.formData = {
         title: 'Test Meeting',
         item_type: 'meeting',
-        start_time: '2026-04-25T10:00',
-        end_time: '2026-04-25T11:00',
+        start_date: '2026-04-25',
+        start_time: '10:00',
+        end_date: '2026-04-25',
+        end_time: '11:00',
       };
 
       mockDateParser.parseVietnamLocal
