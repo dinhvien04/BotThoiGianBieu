@@ -19,6 +19,10 @@ describe('ReminderService', () => {
     display_name: 'Test User',
     created_at: new Date(),
     updated_at: new Date(),
+    recurrence_type: 'none',
+    recurrence_interval: 1,
+    recurrence_until: null,
+    recurrence_parent_id: null,
   } as any;
 
   const mockSettings: UserSettings = {
@@ -29,6 +33,10 @@ describe('ReminderService', () => {
     notify_via_dm: false,
     created_at: new Date(),
     updated_at: new Date(),
+    recurrence_type: 'none',
+    recurrence_interval: 1,
+    recurrence_until: null,
+    recurrence_parent_id: null,
   } as any;
 
   const mockSchedule: Schedule = {
@@ -47,6 +55,10 @@ describe('ReminderService', () => {
     created_at: new Date('2026-04-20T08:00:00Z'),
     updated_at: new Date('2026-04-20T08:00:00Z'),
     user: mockUser,
+    recurrence_type: 'none',
+    recurrence_interval: 1,
+    recurrence_until: null,
+    recurrence_parent_id: null,
   };
 
   beforeEach(async () => {

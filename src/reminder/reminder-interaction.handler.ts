@@ -5,6 +5,7 @@ import {
   InteractionHandler,
 } from '../bot/interactions/interaction.types';
 import { SchedulesService } from '../schedules/schedules.service';
+import { Schedule } from '../schedules/entities/schedule.entity';
 import { UsersService } from '../users/users.service';
 import { DateParser } from '../shared/utils/date-parser';
 import { REMINDER_INTERACTION_ID } from './reminder.service';
@@ -66,7 +67,7 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
         await this.handleSnooze(ctx, scheduleId, minutesStr);
         return;
       case 'done':
-        await this.handleDone(ctx, scheduleId);
+        await this.handleDone(ctx, schedule);
         return;
       case 'later':
         await this.handleLater(ctx, scheduleId);
@@ -128,11 +129,25 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     return user?.settings?.default_remind_minutes ?? 30;
   }
 
-  private async handleDone(ctx: ButtonInteractionContext, scheduleId: number): Promise<void> {
-    await this.schedulesService.markCompleted(scheduleId);
+  private async handleDone(
+    ctx: ButtonInteractionContext,
+    schedule: Schedule,
+  ): Promise<void> {
+    const now = new Date();
+    await this.schedulesService.markCompleted(schedule.id, now);
+
+    const next =
+      schedule.recurrence_type && schedule.recurrence_type !== 'none'
+        ? await this.schedulesService.spawnNextIfRecurring(schedule, now)
+        : null;
+
+    const suffix = next
+      ? `\n🔁 Đã tạo lịch lặp kế tiếp #${next.id} lúc \`${this.dateParser.formatVietnam(next.start_time)}\`.`
+      : '';
+
     await this.safeDelete(ctx);
     await ctx.send(
-      `🎉 Đã đánh dấu **hoàn thành** lịch #${scheduleId}!\nLàm tốt lắm 👏`,
+      `🎉 Đã đánh dấu **hoàn thành** lịch #${schedule.id}!\nLàm tốt lắm 👏${suffix}`,
     );
   }
 

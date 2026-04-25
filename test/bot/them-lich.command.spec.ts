@@ -115,6 +115,10 @@ describe('ThemLichCommand', () => {
         display_name: 'Test User',
         created_at: new Date(),
         updated_at: new Date(),
+    recurrence_type: 'none',
+    recurrence_interval: 1,
+    recurrence_until: null,
+    recurrence_parent_id: null,
       } as User;
 
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
@@ -278,6 +282,10 @@ describe('ThemLichCommand', () => {
         is_reminded: false,
         created_at: new Date(),
         updated_at: new Date(),
+    recurrence_type: 'none',
+    recurrence_interval: 1,
+    recurrence_until: null,
+    recurrence_parent_id: null,
       } as Schedule;
 
       mockContext.formData = {

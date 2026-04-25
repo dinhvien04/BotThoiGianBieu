@@ -12,6 +12,14 @@ import { User } from "../../users/entities/user.entity";
 
 export type ScheduleStatus = "pending" | "completed" | "cancelled";
 export type ScheduleItemType = "task" | "meeting" | "event" | "reminder";
+export type RecurrenceType = "none" | "daily" | "weekly" | "monthly";
+
+export const RECURRENCE_TYPES: readonly RecurrenceType[] = [
+  "none",
+  "daily",
+  "weekly",
+  "monthly",
+] as const;
 
 @Entity("schedules")
 @Index(["user_id", "start_time"])
@@ -62,6 +70,28 @@ export class Schedule {
    */
   @Column({ type: "timestamp with time zone", nullable: true })
   end_notified_at!: Date | null;
+
+  /**
+   * Kiểu lặp lại (daily/weekly/monthly). `none` = lịch một lần, không sinh
+   * instance tiếp theo khi hoàn thành.
+   */
+  @Column({ type: "varchar", length: 20, default: "none" })
+  recurrence_type!: RecurrenceType;
+
+  /** Chu kỳ lặp, đơn vị theo `recurrence_type` (mỗi N ngày/tuần/tháng). */
+  @Column({ type: "integer", default: 1 })
+  recurrence_interval!: number;
+
+  /** Dừng lặp sau thời điểm này. null = lặp vô hạn. */
+  @Column({ type: "timestamp with time zone", nullable: true })
+  recurrence_until!: Date | null;
+
+  /**
+   * ID của lịch gốc trong series. Null nếu đây là lịch gốc. Dùng để track
+   * series khi user muốn xoá cả chuỗi hoặc thống kê.
+   */
+  @Column({ type: "integer", nullable: true })
+  recurrence_parent_id!: number | null;
 
   @CreateDateColumn({ type: "timestamp with time zone" })
   created_at!: Date;

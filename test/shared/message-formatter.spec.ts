@@ -410,6 +410,24 @@ describe('MessageFormatter', () => {
       expect(result).toContain('Đã hủy');
     });
 
+    it('should render 🔁 badge for recurring schedules', () => {
+      const recurring = buildSchedule({
+        id: 10,
+        recurrence_type: 'daily',
+        recurrence_interval: 1,
+      } as Partial<Schedule>);
+
+      const result = formatter.formatScheduleDigest([recurring], 'Series');
+
+      expect(result).toContain('🔁');
+    });
+
+    it('should not render 🔁 badge for non-recurring schedules', () => {
+      const one = buildSchedule({ id: 11 });
+      const result = formatter.formatScheduleDigest([one], 'One-off');
+      expect(result).not.toContain('🔁');
+    });
+
     it('should append footer when provided', () => {
       const schedule = buildSchedule({});
 

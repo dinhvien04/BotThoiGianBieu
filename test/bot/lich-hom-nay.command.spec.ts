@@ -21,6 +21,10 @@ describe('LichHomNayCommand', () => {
     display_name: 'Test User',
     created_at: new Date(),
     updated_at: new Date(),
+    recurrence_type: 'none',
+    recurrence_interval: 1,
+    recurrence_until: null,
+    recurrence_parent_id: null,
   } as any;
 
   const mockSchedule: Schedule = {
@@ -38,6 +42,10 @@ describe('LichHomNayCommand', () => {
     end_notified_at: null,
     created_at: new Date(),
     updated_at: new Date(),
+    recurrence_type: 'none',
+    recurrence_interval: 1,
+    recurrence_until: null,
+    recurrence_parent_id: null,
   } as any;
 
   beforeEach(async () => {
