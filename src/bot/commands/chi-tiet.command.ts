@@ -3,6 +3,7 @@ import { DateParser } from "../../shared/utils/date-parser";
 import { MessageFormatter } from "../../shared/utils/message-formatter";
 import { Schedule, ScheduleItemType, ScheduleStatus } from "../../schedules/entities/schedule.entity";
 import { SchedulesService } from "../../schedules/schedules.service";
+import { formatRecurrence } from "../../shared/utils/recurrence";
 import { UsersService } from "../../users/users.service";
 import { CommandRegistry } from "./command-registry";
 import { BotCommand, CommandContext } from "./command.types";
@@ -90,6 +91,20 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
     }
 
     lines.push(`➤ Nhắc: ${this.formatReminder(schedule)}`);
+
+    if (schedule.recurrence_type && schedule.recurrence_type !== "none") {
+      lines.push(
+        `➤ Lặp: ${formatRecurrence(schedule.recurrence_type, schedule.recurrence_interval)}`,
+      );
+      if (schedule.recurrence_until) {
+        lines.push(
+          `➤ Dừng lặp sau: ${this.dateParser.formatVietnam(schedule.recurrence_until, false)}`,
+        );
+      }
+      if (schedule.recurrence_parent_id) {
+        lines.push(`➤ Thuộc series: #${schedule.recurrence_parent_id}`);
+      }
+    }
 
     if (schedule.description) {
       lines.push(`➤ Ghi chú: ${schedule.description}`);

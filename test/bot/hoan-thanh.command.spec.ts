@@ -35,9 +35,11 @@ describe('HoanThanhCommand', () => {
     mockSchedulesService = {
       findById: jest.fn(),
       markCompleted: jest.fn(),
+      spawnNextIfRecurring: jest.fn().mockResolvedValue(null),
     } as any;
     mockDateParser = {
       formatMinutes: jest.fn((min) => `${Math.abs(min)} phút`),
+      formatVietnam: jest.fn((d: Date) => d.toISOString()),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -186,6 +188,35 @@ describe('HoanThanhCommand', () => {
       );
       expect(mockContext.reply).toHaveBeenCalledWith(
         expect.stringContaining('ĐÃ HOÀN THÀNH'),
+      );
+    });
+
+    it('should spawn next instance and mention it when recurring', async () => {
+      const recurring = {
+        ...mockSchedule,
+        recurrence_type: 'weekly',
+        recurrence_interval: 1,
+      } as any;
+      const next = {
+        id: 2,
+        start_time: new Date('2026-05-01T10:00:00Z'),
+      };
+      mockUsersService.findByUserId.mockResolvedValue(mockUser);
+      mockSchedulesService.findById.mockResolvedValue(recurring);
+      mockSchedulesService.markCompleted.mockResolvedValue();
+      mockSchedulesService.spawnNextIfRecurring.mockResolvedValue(next as any);
+
+      await command.execute(mockContext);
+
+      expect(mockSchedulesService.spawnNextIfRecurring).toHaveBeenCalledWith(
+        recurring,
+        expect.any(Date),
+      );
+      expect(mockContext.reply).toHaveBeenCalledWith(
+        expect.stringContaining('lịch lặp kế tiếp'),
+      );
+      expect(mockContext.reply).toHaveBeenCalledWith(
+        expect.stringContaining('#2'),
       );
     });
 

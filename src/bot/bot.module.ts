@@ -26,6 +26,8 @@ import { CaiDatCommand } from './commands/cai-dat.command';
 import { ChiTietCommand } from './commands/chi-tiet.command';
 import { NhacCommand, TatNhacCommand } from './commands/nhac.command';
 import { NhacSauCommand } from './commands/nhac-sau.command';
+import { LichLapCommand } from './commands/lich-lap.command';
+import { BoLapCommand } from './commands/bo-lap.command';
 import { TimKiemCommand } from './commands/tim-kiem.command';
 import { SapToiCommand } from './commands/sap-toi.command';
 import { DanhSachCommand } from './commands/danh-sach.command';
@@ -53,6 +55,8 @@ import { InteractionRouter } from './interactions/interaction-router';
     NhacCommand,
     TatNhacCommand,
     NhacSauCommand,
+    LichLapCommand,
+    BoLapCommand,
     TimKiemCommand,
     SapToiCommand,
     DanhSachCommand,

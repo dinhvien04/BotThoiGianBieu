@@ -38,6 +38,7 @@ describe('ReminderInteractionHandler', () => {
       acknowledge: jest.fn(),
       snooze: jest.fn(),
       markCompleted: jest.fn(),
+      spawnNextIfRecurring: jest.fn().mockResolvedValue(null),
     } as any;
     mockUsersService = { findByUserId: jest.fn() } as any;
     mockDateParser = {
@@ -292,11 +293,52 @@ describe('ReminderInteractionHandler', () => {
         await handler.handleButton(mockContext);
 
         // Assert
-        expect(mockSchedulesService.markCompleted).toHaveBeenCalledWith(1);
+        expect(mockSchedulesService.markCompleted).toHaveBeenCalledWith(1, expect.any(Date));
         expect(mockContext.deleteForm).toHaveBeenCalled();
         expect(mockContext.send).toHaveBeenCalledWith(
           expect.stringContaining('hoàn thành'),
         );
+        expect(mockSchedulesService.spawnNextIfRecurring).not.toHaveBeenCalled();
+      });
+
+      it('should spawn next instance for recurring schedules and mention it', async () => {
+        // Arrange
+        const recurring = {
+          ...mockSchedule,
+          recurrence_type: 'daily',
+          recurrence_interval: 1,
+        };
+        const next = {
+          id: 99,
+          start_time: new Date('2026-04-25T10:00:00Z'),
+        };
+        mockSchedulesService.findById.mockResolvedValue(recurring as any);
+        mockSchedulesService.markCompleted.mockResolvedValue();
+        mockSchedulesService.spawnNextIfRecurring.mockResolvedValue(next as any);
+
+        // Act
+        await handler.handleButton(mockContext);
+
+        // Assert
+        expect(mockSchedulesService.spawnNextIfRecurring).toHaveBeenCalledWith(
+          recurring,
+          expect.any(Date),
+        );
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('lịch lặp kế tiếp #99'),
+        );
+      });
+
+      it('should not call spawnNextIfRecurring for non-recurring schedules', async () => {
+        mockSchedulesService.findById.mockResolvedValue({
+          ...mockSchedule,
+          recurrence_type: 'none',
+        } as any);
+        mockSchedulesService.markCompleted.mockResolvedValue();
+
+        await handler.handleButton(mockContext);
+
+        expect(mockSchedulesService.spawnNextIfRecurring).not.toHaveBeenCalled();
       });
     });
 

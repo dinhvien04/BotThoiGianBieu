@@ -142,6 +142,18 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Hoàn thành công việc",
     category: "✏️ QUẢN LÝ LỊCH",
   },
+  {
+    name: "lich-lap",
+    syntax: "lich-lap <ID> <daily|weekly|monthly> [interval] [--den DD/MM/YYYY]",
+    description: "Bật lặp cho lịch (hàng ngày / tuần / tháng)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "bo-lap",
+    syntax: "bo-lap <ID>",
+    description: "Tắt lặp cho lịch",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
 
   // ===== 🔔 Nhắc nhở =====
   {

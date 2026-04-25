@@ -68,11 +68,16 @@ export class HoanThanhCommand implements BotCommand, OnModuleInit {
 
     const now = new Date();
     await this.schedulesService.markCompleted(id, now);
+    const next = await this.schedulesService.spawnNextIfRecurring(schedule, now);
 
-    await ctx.reply(this.formatDoneMessage(schedule, now));
+    await ctx.reply(this.formatDoneMessage(schedule, now, next));
   }
 
-  private formatDoneMessage(schedule: Schedule, now: Date): string {
+  private formatDoneMessage(
+    schedule: Schedule,
+    now: Date,
+    next: Schedule | null,
+  ): string {
     const lines: string[] = [
       `🎉 ĐÃ HOÀN THÀNH LỊCH \`#${schedule.id}\`!`,
       ``,
@@ -81,6 +86,13 @@ export class HoanThanhCommand implements BotCommand, OnModuleInit {
 
     const timingNote = this.buildTimingNote(schedule, now);
     if (timingNote) lines.push(timingNote);
+
+    if (next) {
+      lines.push('');
+      lines.push(
+        `🔁 Đã tạo lịch lặp kế tiếp \`#${next.id}\` lúc \`${this.dateParser.formatVietnam(next.start_time)}\`.`,
+      );
+    }
 
     lines.push('');
     lines.push(`👏 Làm tốt lắm, tiếp tục phát huy nhé!`);

@@ -1,7 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, ILike, IsNull, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
-import { Schedule, ScheduleItemType, ScheduleStatus } from './entities/schedule.entity';
+import {
+  RecurrenceType,
+  Schedule,
+  ScheduleItemType,
+  ScheduleStatus,
+} from './entities/schedule.entity';
+import { computeNextOccurrence } from '../shared/utils/recurrence';
 
 export interface SearchResult {
   items: Schedule[];
@@ -16,6 +22,10 @@ export interface CreateScheduleInput {
   start_time: Date;
   end_time?: Date | null;
   remind_at?: Date | null;
+  recurrence_type?: RecurrenceType;
+  recurrence_interval?: number;
+  recurrence_until?: Date | null;
+  recurrence_parent_id?: number | null;
 }
 
 export interface UpdateSchedulePatch {
@@ -29,6 +39,16 @@ export interface UpdateSchedulePatch {
   acknowledged_at?: Date | null;
   end_notified_at?: Date | null;
   is_reminded?: boolean;
+  recurrence_type?: RecurrenceType;
+  recurrence_interval?: number;
+  recurrence_until?: Date | null;
+  recurrence_parent_id?: number | null;
+}
+
+export interface RecurrencePatch {
+  type: RecurrenceType;
+  interval?: number;
+  until?: Date | null;
 }
 
 @Injectable()
@@ -53,6 +73,10 @@ export class SchedulesService {
       acknowledged_at: null,
       end_notified_at: null,
       status: 'pending',
+      recurrence_type: input.recurrence_type ?? 'none',
+      recurrence_interval: input.recurrence_interval ?? 1,
+      recurrence_until: input.recurrence_until ?? null,
+      recurrence_parent_id: input.recurrence_parent_id ?? null,
     });
 
     const saved = await this.scheduleRepository.save(schedule);
@@ -275,5 +299,97 @@ export class SchedulesService {
 
   async delete(id: number): Promise<void> {
     await this.scheduleRepository.delete(id);
+  }
+
+  /**
+   * Bật lặp cho một lịch: ghi `recurrence_type`, `recurrence_interval` và
+   * `recurrence_until` (tuỳ chọn). Không tự sinh instance kế tiếp ngay —
+   * việc đó xảy ra khi lịch hiện tại được hoàn thành.
+   */
+  async setRecurrence(id: number, patch: RecurrencePatch): Promise<Schedule | null> {
+    await this.scheduleRepository.update(id, {
+      recurrence_type: patch.type,
+      recurrence_interval: patch.interval ?? 1,
+      recurrence_until: patch.until ?? null,
+    });
+    return this.findById(id);
+  }
+
+  /**
+   * Tắt lặp cho một lịch: đặt `recurrence_type='none'`. Giữ nguyên các field
+   * khác và cả `recurrence_parent_id` (để truy vết series cũ nếu cần).
+   */
+  async clearRecurrence(id: number): Promise<Schedule | null> {
+    await this.scheduleRepository.update(id, {
+      recurrence_type: 'none',
+      recurrence_interval: 1,
+      recurrence_until: null,
+    });
+    return this.findById(id);
+  }
+
+  /**
+   * Nếu schedule có lặp, tạo row kế tiếp với `start_time` đẩy theo rule.
+   * Trả về lịch mới được tạo, hoặc `null` nếu không cần (type='none', đã
+   * hết recurrence_until, hoặc input thiếu dữ liệu).
+   */
+  async spawnNextIfRecurring(
+    source: Schedule,
+    now: Date = new Date(),
+  ): Promise<Schedule | null> {
+    if (!source || source.recurrence_type === 'none') return null;
+
+    const nextStart = computeNextOccurrence(
+      source.start_time,
+      source.recurrence_type,
+      source.recurrence_interval,
+    );
+    if (!nextStart) return null;
+
+    // Nếu chuỗi đã hết hạn → dừng
+    if (source.recurrence_until && nextStart.getTime() > source.recurrence_until.getTime()) {
+      this.logger.log(
+        `↪️ Series #${source.recurrence_parent_id ?? source.id} đã hết hạn, không sinh instance mới.`,
+      );
+      return null;
+    }
+
+    // Delta cũ giữa start → end và start → remind để shift theo cùng offset
+    const nextEnd = source.end_time
+      ? new Date(nextStart.getTime() + (source.end_time.getTime() - source.start_time.getTime()))
+      : null;
+
+    // remind_at của instance mới: nếu instance cũ có remind trước start_time X phút
+    // thì instance mới cũng remind trước X phút. Nếu remind_at đã loạn/ở quá khứ
+    // so với next_start, fallback = null (user có thể đặt lại bằng *nhac).
+    const remindOffset =
+      source.remind_at && source.start_time.getTime() > source.remind_at.getTime()
+        ? source.start_time.getTime() - source.remind_at.getTime()
+        : null;
+    let nextRemindAt: Date | null = null;
+    if (remindOffset !== null) {
+      const candidate = new Date(nextStart.getTime() - remindOffset);
+      // Đẩy lên hiện tại nếu đã qua
+      nextRemindAt = candidate.getTime() > now.getTime() ? candidate : new Date(now);
+    }
+
+    const created = await this.create({
+      user_id: source.user_id,
+      item_type: source.item_type,
+      title: source.title,
+      description: source.description,
+      start_time: nextStart,
+      end_time: nextEnd,
+      remind_at: nextRemindAt,
+      recurrence_type: source.recurrence_type,
+      recurrence_interval: source.recurrence_interval,
+      recurrence_until: source.recurrence_until,
+      recurrence_parent_id: source.recurrence_parent_id ?? source.id,
+    });
+
+    this.logger.log(
+      `🔁 Đã sinh instance mới #${created.id} cho series (root #${source.recurrence_parent_id ?? source.id}).`,
+    );
+    return created;
   }
 }

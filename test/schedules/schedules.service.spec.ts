@@ -23,6 +23,10 @@ describe('SchedulesService', () => {
     end_notified_at: null,
     created_at: new Date('2026-04-20T08:00:00Z'),
     updated_at: new Date('2026-04-20T08:00:00Z'),
+    recurrence_type: 'none',
+    recurrence_interval: 1,
+    recurrence_until: null,
+    recurrence_parent_id: null,
   };
 
   beforeEach(async () => {
@@ -86,6 +90,10 @@ describe('SchedulesService', () => {
         acknowledged_at: null,
         end_notified_at: null,
         status: 'pending',
+        recurrence_type: 'none',
+        recurrence_interval: 1,
+        recurrence_until: null,
+        recurrence_parent_id: null,
       });
       expect(mockRepository.save).toHaveBeenCalledWith(createdSchedule);
       expect(result).toEqual(createdSchedule);
@@ -126,6 +134,10 @@ describe('SchedulesService', () => {
         acknowledged_at: null,
         end_notified_at: null,
         status: 'pending',
+        recurrence_type: 'none',
+        recurrence_interval: 1,
+        recurrence_until: null,
+        recurrence_parent_id: null,
       });
       expect(result.item_type).toBe('task');
       expect(result.description).toBeNull();
@@ -906,6 +918,182 @@ describe('SchedulesService', () => {
 
       // Act & Assert
       await expect(service.delete(999)).resolves.not.toThrow();
+    });
+  });
+
+  describe('setRecurrence', () => {
+    it('should update recurrence_type, interval, and until', async () => {
+      const until = new Date('2026-12-31T00:00:00Z');
+      mockRepository.update.mockResolvedValue({ affected: 1 } as any);
+      mockRepository.findOne.mockResolvedValue({
+        ...mockSchedule,
+        recurrence_type: 'weekly',
+        recurrence_interval: 2,
+        recurrence_until: until,
+      } as Schedule);
+
+      const result = await service.setRecurrence(1, {
+        type: 'weekly',
+        interval: 2,
+        until,
+      });
+
+      expect(mockRepository.update).toHaveBeenCalledWith(1, {
+        recurrence_type: 'weekly',
+        recurrence_interval: 2,
+        recurrence_until: until,
+      });
+      expect(result?.recurrence_type).toBe('weekly');
+    });
+
+    it('should default interval to 1 and until to null when omitted', async () => {
+      mockRepository.update.mockResolvedValue({ affected: 1 } as any);
+      mockRepository.findOne.mockResolvedValue(mockSchedule);
+
+      await service.setRecurrence(1, { type: 'daily' });
+
+      expect(mockRepository.update).toHaveBeenCalledWith(1, {
+        recurrence_type: 'daily',
+        recurrence_interval: 1,
+        recurrence_until: null,
+      });
+    });
+  });
+
+  describe('clearRecurrence', () => {
+    it('should reset recurrence fields to defaults', async () => {
+      mockRepository.update.mockResolvedValue({ affected: 1 } as any);
+      mockRepository.findOne.mockResolvedValue(mockSchedule);
+
+      await service.clearRecurrence(5);
+
+      expect(mockRepository.update).toHaveBeenCalledWith(5, {
+        recurrence_type: 'none',
+        recurrence_interval: 1,
+        recurrence_until: null,
+      });
+    });
+  });
+
+  describe('spawnNextIfRecurring', () => {
+    const baseRecurring: Schedule = {
+      ...mockSchedule,
+      id: 10,
+      start_time: new Date('2026-04-20T10:00:00Z'),
+      end_time: new Date('2026-04-20T11:00:00Z'),
+      remind_at: new Date('2026-04-20T09:45:00Z'),
+      recurrence_type: 'weekly',
+      recurrence_interval: 1,
+      recurrence_until: null,
+      recurrence_parent_id: null,
+    } as Schedule;
+
+    it('should return null for non-recurring schedule', async () => {
+      const result = await service.spawnNextIfRecurring({
+        ...baseRecurring,
+        recurrence_type: 'none',
+      } as Schedule);
+      expect(result).toBeNull();
+      expect(mockRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('should create next weekly instance preserving end and remind offsets', async () => {
+      mockRepository.create.mockImplementation((data: any) => data as Schedule);
+      mockRepository.save.mockImplementation(async (data: any) => ({
+        ...(data as Schedule),
+        id: 11,
+      }));
+
+      const result = await service.spawnNextIfRecurring(
+        baseRecurring,
+        new Date('2026-04-20T12:00:00Z'),
+      );
+
+      expect(mockRepository.create).toHaveBeenCalledTimes(1);
+      const created = (mockRepository.create as jest.Mock).mock.calls[0][0];
+      expect(created.start_time.toISOString()).toBe('2026-04-27T10:00:00.000Z');
+      expect(created.end_time.toISOString()).toBe('2026-04-27T11:00:00.000Z');
+      expect(created.remind_at.toISOString()).toBe('2026-04-27T09:45:00.000Z');
+      expect(created.recurrence_type).toBe('weekly');
+      expect(created.recurrence_interval).toBe(1);
+      expect(created.recurrence_parent_id).toBe(10);
+      expect(result?.id).toBe(11);
+    });
+
+    it('should preserve existing recurrence_parent_id across series', async () => {
+      mockRepository.create.mockImplementation((data: any) => data as Schedule);
+      mockRepository.save.mockImplementation(async (data: any) => ({
+        ...(data as Schedule),
+        id: 99,
+      }));
+
+      await service.spawnNextIfRecurring(
+        { ...baseRecurring, id: 50, recurrence_parent_id: 10 } as Schedule,
+      );
+
+      const created = (mockRepository.create as jest.Mock).mock.calls[0][0];
+      expect(created.recurrence_parent_id).toBe(10);
+    });
+
+    it('should stop when next start_time exceeds recurrence_until', async () => {
+      const result = await service.spawnNextIfRecurring({
+        ...baseRecurring,
+        recurrence_until: new Date('2026-04-22T00:00:00Z'),
+      } as Schedule);
+
+      expect(result).toBeNull();
+      expect(mockRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('should create daily instance with correct step', async () => {
+      mockRepository.create.mockImplementation((data: any) => data as Schedule);
+      mockRepository.save.mockImplementation(async (data: any) => ({ ...(data as Schedule), id: 12 }));
+
+      await service.spawnNextIfRecurring({
+        ...baseRecurring,
+        recurrence_type: 'daily',
+        recurrence_interval: 3,
+      } as Schedule);
+
+      const created = (mockRepository.create as jest.Mock).mock.calls[0][0];
+      expect(created.start_time.toISOString()).toBe('2026-04-23T10:00:00.000Z');
+    });
+
+    it('should clamp monthly to last day of target month', async () => {
+      mockRepository.create.mockImplementation((data: any) => data as Schedule);
+      mockRepository.save.mockImplementation(async (data: any) => ({ ...(data as Schedule), id: 13 }));
+
+      await service.spawnNextIfRecurring({
+        ...baseRecurring,
+        start_time: new Date('2026-01-31T10:00:00Z'),
+        end_time: null,
+        remind_at: null,
+        recurrence_type: 'monthly',
+        recurrence_interval: 1,
+      } as Schedule);
+
+      const created = (mockRepository.create as jest.Mock).mock.calls[0][0];
+      expect(created.start_time.toISOString()).toBe('2026-02-28T10:00:00.000Z');
+      expect(created.end_time).toBeNull();
+      expect(created.remind_at).toBeNull();
+    });
+
+    it('should bump past remind_at up to now if shifted instance would remind in past', async () => {
+      mockRepository.create.mockImplementation((data: any) => data as Schedule);
+      mockRepository.save.mockImplementation(async (data: any) => ({ ...(data as Schedule), id: 14 }));
+
+      const now = new Date('2030-01-01T00:00:00Z'); // far future
+      await service.spawnNextIfRecurring(
+        {
+          ...baseRecurring,
+          remind_at: new Date('2026-04-20T09:45:00Z'),
+        } as Schedule,
+        now,
+      );
+
+      const created = (mockRepository.create as jest.Mock).mock.calls[0][0];
+      // remind_at should not be in the past
+      expect(created.remind_at.getTime()).toBeGreaterThanOrEqual(now.getTime());
     });
   });
 });

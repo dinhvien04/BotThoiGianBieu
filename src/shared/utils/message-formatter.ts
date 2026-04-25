@@ -204,8 +204,12 @@ export class MessageFormatter {
     const items = schedules.map((schedule) => {
       const when = `${formatDateShort(schedule.start_time)} ${formatTime(schedule.start_time)}`;
       const statusLabel = this.formatStatusLabel(schedule.status);
+      const recurringBadge =
+        schedule.recurrence_type && schedule.recurrence_type !== "none"
+          ? " 🔁"
+          : "";
       const lines = [
-        `➤ 『 ${when} 』 **${schedule.title}** — ${statusLabel}`,
+        `➤ 『 ${when} 』 **${schedule.title}**${recurringBadge} — ${statusLabel}`,
       ];
       if (schedule.description) {
         lines.push(`   ID: ${schedule.id} ✦ Ghi chú: ${schedule.description}`);
