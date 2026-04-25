@@ -159,9 +159,9 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
   // ================ FORM RENDERING ================
 
   private async renderEditForm(channelId: string, schedule: Schedule): Promise<void> {
-    const startDefault = this.dateParser.toDatetimeLocalVietnam(schedule.start_time);
+    const startDefault = this.dateParser.formatVietnam(schedule.start_time);
     const endDefault = schedule.end_time
-      ? this.dateParser.toDatetimeLocalVietnam(schedule.end_time)
+      ? this.dateParser.formatVietnam(schedule.end_time)
       : '';
     const typeOption = findItemTypeOption(schedule.item_type) ?? ITEM_TYPES[0];
 
@@ -187,16 +187,16 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
       .addInputField(
         'start_time',
         '⏰ Bắt đầu *',
-        'YYYY-MM-DDTHH:MM',
-        { type: 'datetime-local', defaultValue: startDefault },
-        'Bắt buộc — giờ Việt Nam',
+        'Vd: 25/04/2026 09:00',
+        { defaultValue: startDefault },
+        'Bắt buộc — nhập ngày/giờ Việt Nam',
       )
       .addInputField(
         'end_time',
-        '⏱️ Kết thúc',
-        'Tuỳ chọn',
-        { type: 'datetime-local', defaultValue: endDefault },
-        'Bỏ trống = không có giờ kết thúc',
+        '⏱️ Kết thúc *',
+        'Vd: 25/04/2026 10:00',
+        { defaultValue: endDefault },
+        'Bắt buộc — phải sau giờ bắt đầu',
       )
       .build();
 
@@ -267,8 +267,7 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
     const endRaw = formData.end_time?.trim();
     if (endRaw !== undefined) {
       if (endRaw === '') {
-        // User xoá end_time
-        if (current.end_time !== null) data.end_time = null;
+        return { data, error: `❌ Thiếu thời gian kết thúc.` };
       } else {
         const newEnd = this.dateParser.parseVietnamLocal(endRaw);
         if (!newEnd) {

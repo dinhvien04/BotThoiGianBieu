@@ -61,7 +61,9 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
 
     const now = new Date();
     const defaultStart = new Date(now.getTime() + 60 * 60 * 1000); // +1h
-    const defaultStartStr = this.dateParser.toDatetimeLocalVietnam(defaultStart);
+    const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000); // +1h duration
+    const defaultStartStr = this.dateParser.formatVietnam(defaultStart);
+    const defaultEndStr = this.dateParser.formatVietnam(defaultEnd);
 
     const embed = new InteractiveBuilder('📋 THÊM LỊCH MỚI')
       .setDescription(
@@ -85,16 +87,16 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       .addInputField(
         'start_time',
         '⏰ Bắt đầu *',
-        'YYYY-MM-DDTHH:MM (vd: 2026-04-25T09:00)',
-        { type: 'datetime-local', defaultValue: defaultStartStr },
-        'Bắt buộc — giờ Việt Nam',
+        'Vd: 25/04/2026 09:00',
+        { defaultValue: defaultStartStr },
+        'Bắt buộc — nhập ngày/giờ Việt Nam',
       )
       .addInputField(
         'end_time',
-        '⏱️ Kết thúc',
-        'Tuỳ chọn (YYYY-MM-DDTHH:MM)',
-        { type: 'datetime-local' },
-        'Tuỳ chọn',
+        '⏱️ Kết thúc *',
+        'Vd: 25/04/2026 10:00',
+        { defaultValue: defaultEndStr },
+        'Bắt buộc — phải sau giờ bắt đầu',
       )
       .build();
 
@@ -138,7 +140,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     }
     const itemType = itemTypeRaw as ScheduleItemType;
     const startTime = validation.startTime!;
-    const endTime = validation.endTime;
+    const endTime = validation.endTime!;
 
     // ===== User settings để tính remind_at =====
     const user = await this.usersService.findByUserId(clickerId);
@@ -179,9 +181,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       `🏷️ Loại: ${typeLabel}`,
       `⏰ Bắt đầu: \`${this.dateParser.formatVietnam(startTime)}\``,
     ];
-    if (endTime) {
-      lines.push(`⏱️ Kết thúc: \`${this.dateParser.formatVietnam(endTime)}\``);
-    }
+    lines.push(`⏱️ Kết thúc: \`${this.dateParser.formatVietnam(endTime)}\``);
     if (description) {
       lines.push(`📝 Mô tả: ${description}`);
     }
@@ -206,38 +206,35 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     itemTypeRaw: string,
     startRaw: string | undefined,
     endRaw: string | undefined,
-  ): { error?: string; startTime?: Date; endTime: Date | null } {
+  ): { error?: string; startTime?: Date; endTime?: Date } {
     if (!title) {
-      return { error: `❌ Thiếu tiêu đề.`, endTime: null };
+      return { error: `❌ Thiếu tiêu đề.` };
     }
     if (!isValidItemType(itemTypeRaw)) {
-      return { error: `❌ Loại lịch không hợp lệ: \`${itemTypeRaw}\`.`, endTime: null };
+      return { error: `❌ Loại lịch không hợp lệ: \`${itemTypeRaw}\`.` };
     }
     const startTime = this.dateParser.parseVietnamLocal(startRaw);
     if (!startTime) {
       return {
         error: `❌ Thời gian bắt đầu không hợp lệ: \`${startRaw ?? ''}\`.`,
-        endTime: null,
       };
     }
     if (startTime.getTime() <= Date.now()) {
-      return { error: `❌ Thời gian bắt đầu phải ở tương lai.`, endTime: null };
+      return { error: `❌ Thời gian bắt đầu phải ở tương lai.` };
     }
-    let endTime: Date | null = null;
-    if (endRaw) {
-      endTime = this.dateParser.parseVietnamLocal(endRaw);
-      if (!endTime) {
-        return {
-          error: `❌ Thời gian kết thúc không hợp lệ: \`${endRaw}\`.`,
-          endTime: null,
-        };
-      }
-      if (endTime.getTime() <= startTime.getTime()) {
-        return {
-          error: `❌ Thời gian kết thúc phải sau thời gian bắt đầu.`,
-          endTime: null,
-        };
-      }
+    if (!endRaw) {
+      return { error: `❌ Thiếu thời gian kết thúc.` };
+    }
+    const endTime = this.dateParser.parseVietnamLocal(endRaw);
+    if (!endTime) {
+      return {
+        error: `❌ Thời gian kết thúc không hợp lệ: \`${endRaw}\`.`,
+      };
+    }
+    if (endTime.getTime() <= startTime.getTime()) {
+      return {
+        error: `❌ Thời gian kết thúc phải sau thời gian bắt đầu.`,
+      };
     }
     return { startTime, endTime };
   }
