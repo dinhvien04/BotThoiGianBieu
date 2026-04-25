@@ -348,6 +348,214 @@ describe('ThemLichCommand', () => {
       expect(mockSchedulesService.create).not.toHaveBeenCalled();
     });
 
+    it('should create recurring schedule with daily type and default interval', async () => {
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+      const mockUser: User = {
+        user_id: '789',
+        settings: { default_remind_minutes: 30 } as UserSettings,
+      } as User;
+      const mockSchedule: Schedule = {
+        id: 1,
+        user_id: '789',
+        item_type: 'task',
+        title: 'Daily Standup',
+        start_time: startTime,
+        end_time: endTime,
+      } as Schedule;
+
+      mockContext.formData = {
+        title: 'Daily Standup',
+        item_type: 'task',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '11:00',
+        recurrence_type: 'daily',
+        recurrence_interval: '1',
+      };
+
+      mockDateParser.parseVietnamLocal
+        .mockReturnValueOnce(startTime)
+        .mockReturnValueOnce(endTime);
+      mockUsersService.findByUserId.mockResolvedValue(mockUser);
+      mockSchedulesService.create.mockResolvedValue(mockSchedule);
+      mockDateParser.formatVietnam.mockReturnValue('25/04/2099 10:00');
+
+      await command.handleButton(mockContext);
+
+      expect(mockSchedulesService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recurrence_type: 'daily',
+          recurrence_interval: 1,
+          recurrence_until: null,
+        }),
+      );
+      expect(mockContext.send).toHaveBeenCalledWith(
+        expect.stringContaining('🔁'),
+      );
+    });
+
+    it('should create recurring schedule with weekly + interval + until', async () => {
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+      const untilDate = new Date(startTime.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const mockUser: User = {
+        user_id: '789',
+        settings: { default_remind_minutes: 30 } as UserSettings,
+      } as User;
+      const mockSchedule: Schedule = {
+        id: 1,
+        user_id: '789',
+        item_type: 'meeting',
+        title: 'Weekly Sync',
+        start_time: startTime,
+        end_time: endTime,
+      } as Schedule;
+
+      mockContext.formData = {
+        title: 'Weekly Sync',
+        item_type: 'meeting',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '11:00',
+        recurrence_type: 'weekly',
+        recurrence_interval: '2',
+        recurrence_until: '2099-05-25',
+      };
+
+      mockDateParser.parseVietnamLocal
+        .mockReturnValueOnce(startTime)
+        .mockReturnValueOnce(endTime)
+        .mockReturnValueOnce(untilDate);
+      mockUsersService.findByUserId.mockResolvedValue(mockUser);
+      mockSchedulesService.create.mockResolvedValue(mockSchedule);
+      mockDateParser.formatVietnam.mockReturnValue('25/04/2099 10:00');
+
+      await command.handleButton(mockContext);
+
+      expect(mockSchedulesService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recurrence_type: 'weekly',
+          recurrence_interval: 2,
+          recurrence_until: untilDate,
+        }),
+      );
+    });
+
+    it('should reject invalid recurrence interval', async () => {
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+
+      mockContext.formData = {
+        title: 'Bad',
+        item_type: 'task',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '11:00',
+        recurrence_type: 'daily',
+        recurrence_interval: '0',
+      };
+
+      mockDateParser.parseVietnamLocal
+        .mockReturnValueOnce(startTime)
+        .mockReturnValueOnce(endTime);
+
+      await command.handleButton(mockContext);
+
+      expect(mockContext.send).toHaveBeenCalledWith(
+        expect.stringContaining('Khoảng lặp không hợp lệ'),
+      );
+      expect(mockSchedulesService.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject recurrence until before start_time', async () => {
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+      const beforeStart = new Date(startTime.getTime() - 60 * 60 * 1000);
+
+      mockContext.formData = {
+        title: 'Bad',
+        item_type: 'task',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '11:00',
+        recurrence_type: 'weekly',
+        recurrence_interval: '1',
+        recurrence_until: '2000-01-01',
+      };
+
+      mockDateParser.parseVietnamLocal
+        .mockReturnValueOnce(startTime)
+        .mockReturnValueOnce(endTime)
+        .mockReturnValueOnce(beforeStart);
+
+      await command.handleButton(mockContext);
+
+      expect(mockContext.send).toHaveBeenCalledWith(
+        expect.stringContaining('phải SAU ngày bắt đầu'),
+      );
+      expect(mockSchedulesService.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid recurrence_until date format', async () => {
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+
+      mockContext.formData = {
+        title: 'Bad',
+        item_type: 'task',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '11:00',
+        recurrence_type: 'monthly',
+        recurrence_interval: '1',
+        recurrence_until: 'garbage',
+      };
+
+      mockDateParser.parseVietnamLocal
+        .mockReturnValueOnce(startTime)
+        .mockReturnValueOnce(endTime)
+        .mockReturnValueOnce(null);
+
+      await command.handleButton(mockContext);
+
+      expect(mockContext.send).toHaveBeenCalledWith(
+        expect.stringContaining('Ngày dừng lặp không hợp lệ'),
+      );
+      expect(mockSchedulesService.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid recurrence_type value', async () => {
+      const startTime = new Date(Date.now() + 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+
+      mockContext.formData = {
+        title: 'Bad',
+        item_type: 'task',
+        start_date: '2099-04-25',
+        start_time: '10:00',
+        end_date: '2099-04-25',
+        end_time: '11:00',
+        recurrence_type: 'yearly',
+      };
+
+      mockDateParser.parseVietnamLocal
+        .mockReturnValueOnce(startTime)
+        .mockReturnValueOnce(endTime);
+
+      await command.handleButton(mockContext);
+
+      expect(mockContext.send).toHaveBeenCalledWith(
+        expect.stringContaining('Kiểu lặp không hợp lệ'),
+      );
+      expect(mockSchedulesService.create).not.toHaveBeenCalled();
+    });
+
     it('should create schedule with end time', async () => {
       const startTime = new Date(Date.now() + 60 * 60 * 1000);
       const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
