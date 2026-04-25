@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, IsNull, LessThanOrEqual, Repository } from 'typeorm';
+import { Between, ILike, IsNull, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Schedule, ScheduleItemType, ScheduleStatus } from './entities/schedule.entity';
+
+export interface SearchResult {
+  items: Schedule[];
+  total: number;
+}
 
 export interface CreateScheduleInput {
   user_id: string;
@@ -69,6 +74,68 @@ export class SchedulesService {
       },
       order: { start_time: 'ASC' },
     });
+  }
+
+  /**
+   * Tìm lịch của user theo từ khoá (case-insensitive, match `title` hoặc
+   * `description`). Trả về danh sách đã sắp theo `start_time` tăng dần,
+   * có hỗ trợ paginate (limit/offset) và total count.
+   */
+  async search(
+    userId: string,
+    keyword: string,
+    limit = 10,
+    offset = 0,
+  ): Promise<SearchResult> {
+    const pattern = `%${keyword}%`;
+    const whereClauses = [
+      { user_id: userId, title: ILike(pattern) },
+      { user_id: userId, description: ILike(pattern) },
+    ];
+
+    const [items, total] = await this.scheduleRepository.findAndCount({
+      where: whereClauses,
+      order: { start_time: 'ASC', id: 'ASC' },
+      take: limit,
+      skip: offset,
+    });
+
+    return { items, total };
+  }
+
+  /**
+   * Các lịch `pending` có `start_time` từ `now` trở đi, sắp theo giờ bắt đầu
+   * tăng dần. Dùng cho `*sap-toi` (next upcoming).
+   */
+  findUpcoming(userId: string, now: Date, limit = 5): Promise<Schedule[]> {
+    return this.scheduleRepository.find({
+      where: {
+        user_id: userId,
+        status: 'pending',
+        start_time: MoreThanOrEqual(now),
+      },
+      order: { start_time: 'ASC', id: 'ASC' },
+      take: limit,
+    });
+  }
+
+  /**
+   * Toàn bộ lịch `pending` của user (bất kể start_time đã qua hay chưa), có
+   * paginate. Dùng cho `*danh-sach`.
+   */
+  async findAllPending(
+    userId: string,
+    limit = 10,
+    offset = 0,
+  ): Promise<SearchResult> {
+    const [items, total] = await this.scheduleRepository.findAndCount({
+      where: { user_id: userId, status: 'pending' },
+      order: { start_time: 'ASC', id: 'ASC' },
+      take: limit,
+      skip: offset,
+    });
+
+    return { items, total };
   }
 
   /**

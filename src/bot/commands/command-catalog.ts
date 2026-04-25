@@ -74,6 +74,36 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Xem chi tiết lịch",
     category: "📅 XEM LỊCH",
   },
+  {
+    name: "sap-toi",
+    syntax: "sap-toi",
+    description: "Xem các lịch sắp tới gần nhất",
+    category: "📅 XEM LỊCH",
+  },
+  {
+    name: "sap-toi",
+    syntax: "sap-toi 10",
+    description: "Xem N lịch sắp tới (tối đa 20)",
+    category: "📅 XEM LỊCH",
+  },
+  {
+    name: "danh-sach",
+    syntax: "danh-sach",
+    description: "Liệt kê tất cả lịch đang chờ",
+    category: "📅 XEM LỊCH",
+  },
+  {
+    name: "danh-sach",
+    syntax: "danh-sach 2",
+    description: "Xem trang 2 của danh sách lịch chờ",
+    category: "📅 XEM LỊCH",
+  },
+  {
+    name: "tim-kiem",
+    syntax: "tim-kiem <từ khoá>",
+    description: "Tìm lịch theo từ khoá (tiêu đề / ghi chú)",
+    category: "📅 XEM LỊCH",
+  },
 
   // ===== ✏️ Quản lý lịch =====
   {

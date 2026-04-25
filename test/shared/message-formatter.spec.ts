@@ -351,6 +351,75 @@ describe('MessageFormatter', () => {
       expect(result).toContain('`!batdau`');
     });
   });
+
+  describe('formatScheduleDigest', () => {
+    it('should render empty state with default message', () => {
+      const result = formatter.formatScheduleDigest([], 'Lịch sắp tới');
+
+      expect(result).toContain('【 LỊCH SẮP TỚI 】');
+      expect(result).toContain('Không có lịch nào.');
+    });
+
+    it('should render empty state with custom empty message', () => {
+      const result = formatter.formatScheduleDigest([], 'Kết quả tìm', {
+        emptyMessage: 'Không tìm thấy gì cả.',
+      });
+
+      expect(result).toContain('Không tìm thấy gì cả.');
+      expect(result).not.toContain('Không có lịch nào.');
+    });
+
+    it('should render each schedule with id, date/time, title and status', () => {
+      const schedule = buildSchedule({
+        id: 42,
+        title: 'Họp quan trọng',
+        description: null,
+        start_time: new Date(2026, 3, 24, 9, 30),
+        status: 'pending',
+      });
+
+      const result = formatter.formatScheduleDigest([schedule], 'Kết quả');
+
+      expect(result).toContain('ID: 42');
+      expect(result).toContain('24/4/2026 09:30');
+      expect(result).toContain('**Họp quan trọng**');
+      expect(result).toContain('Đang chờ');
+    });
+
+    it('should show description when present', () => {
+      const schedule = buildSchedule({
+        id: 7,
+        description: 'Chuẩn bị slide',
+      });
+
+      const result = formatter.formatScheduleDigest([schedule], 'Kết quả');
+
+      expect(result).toContain('Ghi chú: Chuẩn bị slide');
+    });
+
+    it('should render status labels for non-pending schedules', () => {
+      const completed = buildSchedule({ id: 1, status: 'completed' });
+      const cancelled = buildSchedule({ id: 2, status: 'cancelled' });
+
+      const result = formatter.formatScheduleDigest(
+        [completed, cancelled],
+        'Mixed',
+      );
+
+      expect(result).toContain('Đã hoàn thành');
+      expect(result).toContain('Đã hủy');
+    });
+
+    it('should append footer when provided', () => {
+      const schedule = buildSchedule({});
+
+      const result = formatter.formatScheduleDigest([schedule], 'Title', {
+        footer: '💡 Trang 1/2',
+      });
+
+      expect(result.trim().endsWith('💡 Trang 1/2')).toBe(true);
+    });
+  });
 });
 
 function buildSchedule(overrides: Partial<Schedule>): Schedule {

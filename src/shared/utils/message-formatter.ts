@@ -183,6 +183,45 @@ export class MessageFormatter {
     return sections.join("\n\n").trimEnd();
   }
 
+  /**
+   * Render danh sách lịch dạng "digest" — mỗi lịch 1 dòng có ID + ngày + giờ
+   * bắt đầu + tiêu đề + trạng thái. Dùng cho các view span nhiều ngày
+   * (tim-kiem, sap-toi, danh-sach) khi không cần group theo ngày.
+   */
+  formatScheduleDigest(
+    schedules: Schedule[],
+    title: string,
+    opts?: { emptyMessage?: string; footer?: string },
+  ): string {
+    const header = `【 ${title.toUpperCase()} 】`;
+    const separator = "━━━━━━━━━━━━━━━━━━━━";
+
+    if (schedules.length === 0) {
+      const empty = opts?.emptyMessage ?? "Không có lịch nào.";
+      return `${header}\n${separator}\n\n${empty}`;
+    }
+
+    const items = schedules.map((schedule) => {
+      const when = `${formatDateShort(schedule.start_time)} ${formatTime(schedule.start_time)}`;
+      const statusLabel = this.formatStatusLabel(schedule.status);
+      const lines = [
+        `➤ 『 ${when} 』 **${schedule.title}** — ${statusLabel}`,
+      ];
+      if (schedule.description) {
+        lines.push(`   ID: ${schedule.id} ✦ Ghi chú: ${schedule.description}`);
+      } else {
+        lines.push(`   ID: ${schedule.id}`);
+      }
+      return lines.join("\n");
+    });
+
+    const sections = [header, separator, items.join("\n\n")];
+    if (opts?.footer) {
+      sections.push(opts.footer);
+    }
+    return sections.join("\n\n").trimEnd();
+  }
+
   formatInvalidDate(input: string, prefix: string, command: string): string {
     return (
       `⚠️ Ngày \`${input}\` không hợp lệ.\n` +
@@ -240,6 +279,18 @@ export class MessageFormatter {
     }
 
     return lines.join("\n");
+  }
+
+  private formatStatusLabel(status: ScheduleStatus): string {
+    switch (status) {
+      case "completed":
+        return "Đã hoàn thành";
+      case "cancelled":
+        return "Đã hủy";
+      case "pending":
+      default:
+        return "Đang chờ";
+    }
   }
 
   private groupSchedulesByStatus(schedules: Schedule[]): Map<ScheduleStatus, Schedule[]> {
