@@ -10,6 +10,12 @@ export interface MezonChannelMessage {
   username?: string;
   display_name?: string;
   content?: { t?: string };
+  attachments?: Array<{
+    filename?: string;
+    filetype?: string;
+    size?: number;
+    url?: string;
+  }>;
 }
 
 export interface CommandContext {
