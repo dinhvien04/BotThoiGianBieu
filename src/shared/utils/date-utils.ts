@@ -69,6 +69,23 @@ export function addDays(date: Date, days: number): Date {
   );
 }
 
+export function monthRange(year: number, month: number): DateRange {
+  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+  const end = new Date(year, month, 0, 23, 59, 59, 999);
+  return { start, end };
+}
+
+export function parseMonthYear(input: string): { year: number; month: number } | null {
+  const value = input.trim();
+  const match = /^(\d{1,2})[-/](\d{4})$/.exec(value);
+  if (!match) return null;
+  const month = Number(match[1]);
+  const year = Number(match[2]);
+  if (month < 1 || month > 12) return null;
+  if (year < 1970 || year > 9999) return null;
+  return { year, month };
+}
+
 export function weekRange(date: Date): DateRange {
   const day = date.getDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;

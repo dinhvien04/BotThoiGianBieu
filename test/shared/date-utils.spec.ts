@@ -5,6 +5,8 @@ import {
   dayRange,
   addDays,
   weekRange,
+  monthRange,
+  parseMonthYear,
   formatDateShort,
   formatDateNoYear,
   formatTime,
@@ -153,6 +155,51 @@ describe('date-utils', () => {
       const daysDiff = (range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24);
       // Monday 00:00 → Sunday 23:59:59.999 = 6 ngày tròn + gần hết ngày.
       expect(Math.floor(daysDiff)).toBe(6);
+    });
+  });
+
+  describe('monthRange', () => {
+    it('should return first day 00:00 to last day 23:59:59.999 of month', () => {
+      const range = monthRange(2026, 4);
+      expect(range.start.getFullYear()).toBe(2026);
+      expect(range.start.getMonth()).toBe(3); // April
+      expect(range.start.getDate()).toBe(1);
+      expect(range.start.getHours()).toBe(0);
+      expect(range.end.getMonth()).toBe(3);
+      expect(range.end.getDate()).toBe(30);
+      expect(range.end.getHours()).toBe(23);
+    });
+
+    it('should handle February in leap year', () => {
+      const range = monthRange(2024, 2);
+      expect(range.end.getDate()).toBe(29);
+    });
+
+    it('should handle February in non-leap year', () => {
+      const range = monthRange(2026, 2);
+      expect(range.end.getDate()).toBe(28);
+    });
+  });
+
+  describe('parseMonthYear', () => {
+    it('should accept MM-YYYY', () => {
+      expect(parseMonthYear('4-2026')).toEqual({ year: 2026, month: 4 });
+      expect(parseMonthYear('12-2026')).toEqual({ year: 2026, month: 12 });
+    });
+
+    it('should accept MM/YYYY', () => {
+      expect(parseMonthYear('04/2026')).toEqual({ year: 2026, month: 4 });
+    });
+
+    it('should reject invalid month', () => {
+      expect(parseMonthYear('13-2026')).toBeNull();
+      expect(parseMonthYear('0-2026')).toBeNull();
+    });
+
+    it('should reject invalid format', () => {
+      expect(parseMonthYear('2026-04')).toBeNull();
+      expect(parseMonthYear('foo')).toBeNull();
+      expect(parseMonthYear('')).toBeNull();
     });
   });
 

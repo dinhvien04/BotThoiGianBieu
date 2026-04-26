@@ -69,6 +69,18 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "📅 XEM LỊCH",
   },
   {
+    name: "lich-thang",
+    syntax: "lich-thang",
+    description: "Xem lịch cả tháng này",
+    category: "📅 XEM LỊCH",
+  },
+  {
+    name: "lich-thang",
+    syntax: "lich-thang 4-2026",
+    description: "Xem lịch của tháng cụ thể (MM-YYYY)",
+    category: "📅 XEM LỊCH",
+  },
+  {
     name: "chi-tiet",
     syntax: "chi-tiet <ID>",
     description: "Xem chi tiết lịch",
