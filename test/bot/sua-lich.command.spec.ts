@@ -193,6 +193,10 @@ describe('SuaLichCommand', () => {
         start_time: new Date('2026-04-25T10:00'),
         end_time: null,
         status: 'pending',
+        recurrence_type: 'none',
+        recurrence_interval: 1,
+        recurrence_until: null,
+        recurrence_parent_id: null,
       } as Schedule;
     });
 
@@ -411,6 +415,210 @@ describe('SuaLichCommand', () => {
       expect(mockContext.send).toHaveBeenCalledWith(
         expect.stringContaining('Lỗi khi cập nhật lịch'),
       );
+    });
+
+    describe('recurrence', () => {
+      it('should enable daily recurrence on a non-recurring schedule', async () => {
+        mockContext.formData = {
+          recurrence_type: 'daily',
+          recurrence_interval: '1',
+        };
+        const updated = {
+          ...mockSchedule,
+          recurrence_type: 'daily',
+          recurrence_interval: 1,
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockSchedulesService.update.mockResolvedValue(updated);
+        mockDateParser.formatVietnam.mockReturnValue('25/04/2026 10:00');
+
+        await command.handleButton(mockContext);
+
+        expect(mockSchedulesService.update).toHaveBeenCalledWith(
+          5,
+          expect.objectContaining({
+            recurrence_type: 'daily',
+          }),
+        );
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('Hàng ngày'),
+        );
+      });
+
+      it('should change recurrence interval and until on an already recurring schedule', async () => {
+        mockSchedule.recurrence_type = 'weekly';
+        mockSchedule.recurrence_interval = 1;
+        mockSchedule.recurrence_until = null;
+
+        const untilDate = new Date('2099-12-31T23:59');
+        mockContext.formData = {
+          recurrence_type: 'weekly',
+          recurrence_interval: '2',
+          recurrence_until: '2099-12-31',
+        };
+        const updated = {
+          ...mockSchedule,
+          recurrence_interval: 2,
+          recurrence_until: untilDate,
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockDateParser.parseVietnamLocal.mockReturnValueOnce(untilDate);
+        mockSchedulesService.update.mockResolvedValue(updated);
+        mockDateParser.formatVietnam.mockReturnValue('31/12/2099');
+
+        await command.handleButton(mockContext);
+
+        expect(mockSchedulesService.update).toHaveBeenCalledWith(
+          5,
+          expect.objectContaining({
+            recurrence_interval: 2,
+            recurrence_until: untilDate,
+          }),
+        );
+        // type không thay đổi → không có trong patch
+        const patchArg = (mockSchedulesService.update as jest.Mock).mock.calls[0][1];
+        expect(patchArg.recurrence_type).toBeUndefined();
+      });
+
+      it('should turn off recurrence when type changed to none', async () => {
+        mockSchedule.recurrence_type = 'monthly';
+        mockSchedule.recurrence_interval = 3;
+        mockSchedule.recurrence_until = new Date('2099-12-31');
+
+        mockContext.formData = {
+          recurrence_type: 'none',
+        };
+        const updated = {
+          ...mockSchedule,
+          recurrence_type: 'none',
+          recurrence_interval: 1,
+          recurrence_until: null,
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockSchedulesService.update.mockResolvedValue(updated);
+
+        await command.handleButton(mockContext);
+
+        expect(mockSchedulesService.update).toHaveBeenCalledWith(
+          5,
+          expect.objectContaining({
+            recurrence_type: 'none',
+            recurrence_interval: 1,
+            recurrence_until: null,
+          }),
+        );
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('đã tắt'),
+        );
+      });
+
+      it('should clear recurrence_until when until input is empty on recurring schedule', async () => {
+        mockSchedule.recurrence_type = 'weekly';
+        mockSchedule.recurrence_interval = 1;
+        mockSchedule.recurrence_until = new Date('2099-12-31');
+
+        mockContext.formData = {
+          recurrence_type: 'weekly',
+          recurrence_interval: '1',
+          recurrence_until: '',
+        };
+        const updated = {
+          ...mockSchedule,
+          recurrence_until: null,
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockSchedulesService.update.mockResolvedValue(updated);
+
+        await command.handleButton(mockContext);
+
+        expect(mockSchedulesService.update).toHaveBeenCalledWith(
+          5,
+          expect.objectContaining({ recurrence_until: null }),
+        );
+      });
+
+      it('should reject invalid recurrence interval', async () => {
+        mockContext.formData = {
+          recurrence_type: 'daily',
+          recurrence_interval: '0',
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+
+        await command.handleButton(mockContext);
+
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('Khoảng lặp không hợp lệ'),
+        );
+        expect(mockSchedulesService.update).not.toHaveBeenCalled();
+      });
+
+      it('should reject recurrence_until before start_time', async () => {
+        const beforeStart = new Date('2020-01-01');
+        mockContext.formData = {
+          recurrence_type: 'weekly',
+          recurrence_interval: '1',
+          recurrence_until: '2020-01-01',
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockDateParser.parseVietnamLocal.mockReturnValueOnce(beforeStart);
+
+        await command.handleButton(mockContext);
+
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('phải SAU ngày bắt đầu'),
+        );
+        expect(mockSchedulesService.update).not.toHaveBeenCalled();
+      });
+
+      it('should reject invalid recurrence_until format', async () => {
+        mockContext.formData = {
+          recurrence_type: 'weekly',
+          recurrence_interval: '1',
+          recurrence_until: 'garbage',
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockDateParser.parseVietnamLocal.mockReturnValueOnce(null);
+
+        await command.handleButton(mockContext);
+
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('Ngày dừng lặp không hợp lệ'),
+        );
+        expect(mockSchedulesService.update).not.toHaveBeenCalled();
+      });
+
+      it('should reject invalid recurrence_type', async () => {
+        mockContext.formData = {
+          recurrence_type: 'yearly',
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+
+        await command.handleButton(mockContext);
+
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('Kiểu lặp không hợp lệ'),
+        );
+        expect(mockSchedulesService.update).not.toHaveBeenCalled();
+      });
+
+      it('should not produce a recurrence patch when fields match current values', async () => {
+        mockSchedule.recurrence_type = 'weekly';
+        mockSchedule.recurrence_interval = 2;
+
+        mockContext.formData = {
+          title: 'Original Title',
+          recurrence_type: 'weekly',
+          recurrence_interval: '2',
+        };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+
+        await command.handleButton(mockContext);
+
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('Không có thay đổi nào'),
+        );
+        expect(mockSchedulesService.update).not.toHaveBeenCalled();
+      });
     });
   });
 });
