@@ -19,6 +19,7 @@ import {
 } from '../../schedules/schedules.service';
 import { DateParser } from '../../shared/utils/date-parser';
 import {
+  RecurrenceType,
   Schedule,
   ScheduleItemType,
 } from '../../schedules/entities/schedule.entity';
@@ -27,6 +28,11 @@ import {
   isValidItemType,
   ITEM_TYPES,
 } from '../../schedules/schedules.constants';
+import {
+  formatRecurrence,
+  parseRecurrenceType,
+  RECURRENCE_TYPE_OPTIONS,
+} from '../../shared/utils/recurrence';
 
 const INTERACTION_ID = 'sua-lich';
 
@@ -209,6 +215,36 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
         { type: 'time', defaultValue: this.dateParser.formatVietnamTime(endTime) },
         'Bắt buộc — phải sau giờ bắt đầu',
       )
+      .addSelectField(
+        'recurrence_type',
+        '🔁 Lặp lại',
+        RECURRENCE_TYPE_OPTIONS,
+        RECURRENCE_TYPE_OPTIONS.find((o) => o.value === schedule.recurrence_type) ??
+          RECURRENCE_TYPE_OPTIONS[0],
+        `Hiện tại: ${formatRecurrence(schedule.recurrence_type, schedule.recurrence_interval)}`,
+      )
+      .addInputField(
+        'recurrence_interval',
+        '🔢 Khoảng lặp',
+        '1',
+        {
+          type: 'number',
+          defaultValue: String(schedule.recurrence_interval ?? 1),
+        },
+        'Chỉ áp dụng khi chọn lặp.',
+      )
+      .addInputField(
+        'recurrence_until',
+        '🛑 Dừng lặp sau ngày',
+        'Chọn ngày (tuỳ chọn)',
+        {
+          type: 'date',
+          defaultValue: schedule.recurrence_until
+            ? this.dateParser.toDateInputVietnam(schedule.recurrence_until)
+            : '',
+        },
+        'Tuỳ chọn — để trống = lặp vô hạn.',
+      )
       .build();
 
     const buttons = new ButtonBuilder()
@@ -297,7 +333,84 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
       return { data, error: `❌ Thiếu ngày hoặc giờ kết thúc.` };
     }
 
+    const recurrenceErr = this.applyRecurrencePatch(formData, current, data);
+    if (recurrenceErr) return { data, error: recurrenceErr };
+
     return { data };
+  }
+
+  /**
+   * Đọc 3 field recurrence từ formData, so với schedule hiện tại và ghi vào
+   * `data` chỉ những field thực sự thay đổi. Trả message lỗi (nếu có).
+   *
+   * Khi user chuyển kiểu lặp về `none`, ta ghi cả interval=1 và until=null
+   * để dọn sạch state — tương tự logic của `clearRecurrence`.
+   */
+  private applyRecurrencePatch(
+    formData: Record<string, string>,
+    current: Schedule,
+    data: UpdateSchedulePatch,
+  ): string | undefined {
+    const typeRaw = formData.recurrence_type?.trim();
+    const intervalRaw = formData.recurrence_interval?.trim();
+    const untilRaw = formData.recurrence_until?.trim();
+    if (typeRaw === undefined && intervalRaw === undefined && untilRaw === undefined) {
+      return undefined;
+    }
+
+    let newType: RecurrenceType = current.recurrence_type;
+    if (typeRaw !== undefined) {
+      const parsed = parseRecurrenceType(typeRaw);
+      if (!parsed) return `❌ Kiểu lặp không hợp lệ: \`${typeRaw}\`.`;
+      newType = parsed;
+    }
+
+    if (newType === 'none') {
+      if (current.recurrence_type !== 'none') data.recurrence_type = 'none';
+      if ((current.recurrence_interval ?? 1) !== 1) data.recurrence_interval = 1;
+      if (current.recurrence_until !== null) data.recurrence_until = null;
+      return undefined;
+    }
+
+    let newInterval = current.recurrence_interval ?? 1;
+    if (intervalRaw !== undefined && intervalRaw !== '') {
+      const parsed = Number.parseInt(intervalRaw, 10);
+      if (
+        !Number.isFinite(parsed) ||
+        parsed < 1 ||
+        String(parsed) !== intervalRaw.replace(/^0+(?=\d)/, '')
+      ) {
+        return `❌ Khoảng lặp không hợp lệ: \`${intervalRaw}\` (phải là số nguyên ≥ 1).`;
+      }
+      newInterval = parsed;
+    }
+
+    const startForCompare = data.start_time ?? current.start_time;
+    let newUntil: Date | null = current.recurrence_until ?? null;
+    if (untilRaw !== undefined) {
+      if (untilRaw === '') {
+        newUntil = null;
+      } else {
+        const parsedUntil = this.dateParser.parseVietnamLocal(`${untilRaw} 23:59`);
+        if (!parsedUntil) {
+          return `❌ Ngày dừng lặp không hợp lệ: \`${untilRaw}\`.`;
+        }
+        if (parsedUntil.getTime() <= startForCompare.getTime()) {
+          return `❌ Ngày dừng lặp phải SAU ngày bắt đầu.`;
+        }
+        newUntil = parsedUntil;
+      }
+    }
+
+    if (newType !== current.recurrence_type) data.recurrence_type = newType;
+    if (newInterval !== (current.recurrence_interval ?? 1)) {
+      data.recurrence_interval = newInterval;
+    }
+    const currentUntilTs = current.recurrence_until?.getTime() ?? null;
+    const newUntilTs = newUntil?.getTime() ?? null;
+    if (newUntilTs !== currentUntilTs) data.recurrence_until = newUntil;
+
+    return undefined;
   }
 
   // ================ FORMATTING ================
@@ -320,6 +433,24 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
         ? `\`${this.dateParser.formatVietnam(updated.end_time)}\``
         : '_(bỏ)_';
       changes.push(`⏱️ Kết thúc → ${val}`);
+    }
+    if (
+      patch.recurrence_type !== undefined ||
+      patch.recurrence_interval !== undefined ||
+      patch.recurrence_until !== undefined
+    ) {
+      if (updated.recurrence_type === 'none') {
+        changes.push(`🔁 Lặp → _(đã tắt)_`);
+      } else {
+        const label = formatRecurrence(
+          updated.recurrence_type,
+          updated.recurrence_interval,
+        );
+        const untilSuffix = updated.recurrence_until
+          ? ` (đến ${this.dateParser.formatVietnam(updated.recurrence_until, false)})`
+          : '';
+        changes.push(`🔁 Lặp → ${label}${untilSuffix}`);
+      }
     }
 
     const lines = [
