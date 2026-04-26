@@ -33,6 +33,10 @@ COPY --from=builder /app/dist ./dist
 COPY package*.json ./
 COPY migrations ./migrations
 
+# mezon-sdk tạo thư mục `./mezon-cache` (sqlite cache) ở CWD khi khởi động.
+# Tạo sẵn và chown sang user `node` để tránh EACCES.
+RUN mkdir -p /app/mezon-cache && chown -R node:node /app
+
 USER node
 
 ENTRYPOINT ["/sbin/tini", "--"]
