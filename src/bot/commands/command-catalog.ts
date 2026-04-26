@@ -87,6 +87,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "📅 XEM LỊCH",
   },
   {
+    name: "import-ics",
+    syntax: "import-ics [url]",
+    description: "Nhập lịch từ file .ics (Google/Apple Calendar)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
     name: "chi-tiet",
     syntax: "chi-tiet <ID>",
     description: "Xem chi tiết lịch",
