@@ -1,0 +1,12 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bot-thoi-gian-bieu:latest
+    container_name: bot-thoi-gian-bieu
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      NODE_ENV: production
