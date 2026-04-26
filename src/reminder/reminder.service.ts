@@ -264,19 +264,37 @@ export class ReminderService {
   private buildMentionPayload(
     schedule: Schedule,
   ): { text: string; mentions: ApiMessageMention[] } | null {
-    const username = schedule.user?.username;
-    if (!username) return null;
-    const display = `@${username}`;
+    const ownerUsername = schedule.user?.username;
+    if (!ownerUsername) return null;
+
+    const targets: Array<{ user_id: string; username: string }> = [
+      { user_id: schedule.user_id, username: ownerUsername },
+    ];
+
+    for (const u of schedule.sharedWith ?? []) {
+      if (!u.username || u.user_id === schedule.user_id) continue;
+      if (targets.some((t) => t.user_id === u.user_id)) continue;
+      targets.push({ user_id: u.user_id, username: u.username });
+    }
+
+    const mentions: ApiMessageMention[] = [];
+    const parts: string[] = [];
+    let cursor = 0;
+    for (const t of targets) {
+      const display = `@${t.username}`;
+      mentions.push({
+        user_id: t.user_id,
+        username: t.username,
+        s: cursor,
+        e: cursor + display.length,
+      });
+      parts.push(display);
+      cursor += display.length + 1;
+    }
+
     return {
-      text: `${display} `,
-      mentions: [
-        {
-          user_id: schedule.user_id,
-          username,
-          s: 0,
-          e: display.length,
-        },
-      ],
+      text: parts.join(" ") + " ",
+      mentions,
     };
   }
 

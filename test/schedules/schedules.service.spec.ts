@@ -464,7 +464,7 @@ describe('SchedulesService', () => {
           acknowledged_at: IsNull(),
           status: 'pending',
         },
-        relations: ['user', 'user.settings'],
+        relations: ['user', 'user.settings', 'sharedWith'],
         order: { remind_at: 'ASC' },
       });
       expect(result).toEqual(dueSchedules);
@@ -507,7 +507,7 @@ describe('SchedulesService', () => {
 
       // Assert
       const callArgs = mockRepository.find.mock.calls[0]?.[0];
-      expect(callArgs?.relations).toEqual(['user', 'user.settings']);
+      expect(callArgs?.relations).toEqual(['user', 'user.settings', 'sharedWith']);
     });
   });
 
@@ -686,7 +686,7 @@ describe('SchedulesService', () => {
           end_notified_at: IsNull(),
           status: 'pending',
         },
-        relations: ['user', 'user.settings'],
+        relations: ['user', 'user.settings', 'sharedWith'],
         order: { end_time: 'ASC' },
       });
       expect(result).toEqual(dueSchedules);

@@ -199,7 +199,7 @@ export class SchedulesService {
         acknowledged_at: IsNull(),
         status: 'pending',
       },
-      relations: ['user', 'user.settings'],
+      relations: ['user', 'user.settings', 'sharedWith'],
       order: { remind_at: 'ASC' },
     });
   }
@@ -287,7 +287,7 @@ export class SchedulesService {
         end_notified_at: IsNull(),
         status: 'pending',
       },
-      relations: ['user', 'user.settings'],
+      relations: ['user', 'user.settings', 'sharedWith'],
       order: { end_time: 'ASC' },
     });
   }
