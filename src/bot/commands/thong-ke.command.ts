@@ -6,6 +6,7 @@ import {
 import { UsersService } from '../../users/users.service';
 import { startOfDay, endOfDay, addDays } from '../../shared/utils/date-utils';
 import { findItemTypeOption } from '../../schedules/schedules.constants';
+import { formatPriority } from '../../shared/utils/priority';
 import { CommandRegistry } from './command-registry';
 import { BotCommand, CommandContext } from './command.types';
 
@@ -142,6 +143,17 @@ export class ThongKeCommand implements BotCommand, OnModuleInit {
       for (const [type, count] of typeEntries) {
         const label = findItemTypeOption(type)?.label ?? type;
         lines.push(`   • ${label}: \`${count}\``);
+      }
+    }
+
+    const priorityEntries = (
+      ['high', 'normal', 'low'] as const
+    ).filter((p) => stats.byPriority[p] > 0);
+    if (priorityEntries.length > 0) {
+      lines.push('');
+      lines.push(`⚡ Theo ưu tiên:`);
+      for (const p of priorityEntries) {
+        lines.push(`   • ${formatPriority(p)}: \`${stats.byPriority[p]}\``);
       }
     }
 

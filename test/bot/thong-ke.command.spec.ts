@@ -43,6 +43,7 @@ describe('ThongKeCommand', () => {
     total: 0,
     byStatus: { pending: 0, completed: 0, cancelled: 0 },
     byItemType: { task: 0, meeting: 0, event: 0, reminder: 0 },
+    byPriority: { low: 0, normal: 0, high: 0 },
     topHours: [],
     recurringActiveCount: 0,
     ...overrides,

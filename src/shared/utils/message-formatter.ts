@@ -7,6 +7,7 @@ import {
   formatDateShort,
   formatTime,
 } from "./date-utils";
+import { priorityBadge } from "./priority";
 
 export interface HelpRenderEntry {
   syntax: string;
@@ -208,8 +209,9 @@ export class MessageFormatter {
         schedule.recurrence_type && schedule.recurrence_type !== "none"
           ? " 🔁"
           : "";
+      const prio = priorityBadge(schedule.priority ?? "normal");
       const lines = [
-        `➤ 『 ${when} 』 **${schedule.title}**${recurringBadge} — ${statusLabel}`,
+        `➤ 『 ${when} 』 ${prio} **${schedule.title}**${recurringBadge} — ${statusLabel}`,
       ];
       if (schedule.description) {
         lines.push(`   ID: ${schedule.id} ✦ Ghi chú: ${schedule.description}`);
@@ -272,8 +274,9 @@ export class MessageFormatter {
   }
 
   private formatDailyScheduleItem(schedule: Schedule): string {
+    const prio = priorityBadge(schedule.priority ?? "normal");
     const lines = [
-      `➤ 『 ${formatTime(schedule.start_time)} 』 **${schedule.title}**`,
+      `➤ 『 ${formatTime(schedule.start_time)} 』 ${prio} **${schedule.title}**`,
     ];
 
     if (schedule.description) {

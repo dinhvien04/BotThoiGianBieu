@@ -87,7 +87,7 @@ describe('DanhSachCommand', () => {
       expect(command.name).toBe('danh-sach');
       expect(command.aliases).toEqual(['danhsach', 'pending', 'list']);
       expect(command.category).toBe('📅 XEM LỊCH');
-      expect(command.syntax).toBe('danh-sach [trang]');
+      expect(command.syntax).toBe('danh-sach [trang] [--uutien cao|vua|thap]');
     });
   });
 
@@ -125,6 +125,7 @@ describe('DanhSachCommand', () => {
         'user123',
         10,
         0,
+        undefined,
       );
       expect(ctx.reply).toHaveBeenCalledWith('DIGEST');
     });
@@ -144,6 +145,7 @@ describe('DanhSachCommand', () => {
         'user123',
         10,
         10,
+        undefined,
       );
     });
 

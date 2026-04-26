@@ -13,12 +13,19 @@ import { User } from "../../users/entities/user.entity";
 export type ScheduleStatus = "pending" | "completed" | "cancelled";
 export type ScheduleItemType = "task" | "meeting" | "event" | "reminder";
 export type RecurrenceType = "none" | "daily" | "weekly" | "monthly";
+export type SchedulePriority = "low" | "normal" | "high";
 
 export const RECURRENCE_TYPES: readonly RecurrenceType[] = [
   "none",
   "daily",
   "weekly",
   "monthly",
+] as const;
+
+export const SCHEDULE_PRIORITIES: readonly SchedulePriority[] = [
+  "low",
+  "normal",
+  "high",
 ] as const;
 
 @Entity("schedules")
@@ -48,6 +55,12 @@ export class Schedule {
 
   @Column({ type: "varchar", length: 20, default: "pending" })
   status!: ScheduleStatus;
+
+  /**
+   * Mức ưu tiên: low/normal/high. Hiển thị badge 🔴/🟡/🟢 trong digest.
+   */
+  @Column({ type: "varchar", length: 20, default: "normal" })
+  priority!: SchedulePriority;
 
   @Column({ type: "timestamp with time zone", nullable: true })
   remind_at!: Date | null;

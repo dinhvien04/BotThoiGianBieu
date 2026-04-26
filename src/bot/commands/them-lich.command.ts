@@ -17,6 +17,7 @@ import { SchedulesService } from '../../schedules/schedules.service';
 import { DateParser } from '../../shared/utils/date-parser';
 import {
   RecurrenceType,
+  SchedulePriority,
   ScheduleItemType,
 } from '../../schedules/entities/schedule.entity';
 import {
@@ -29,6 +30,11 @@ import {
   parseRecurrenceType,
   RECURRENCE_TYPE_OPTIONS,
 } from '../../shared/utils/recurrence';
+import {
+  formatPriority,
+  parsePriority,
+  PRIORITY_OPTIONS,
+} from '../../shared/utils/priority';
 
 const INTERACTION_ID = 'them-lich';
 
@@ -119,6 +125,13 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
         'Bắt buộc — phải sau giờ bắt đầu',
       )
       .addSelectField(
+        'priority',
+        '⚡ Ưu tiên',
+        PRIORITY_OPTIONS,
+        PRIORITY_OPTIONS[1],
+        'Mặc định: Vừa',
+      )
+      .addSelectField(
         'recurrence_type',
         '🔁 Lặp lại',
         RECURRENCE_TYPE_OPTIONS,
@@ -167,6 +180,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const title = formData.title?.trim();
     const description = formData.description?.trim() || null;
     const itemTypeRaw = formData.item_type?.trim() || 'task';
+    const priorityRaw = formData.priority?.trim() || 'normal';
     const startDateRaw = formData.start_date?.trim();
     const startTimeRaw = formData.start_time?.trim();
     const endDateRaw = formData.end_date?.trim();
@@ -179,6 +193,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const validation = this.validate(
       title,
       itemTypeRaw,
+      priorityRaw,
       startDateRaw,
       startTimeRaw,
       endDateRaw,
@@ -195,6 +210,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       return;
     }
     const itemType = itemTypeRaw as ScheduleItemType;
+    const priority = validation.priority!;
     const startTime = validation.startTime!;
     const endTime = validation.endTime!;
     const recurrenceType = validation.recurrenceType!;
@@ -226,6 +242,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       start_time: startTime,
       end_time: endTime,
       remind_at: remindAt,
+      priority,
       recurrence_type: recurrenceType,
       recurrence_interval: recurrenceInterval,
       recurrence_until: recurrenceUntil,
@@ -241,6 +258,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       `🆔 ID: \`${schedule.id}\``,
       `📌 Tiêu đề: ${schedule.title}`,
       `🏷️ Loại: ${typeLabel}`,
+      `⚡ Ưu tiên: ${formatPriority(priority)}`,
       `⏰ Bắt đầu: \`${this.dateParser.formatVietnam(startTime)}\``,
     ];
     lines.push(`⏱️ Kết thúc: \`${this.dateParser.formatVietnam(endTime)}\``);
@@ -276,6 +294,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
   private validate(
     title: string | undefined,
     itemTypeRaw: string,
+    priorityRaw: string,
     startDateRaw: string | undefined,
     startTimeRaw: string | undefined,
     endDateRaw: string | undefined,
@@ -287,6 +306,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     error?: string;
     startTime?: Date;
     endTime?: Date;
+    priority?: SchedulePriority;
     recurrenceType?: RecurrenceType;
     recurrenceInterval?: number;
     recurrenceUntil?: Date | null;
@@ -296,6 +316,10 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     }
     if (!isValidItemType(itemTypeRaw)) {
       return { error: `❌ Loại lịch không hợp lệ: \`${itemTypeRaw}\`.` };
+    }
+    const priority = parsePriority(priorityRaw);
+    if (!priority) {
+      return { error: `❌ Ưu tiên không hợp lệ: \`${priorityRaw}\`.` };
     }
     const startRaw = this.combineDateTime(startDateRaw, startTimeRaw);
     if (!startRaw) {
@@ -369,6 +393,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     return {
       startTime,
       endTime,
+      priority,
       recurrenceType,
       recurrenceInterval,
       recurrenceUntil,

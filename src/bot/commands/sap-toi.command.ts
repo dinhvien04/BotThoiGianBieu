@@ -4,6 +4,8 @@ import { SchedulesService } from "../../schedules/schedules.service";
 import { UsersService } from "../../users/users.service";
 import { CommandRegistry } from "./command-registry";
 import { BotCommand, CommandContext } from "./command.types";
+import { extractPriorityFlag } from "../../shared/utils/priority-flag";
+import { formatPriority } from "../../shared/utils/priority";
 
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 20;
@@ -14,8 +16,8 @@ export class SapToiCommand implements BotCommand, OnModuleInit {
   readonly aliases = ["saptoi", "next"];
   readonly description = "Xem các lịch sắp tới";
   readonly category = "📅 XEM LỊCH";
-  readonly syntax = "sap-toi [số_lượng]";
-  readonly example = "sap-toi 10";
+  readonly syntax = "sap-toi [số_lượng] [--uutien cao|vua|thap]";
+  readonly example = "sap-toi 10 --uutien cao";
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -35,10 +37,16 @@ export class SapToiCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    const limit = this.parseLimit(ctx.args[0]);
+    const flag = extractPriorityFlag(ctx.args);
+    if (flag.error) {
+      await ctx.reply(flag.error);
+      return;
+    }
+
+    const limit = this.parseLimit(flag.rest[0]);
     if (limit === null) {
       await ctx.reply(
-        `⚠️ Số lượng không hợp lệ: \`${ctx.args[0]}\`.\n` +
+        `⚠️ Số lượng không hợp lệ: \`${flag.rest[0]}\`.\n` +
           `Vui lòng nhập số nguyên dương (tối đa ${MAX_LIMIT}).`,
       );
       return;
@@ -48,19 +56,30 @@ export class SapToiCommand implements BotCommand, OnModuleInit {
       user.user_id,
       new Date(),
       limit,
+      flag.priority,
     );
 
+    const titleSuffix = flag.priority
+      ? ` (Ưu tiên ${formatPriority(flag.priority)})`
+      : "";
+    const emptySuffix = flag.priority
+      ? ` với ưu tiên ${formatPriority(flag.priority)}`
+      : "";
     await ctx.reply(
-      this.formatter.formatScheduleDigest(schedules, "Lịch sắp tới", {
-        emptyMessage:
-          "Bạn không có lịch pending sắp tới.\n💡 Dùng `" +
-          ctx.prefix +
-          "them-lich` để thêm lịch mới.",
-        footer:
-          schedules.length > 0
-            ? `💡 Đang hiển thị ${schedules.length} lịch pending sắp tới gần nhất.`
-            : undefined,
-      }),
+      this.formatter.formatScheduleDigest(
+        schedules,
+        `Lịch sắp tới${titleSuffix}`,
+        {
+          emptyMessage:
+            `Bạn không có lịch pending sắp tới${emptySuffix}.\n💡 Dùng \`` +
+            ctx.prefix +
+            "them-lich\` để thêm lịch mới.",
+          footer:
+            schedules.length > 0
+              ? `💡 Đang hiển thị ${schedules.length} lịch pending sắp tới gần nhất${emptySuffix}.`
+              : undefined,
+        },
+      ),
     );
   }
 

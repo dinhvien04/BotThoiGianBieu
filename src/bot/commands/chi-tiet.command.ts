@@ -4,6 +4,7 @@ import { MessageFormatter } from "../../shared/utils/message-formatter";
 import { Schedule, ScheduleItemType, ScheduleStatus } from "../../schedules/entities/schedule.entity";
 import { SchedulesService } from "../../schedules/schedules.service";
 import { formatRecurrence } from "../../shared/utils/recurrence";
+import { formatPriority } from "../../shared/utils/priority";
 import { UsersService } from "../../users/users.service";
 import { CommandRegistry } from "./command-registry";
 import { BotCommand, CommandContext } from "./command.types";
@@ -82,6 +83,7 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
       "━━━━━━━━━━━━━━━━━━━━",
       `➤ Tiêu đề: ${schedule.title}`,
       `➤ Loại: ${this.formatItemType(schedule.item_type)}`,
+      `➤ Ưu tiên: ${formatPriority(schedule.priority ?? "normal")}`,
       `➤ Trạng thái: ${this.formatStatus(schedule.status)}`,
       `➤ Bắt đầu: ${this.dateParser.formatVietnam(schedule.start_time)}`,
     ];

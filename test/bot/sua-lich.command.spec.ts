@@ -188,6 +188,7 @@ describe('SuaLichCommand', () => {
         recurrence_type: 'none',
         recurrence_interval: 1,
         recurrence_until: null,
+        priority: "normal",
         recurrence_parent_id: null,
       } as Schedule;
     });
