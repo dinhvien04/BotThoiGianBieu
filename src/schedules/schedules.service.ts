@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, ILike, IsNull, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { Between, ILike, IsNull, LessThan, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import {
   RecurrenceType,
   Schedule,
@@ -162,6 +162,33 @@ export class SchedulesService {
       order: { start_time: 'ASC', id: 'ASC' },
       take: limit,
     });
+  }
+
+  /**
+   * Lịch quá hạn — `pending` + `start_time < now`. User đã miss deadline
+   * mà chưa hoàn-thành / huỷ. Sắp theo `start_time` ASC để các lịch quá
+   * hạn lâu nhất hiện trên đầu. Có pagination.
+   */
+  async findOverdue(
+    userId: string,
+    now: Date,
+    limit = 10,
+    offset = 0,
+    priority?: SchedulePriority,
+  ): Promise<SearchResult> {
+    const where: Record<string, unknown> = {
+      user_id: userId,
+      status: 'pending',
+      start_time: LessThan(now),
+    };
+    if (priority) where.priority = priority;
+    const [items, total] = await this.scheduleRepository.findAndCount({
+      where,
+      order: { start_time: 'ASC', id: 'ASC' },
+      take: limit,
+      skip: offset,
+    });
+    return { items, total };
   }
 
   /**
