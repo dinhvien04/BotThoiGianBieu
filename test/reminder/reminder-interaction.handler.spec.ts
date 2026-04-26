@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReminderInteractionHandler } from '../../src/reminder/reminder-interaction.handler';
 import { InteractionRegistry } from '../../src/bot/interactions/interaction-registry';
+import { BotService } from '../../src/bot/bot.service';
 import { SchedulesService } from '../../src/schedules/schedules.service';
 import { UsersService } from '../../src/users/users.service';
 import { DateParser } from '../../src/shared/utils/date-parser';
@@ -14,6 +15,7 @@ describe('ReminderInteractionHandler', () => {
   let mockRegistry: jest.Mocked<InteractionRegistry>;
   let mockSchedulesService: jest.Mocked<SchedulesService>;
   let mockUsersService: jest.Mocked<UsersService>;
+  let mockBotService: jest.Mocked<BotService>;
   let mockDateParser: jest.Mocked<DateParser>;
 
   const mockSchedule: Schedule = {
@@ -41,6 +43,9 @@ describe('ReminderInteractionHandler', () => {
       spawnNextIfRecurring: jest.fn().mockResolvedValue(null),
     } as any;
     mockUsersService = { findByUserId: jest.fn() } as any;
+    mockBotService = {
+      sendEphemeralInteractive: jest.fn().mockResolvedValue(undefined),
+    } as any;
     mockDateParser = {
       formatVietnam: jest.fn((date) => date.toISOString()),
       formatMinutes: jest.fn((minutes: number) => `${minutes} phút`),
@@ -52,6 +57,7 @@ describe('ReminderInteractionHandler', () => {
         { provide: InteractionRegistry, useValue: mockRegistry },
         { provide: SchedulesService, useValue: mockSchedulesService },
         { provide: UsersService, useValue: mockUsersService },
+        { provide: BotService, useValue: mockBotService },
         { provide: DateParser, useValue: mockDateParser },
       ],
     }).compile();
@@ -383,6 +389,127 @@ describe('ReminderInteractionHandler', () => {
 
       // Act & Assert - should not throw
       await expect(handler.handleButton(mockContext)).resolves.not.toThrow();
+    });
+
+    describe('custom snooze flow', () => {
+      it('should open ephemeral form on custom action', async () => {
+        mockContext.action = 'custom:1';
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockUsersService.findByUserId.mockResolvedValue(mockUser);
+
+        await handler.handleButton(mockContext);
+
+        expect(mockBotService.sendEphemeralInteractive).toHaveBeenCalledWith(
+          'channel123',
+          'user123',
+          expect.any(Object),
+          expect.any(Array),
+        );
+      });
+
+      it('should fall back with hint when ephemeral form fails to open', async () => {
+        mockContext.action = 'custom:1';
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockUsersService.findByUserId.mockResolvedValue(mockUser);
+        (mockBotService.sendEphemeralInteractive as jest.Mock).mockRejectedValue(
+          new Error('boom'),
+        );
+
+        await handler.handleButton(mockContext);
+
+        expect(mockContext.send).toHaveBeenCalledWith(
+          expect.stringContaining('*nhac-sau 1'),
+        );
+      });
+
+      it('should snooze using formData.minutes on csub', async () => {
+        mockContext.action = 'csub:1';
+        mockContext.formData = { minutes: '45' };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockSchedulesService.snooze.mockResolvedValue(new Date('2099-01-01'));
+
+        await handler.handleButton(mockContext);
+
+        expect(mockSchedulesService.snooze).toHaveBeenCalledWith(1, 45);
+        expect(mockContext.deleteEphemeralForm).toHaveBeenCalled();
+        expect(mockContext.ephemeralSend).toHaveBeenCalledWith(
+          expect.stringContaining('Đã hoãn'),
+        );
+      });
+
+      it('should reject non-numeric minutes', async () => {
+        mockContext.action = 'csub:1';
+        mockContext.formData = { minutes: 'abc' };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+
+        await handler.handleButton(mockContext);
+
+        expect(mockSchedulesService.snooze).not.toHaveBeenCalled();
+        expect(mockContext.ephemeralSend).toHaveBeenCalledWith(
+          expect.stringContaining('không phải số phút hợp lệ'),
+        );
+      });
+
+      it('should reject empty minutes', async () => {
+        mockContext.action = 'csub:1';
+        mockContext.formData = { minutes: '' };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+
+        await handler.handleButton(mockContext);
+
+        expect(mockSchedulesService.snooze).not.toHaveBeenCalled();
+        expect(mockContext.ephemeralSend).toHaveBeenCalledWith(
+          expect.stringContaining('(rỗng)'),
+        );
+      });
+
+      it('should reject zero minutes', async () => {
+        mockContext.action = 'csub:1';
+        mockContext.formData = { minutes: '0' };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+
+        await handler.handleButton(mockContext);
+
+        expect(mockSchedulesService.snooze).not.toHaveBeenCalled();
+        expect(mockContext.ephemeralSend).toHaveBeenCalled();
+      });
+
+      it('should reject minutes above 7 days cap', async () => {
+        mockContext.action = 'csub:1';
+        mockContext.formData = { minutes: '20000' };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+
+        await handler.handleButton(mockContext);
+
+        expect(mockSchedulesService.snooze).not.toHaveBeenCalled();
+        expect(mockContext.ephemeralSend).toHaveBeenCalledWith(
+          expect.stringContaining('Tối đa hoãn 7 ngày'),
+        );
+      });
+
+      it('should send ephemeral info when schedule is already acknowledged on csub', async () => {
+        mockContext.action = 'csub:1';
+        mockContext.formData = { minutes: '20' };
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+        mockSchedulesService.snooze.mockResolvedValue(null);
+
+        await handler.handleButton(mockContext);
+
+        expect(mockContext.deleteEphemeralForm).toHaveBeenCalled();
+        expect(mockContext.ephemeralSend).toHaveBeenCalledWith(
+          expect.stringContaining('không hoãn nữa'),
+        );
+      });
+
+      it('should just close form on ccancel', async () => {
+        mockContext.action = 'ccancel:1';
+        mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+
+        await handler.handleButton(mockContext);
+
+        expect(mockContext.deleteEphemeralForm).toHaveBeenCalled();
+        expect(mockSchedulesService.snooze).not.toHaveBeenCalled();
+      });
     });
   });
 });

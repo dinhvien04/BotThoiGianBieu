@@ -117,6 +117,8 @@ describe('ReminderService', () => {
         'channel123',
         expect.any(Object),
         expect.any(Array),
+        expect.stringContaining('@testuser'),
+        expect.any(Array),
       );
       expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(
         1,
@@ -272,6 +274,8 @@ describe('ReminderService', () => {
         'channel123',
         expect.any(Object),
         expect.any(Array),
+        expect.stringContaining('@testuser'),
+        expect.any(Array),
       );
       expect(mockBotService.sendDmInteractive).not.toHaveBeenCalled();
     });
@@ -301,17 +305,23 @@ describe('ReminderService', () => {
         'channel123',
         expect.any(Object),
         expect.any(Array),
+        expect.any(String),
+        expect.any(Array),
       );
       expect(mockBotService.sendBuzzInteractive).toHaveBeenNthCalledWith(
         2,
         'channel456',
         expect.any(Object),
         expect.any(Array),
+        expect.any(String),
+        expect.any(Array),
       );
       expect(mockBotService.sendBuzzInteractive).toHaveBeenNthCalledWith(
         3,
         'channel789',
         expect.any(Object),
+        expect.any(Array),
+        expect.any(String),
         expect.any(Array),
       );
     });
@@ -337,6 +347,8 @@ describe('ReminderService', () => {
       expect(mockBotService.sendBuzzInteractive).toHaveBeenCalledWith(
         'channel123',
         expect.any(Object),
+        expect.any(Array),
+        expect.stringContaining('@testuser'),
         expect.any(Array),
       );
       expect(mockBotService.sendDirectMessage).toHaveBeenCalledWith(
@@ -596,6 +608,61 @@ describe('ReminderService', () => {
 
       // Assert
       expect(mockSchedulesService.markEndNotified).toHaveBeenCalledWith(1, expect.any(Date));
+    });
+  });
+
+  describe('mention payload', () => {
+    it('should pass @username + mention array to channel send', async () => {
+      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockResolvedValue(undefined);
+
+      await service.tick();
+
+      const call = mockBotService.sendBuzzInteractive.mock.calls[0];
+      expect(call[3]).toBe('@testuser ');
+      const mentions = call[4] as Array<{ user_id: string; username: string; s: number; e: number }>;
+      expect(mentions).toHaveLength(1);
+      expect(mentions[0]).toMatchObject({
+        user_id: 'user123',
+        username: 'testuser',
+        s: 0,
+        e: 9, // length of '@testuser'
+      });
+    });
+
+    it('should pass undefined mention when user has no username', async () => {
+      const userNoName = { ...mockUser, username: null };
+      const scheduleNoName = { ...mockSchedule, user: { ...userNoName, settings: mockSettings } };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleNoName]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockResolvedValue(undefined);
+
+      await service.tick();
+
+      const call = mockBotService.sendBuzzInteractive.mock.calls[0];
+      expect(call[3]).toBeUndefined();
+      expect(call[4]).toBeUndefined();
+    });
+  });
+
+  describe('custom snooze button on start reminder', () => {
+    it('should include reminder:custom button on start reminder', async () => {
+      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockResolvedValue(undefined);
+
+      await service.tick();
+
+      const call = mockBotService.sendBuzzInteractive.mock.calls[0];
+      const components = call[2] as Array<{ id?: string }>;
+      const ids = components.map((c) => c.id);
+      expect(ids).toEqual(expect.arrayContaining(['reminder:custom:1']));
     });
   });
 

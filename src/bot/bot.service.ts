@@ -1,6 +1,11 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { IInteractiveMessageProps, MezonClient, TypeMessage } from "mezon-sdk";
+import {
+  ApiMessageMention,
+  IInteractiveMessageProps,
+  MezonClient,
+  TypeMessage,
+} from "mezon-sdk";
 
 export interface ChannelSendTarget {
   channelId: string;
@@ -182,6 +187,7 @@ export class BotService implements OnModuleDestroy {
     embed: IInteractiveMessageProps,
     components: unknown[],
     text?: string,
+    mentions?: ApiMessageMention[],
   ): Promise<void> {
     const channel = await this.client.channels.fetch(channelId);
     await channel.send(
@@ -190,7 +196,7 @@ export class BotService implements OnModuleDestroy {
         embed: [embed],
         components: [{ components }],
       },
-      undefined, // mentions
+      mentions,
       undefined, // attachments
       false, // mention_everyone
       false, // anonymous_message
