@@ -307,6 +307,32 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "⚙️ CÀI ĐẶT",
   },
 
+  // ===== 📋 Template =====
+  {
+    name: "tao-template",
+    syntax: "tao-template <tên> <ID>",
+    description: "Lưu lịch hiện có thành template",
+    category: "📋 TEMPLATE",
+  },
+  {
+    name: "tu-template",
+    syntax: "tu-template <tên> <DD-MM-YYYY HH:mm>",
+    description: "Tạo lịch mới từ template",
+    category: "📋 TEMPLATE",
+  },
+  {
+    name: "ds-template",
+    syntax: "ds-template",
+    description: "Liệt kê các template đã lưu",
+    category: "📋 TEMPLATE",
+  },
+  {
+    name: "xoa-template",
+    syntax: "xoa-template <tên>",
+    description: "Xoá template",
+    category: "📋 TEMPLATE",
+  },
+
   // ===== ❓ Hỗ trợ =====
   {
     name: "help",
@@ -323,6 +349,7 @@ export const CATEGORY_ORDER: string[] = [
   "✏️ QUẢN LÝ LỊCH",
   "🏷️ NHÃN",
   "👥 CHIA SẺ",
+  "📋 TEMPLATE",
   "🔔 NHẮC NHỞ",
   "⚙️ CÀI ĐẶT",
   "❓ HỖ TRỢ",
