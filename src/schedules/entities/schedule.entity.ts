@@ -4,11 +4,14 @@ import {
   Entity,
   Index,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "../../users/entities/user.entity";
+import { Tag } from "./tag.entity";
 
 export type ScheduleStatus = "pending" | "completed" | "cancelled";
 export type ScheduleItemType = "task" | "meeting" | "event" | "reminder";
@@ -115,4 +118,16 @@ export class Schedule {
   @ManyToOne(() => User, (user) => user.schedules, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user?: User;
+
+  /**
+   * Tags gắn với lịch — many-to-many qua junction `schedule_tags`.
+   * Eager: false — load on demand via `relations: ['tags']`.
+   */
+  @ManyToMany(() => Tag, (tag) => tag.schedules)
+  @JoinTable({
+    name: "schedule_tags",
+    joinColumn: { name: "schedule_id", referencedColumnName: "id" },
+    inverseJoinColumn: { name: "tag_id", referencedColumnName: "id" },
+  })
+  tags?: Tag[];
 }

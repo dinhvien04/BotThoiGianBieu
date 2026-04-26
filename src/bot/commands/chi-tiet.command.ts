@@ -2,7 +2,9 @@ import { Injectable, OnModuleInit } from "@nestjs/common";
 import { DateParser } from "../../shared/utils/date-parser";
 import { MessageFormatter } from "../../shared/utils/message-formatter";
 import { Schedule, ScheduleItemType, ScheduleStatus } from "../../schedules/entities/schedule.entity";
+import { Tag } from "../../schedules/entities/tag.entity";
 import { SchedulesService } from "../../schedules/schedules.service";
+import { TagsService } from "../../schedules/tags.service";
 import { formatRecurrence } from "../../shared/utils/recurrence";
 import { formatPriority } from "../../shared/utils/priority";
 import { UsersService } from "../../users/users.service";
@@ -20,6 +22,7 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
     private readonly registry: CommandRegistry,
     private readonly usersService: UsersService,
     private readonly schedulesService: SchedulesService,
+    private readonly tagsService: TagsService,
     private readonly formatter: MessageFormatter,
     private readonly dateParser: DateParser,
   ) {}
@@ -57,7 +60,12 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    await ctx.reply(this.formatScheduleDetail(schedule));
+    const tags = await this.tagsService.findTagsForSchedule(
+      user.user_id,
+      scheduleId,
+    );
+
+    await ctx.reply(this.formatScheduleDetail(schedule, tags));
   }
 
   private formatUsage(prefix: string): string {
@@ -77,7 +85,7 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
     return value;
   }
 
-  private formatScheduleDetail(schedule: Schedule): string {
+  private formatScheduleDetail(schedule: Schedule, tags: Tag[]): string {
     const lines = [
       `📋 CHI TIẾT LỊCH #${schedule.id}`,
       "━━━━━━━━━━━━━━━━━━━━",
@@ -87,6 +95,12 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
       `➤ Trạng thái: ${this.formatStatus(schedule.status)}`,
       `➤ Bắt đầu: ${this.dateParser.formatVietnam(schedule.start_time)}`,
     ];
+
+    if (tags.length > 0) {
+      lines.push(
+        `➤ Nhãn: ${tags.map((t) => `\`#${t.name}\``).join(", ")}`,
+      );
+    }
 
     if (schedule.end_time) {
       lines.push(`➤ Kết thúc: ${this.dateParser.formatVietnam(schedule.end_time)}`);
