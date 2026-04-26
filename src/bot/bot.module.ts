@@ -36,6 +36,12 @@ import { SapToiCommand } from './commands/sap-toi.command';
 import { DanhSachCommand } from './commands/danh-sach.command';
 import { LichTreCommand } from './commands/lich-tre.command';
 import { GioLamCommand } from './commands/gio-lam.command';
+import {
+  TaoTemplateCommand,
+  TuTemplateCommand,
+  DsTemplateCommand,
+  XoaTemplateCommand,
+} from './commands/template.command';
 import { ThongKeCommand } from './commands/thong-ke.command';
 import {
   TagThemCommand,
@@ -86,6 +92,10 @@ import { InteractionRouter } from './interactions/interaction-router';
     DanhSachCommand,
     LichTreCommand,
     GioLamCommand,
+    TaoTemplateCommand,
+    TuTemplateCommand,
+    DsTemplateCommand,
+    XoaTemplateCommand,
     ThongKeCommand,
     TagThemCommand,
     TagXoaCommand,
