@@ -31,6 +31,7 @@ import { BoLapCommand } from './commands/bo-lap.command';
 import { TimKiemCommand } from './commands/tim-kiem.command';
 import { SapToiCommand } from './commands/sap-toi.command';
 import { DanhSachCommand } from './commands/danh-sach.command';
+import { ThongKeCommand } from './commands/thong-ke.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
 
@@ -60,6 +61,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     TimKiemCommand,
     SapToiCommand,
     DanhSachCommand,
+    ThongKeCommand,
     ThemLichCommand,
     ThemLichExcelCommand,
     MauLichExcelCommand,

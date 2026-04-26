@@ -51,6 +51,14 @@ export interface RecurrencePatch {
   until?: Date | null;
 }
 
+export interface ScheduleStatistics {
+  total: number;
+  byStatus: Record<ScheduleStatus, number>;
+  byItemType: Record<ScheduleItemType, number>;
+  topHours: Array<{ hour: number; count: number }>;
+  recurringActiveCount: number;
+}
+
 @Injectable()
 export class SchedulesService {
   private readonly logger = new Logger(SchedulesService.name);
@@ -299,6 +307,71 @@ export class SchedulesService {
 
   async delete(id: number): Promise<void> {
     await this.scheduleRepository.delete(id);
+  }
+
+  /**
+   * Tổng hợp thống kê lịch của user trong khoảng `[start, end]` (theo
+   * `start_time`). Truyền cả `start` và `end` = null để tính trên toàn bộ
+   * lịch của user (all-time). Hot hours = top 3 khung giờ (0-23) bận nhất.
+   */
+  async getStatistics(
+    userId: string,
+    start: Date | null,
+    end: Date | null,
+    now: Date = new Date(),
+  ): Promise<ScheduleStatistics> {
+    const where: Record<string, unknown> = { user_id: userId };
+    if (start && end) {
+      where.start_time = Between(start, end);
+    } else if (start) {
+      where.start_time = MoreThanOrEqual(start);
+    } else if (end) {
+      where.start_time = LessThanOrEqual(end);
+    }
+
+    const items = await this.scheduleRepository.find({ where });
+
+    const byStatus: Record<ScheduleStatus, number> = {
+      pending: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+    const byItemType: Record<ScheduleItemType, number> = {
+      task: 0,
+      meeting: 0,
+      event: 0,
+      reminder: 0,
+    };
+    const hourCounts = new Map<number, number>();
+
+    for (const item of items) {
+      byStatus[item.status] = (byStatus[item.status] ?? 0) + 1;
+      byItemType[item.item_type] = (byItemType[item.item_type] ?? 0) + 1;
+      const hour = item.start_time.getHours();
+      hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
+    }
+
+    const topHours = Array.from(hourCounts.entries())
+      .map(([hour, count]) => ({ hour, count }))
+      .sort((a, b) => b.count - a.count || a.hour - b.hour)
+      .slice(0, 3);
+
+    const activeRecurring = await this.scheduleRepository.find({
+      where: { user_id: userId, status: 'pending' },
+    });
+    const recurringActiveCount = activeRecurring.filter(
+      (s) =>
+        s.recurrence_type !== 'none' &&
+        (!s.recurrence_until || s.recurrence_until.getTime() >= now.getTime()),
+    ).length;
+
+    return {
+      total: items.length,
+      byStatus,
+      byItemType,
+      topHours,
+      recurringActiveCount,
+    };
   }
 
   /**

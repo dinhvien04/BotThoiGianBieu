@@ -921,6 +921,108 @@ describe('SchedulesService', () => {
     });
   });
 
+  describe('getStatistics', () => {
+    const mkItem = (overrides: Partial<Schedule>): Schedule =>
+      ({
+        ...mockSchedule,
+        ...overrides,
+      } as Schedule);
+
+    it('should return zeros when user has no schedules', async () => {
+      mockRepository.find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      const stats = await service.getStatistics(
+        'user123',
+        new Date('2026-01-01'),
+        new Date('2026-01-31'),
+      );
+
+      expect(stats.total).toBe(0);
+      expect(stats.byStatus).toEqual({ pending: 0, completed: 0, cancelled: 0 });
+      expect(stats.byItemType).toEqual({ task: 0, meeting: 0, event: 0, reminder: 0 });
+      expect(stats.topHours).toEqual([]);
+      expect(stats.recurringActiveCount).toBe(0);
+    });
+
+    it('should aggregate counts by status, type, and hour', async () => {
+      const items = [
+        mkItem({ id: 1, status: 'completed', item_type: 'task', start_time: new Date(2026, 3, 1, 9, 0) }),
+        mkItem({ id: 2, status: 'completed', item_type: 'task', start_time: new Date(2026, 3, 2, 9, 30) }),
+        mkItem({ id: 3, status: 'pending', item_type: 'meeting', start_time: new Date(2026, 3, 3, 14, 0) }),
+        mkItem({ id: 4, status: 'cancelled', item_type: 'event', start_time: new Date(2026, 3, 4, 14, 0) }),
+        mkItem({ id: 5, status: 'pending', item_type: 'reminder', start_time: new Date(2026, 3, 5, 9, 0) }),
+      ];
+      mockRepository.find.mockResolvedValueOnce(items).mockResolvedValueOnce([]);
+
+      const stats = await service.getStatistics('user123', null, null);
+
+      expect(stats.total).toBe(5);
+      expect(stats.byStatus).toEqual({ pending: 2, completed: 2, cancelled: 1 });
+      expect(stats.byItemType).toEqual({ task: 2, meeting: 1, event: 1, reminder: 1 });
+      expect(stats.topHours[0]).toEqual({ hour: 9, count: 3 });
+      expect(stats.topHours[1]).toEqual({ hour: 14, count: 2 });
+    });
+
+    it('should count active recurring schedules (pending + future or null until)', async () => {
+      const now = new Date('2026-04-15');
+      mockRepository.find
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          mkItem({ id: 10, status: 'pending', recurrence_type: 'weekly', recurrence_until: null }),
+          mkItem({
+            id: 11,
+            status: 'pending',
+            recurrence_type: 'daily',
+            recurrence_until: new Date('2026-12-31'),
+          }),
+          mkItem({
+            id: 12,
+            status: 'pending',
+            recurrence_type: 'monthly',
+            recurrence_until: new Date('2026-01-01'),
+          }),
+          mkItem({ id: 13, status: 'pending', recurrence_type: 'none' }),
+        ]);
+
+      const stats = await service.getStatistics('user123', null, null, now);
+
+      expect(stats.recurringActiveCount).toBe(2);
+    });
+
+    it('should use Between filter when both start and end provided', async () => {
+      mockRepository.find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      const start = new Date('2026-01-01');
+      const end = new Date('2026-01-31');
+
+      await service.getStatistics('user123', start, end);
+
+      expect(mockRepository.find).toHaveBeenCalledWith({
+        where: { user_id: 'user123', start_time: Between(start, end) },
+      });
+    });
+
+    it('should query without date filter for all-time', async () => {
+      mockRepository.find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      await service.getStatistics('user123', null, null);
+
+      expect(mockRepository.find).toHaveBeenCalledWith({
+        where: { user_id: 'user123' },
+      });
+    });
+
+    it('should limit topHours to 3 entries', async () => {
+      const items = Array.from({ length: 5 }, (_, i) =>
+        mkItem({ id: i + 1, start_time: new Date(2026, 3, 1, i + 1, 0) }),
+      );
+      mockRepository.find.mockResolvedValueOnce(items).mockResolvedValueOnce([]);
+
+      const stats = await service.getStatistics('user123', null, null);
+
+      expect(stats.topHours).toHaveLength(3);
+    });
+  });
+
   describe('setRecurrence', () => {
     it('should update recurrence_type, interval, and until', async () => {
       const until = new Date('2026-12-31T00:00:00Z');
