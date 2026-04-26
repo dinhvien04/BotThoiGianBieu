@@ -300,6 +300,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Xem và chỉnh cài đặt cá nhân",
     category: "⚙️ CÀI ĐẶT",
   },
+  {
+    name: "gio-lam",
+    syntax: "gio-lam [start] [end] | tat",
+    description: "Đặt nhanh khung giờ làm việc — reminder ngoài khung dồn về sáng hôm sau",
+    category: "⚙️ CÀI ĐẶT",
+  },
 
   // ===== ❓ Hỗ trợ =====
   {

@@ -23,6 +23,8 @@ export interface UpdateSettingsPatch {
   default_remind_minutes?: number;
   notify_via_dm?: boolean;
   notify_via_channel?: boolean;
+  work_start_hour?: number;
+  work_end_hour?: number;
 }
 
 @Injectable()

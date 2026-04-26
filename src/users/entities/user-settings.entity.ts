@@ -29,6 +29,17 @@ export class UserSettings {
   @Column({ type: "boolean", default: true })
   notify_via_channel!: boolean;
 
+  /**
+   * Khung giờ làm việc. Reminder rơi ngoài [start, end) (giờ VN) sẽ
+   * tự dồn về `work_start_hour` của ngày làm việc kế tiếp thay vì gửi
+   * giữa đêm. Khi `start === end` (vd 0/0) → tắt, ping 24/7.
+   */
+  @Column({ type: "integer", default: 0 })
+  work_start_hour!: number;
+
+  @Column({ type: "integer", default: 0 })
+  work_end_hour!: number;
+
   @CreateDateColumn({ type: "timestamp with time zone" })
   created_at!: Date;
 

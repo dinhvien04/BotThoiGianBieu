@@ -215,6 +215,26 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
         selectedMode,
         `Hiện tại: ${modeLabel(currentMode)}. Chọn nơi nhận reminder khi tới giờ.`,
       )
+      .addInputField(
+        'work_start_hour',
+        '🌅 Giờ bắt đầu làm việc (0-24)',
+        '8',
+        {
+          type: 'number',
+          defaultValue: String(settings.work_start_hour),
+        },
+        `Hiện tại: ${settings.work_start_hour}. Để 0/0 = tắt (ping 24/7).`,
+      )
+      .addInputField(
+        'work_end_hour',
+        '🌇 Giờ kết thúc làm việc (0-24)',
+        '18',
+        {
+          type: 'number',
+          defaultValue: String(settings.work_end_hour),
+        },
+        `Hiện tại: ${settings.work_end_hour}. Reminder ngoài khung này sẽ dồn về sáng hôm sau.`,
+      )
       .build();
 
     // Encode ownerId vào button_id → chỉ chủ form click được
@@ -281,6 +301,30 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
       }
     }
 
+    // working hours
+    const startRaw = formData.work_start_hour?.trim();
+    const endRaw = formData.work_end_hour?.trim();
+    if (startRaw !== undefined && startRaw !== '') {
+      const n = Number(startRaw);
+      if (!Number.isInteger(n) || n < 0 || n > 24) {
+        return {
+          data,
+          error: `❌ "Giờ bắt đầu làm việc" phải là số nguyên 0-24: \`${startRaw}\`.`,
+        };
+      }
+      if (n !== current.work_start_hour) data.work_start_hour = n;
+    }
+    if (endRaw !== undefined && endRaw !== '') {
+      const n = Number(endRaw);
+      if (!Number.isInteger(n) || n < 0 || n > 24) {
+        return {
+          data,
+          error: `❌ "Giờ kết thúc làm việc" phải là số nguyên 0-24: \`${endRaw}\`.`,
+        };
+      }
+      if (n !== current.work_end_hour) data.work_end_hour = n;
+    }
+
     return { data };
   }
 
@@ -300,6 +344,18 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
     if (patch.notify_via_dm !== undefined || patch.notify_via_channel !== undefined) {
       const newMode = deriveMode(updated);
       changes.push(`🔔 Nơi nhận thông báo → ${modeLabel(newMode)}`);
+    }
+    if (
+      patch.work_start_hour !== undefined ||
+      patch.work_end_hour !== undefined
+    ) {
+      if (updated.work_start_hour === updated.work_end_hour) {
+        changes.push(`🕐 Giờ làm việc → tắt (ping 24/7)`);
+      } else {
+        changes.push(
+          `🕐 Giờ làm việc → \`${updated.work_start_hour}h - ${updated.work_end_hour}h\``,
+        );
+      }
     }
 
     return [
