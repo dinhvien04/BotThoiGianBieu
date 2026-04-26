@@ -14,10 +14,6 @@ import { Schedule } from '../../src/schedules/entities/schedule.entity';
 
 describe('ThemLichCommand', () => {
   let command: ThemLichCommand;
-  let usersService: UsersService;
-  let schedulesService: SchedulesService;
-  let botService: BotService;
-  let dateParser: DateParser;
 
   const mockCommandRegistry = { register: jest.fn() };
   const mockInteractionRegistry = { register: jest.fn() };
@@ -46,10 +42,6 @@ describe('ThemLichCommand', () => {
     }).compile();
 
     command = module.get<ThemLichCommand>(ThemLichCommand);
-    usersService = module.get<UsersService>(UsersService);
-    schedulesService = module.get<SchedulesService>(SchedulesService);
-    botService = module.get<BotService>(BotService);
-    dateParser = module.get<DateParser>(DateParser);
 
     jest.clearAllMocks();
   });

@@ -13,10 +13,6 @@ import { Schedule } from '../../src/schedules/entities/schedule.entity';
 
 describe('XoaLichCommand', () => {
   let command: XoaLichCommand;
-  let usersService: UsersService;
-  let schedulesService: SchedulesService;
-  let botService: BotService;
-  let dateParser: DateParser;
 
   const mockCommandRegistry = { register: jest.fn() };
   const mockInteractionRegistry = { register: jest.fn() };
@@ -42,10 +38,6 @@ describe('XoaLichCommand', () => {
     }).compile();
 
     command = module.get<XoaLichCommand>(XoaLichCommand);
-    usersService = module.get<UsersService>(UsersService);
-    schedulesService = module.get<SchedulesService>(SchedulesService);
-    botService = module.get<BotService>(BotService);
-    dateParser = module.get<DateParser>(DateParser);
 
     jest.clearAllMocks();
   });

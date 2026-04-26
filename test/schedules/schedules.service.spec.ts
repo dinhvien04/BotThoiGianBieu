@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, IsNull, ILike, MoreThanOrEqual } from 'typeorm';
 import { SchedulesService, CreateScheduleInput, UpdateSchedulePatch } from '../../src/schedules/schedules.service';
-import { Schedule, ScheduleStatus, ScheduleItemType } from '../../src/schedules/entities/schedule.entity';
+import { Schedule } from '../../src/schedules/entities/schedule.entity';
 
 describe('SchedulesService', () => {
   let service: SchedulesService;
