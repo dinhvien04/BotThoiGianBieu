@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, ILike, IsNull, LessThan, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import {
@@ -9,6 +9,7 @@ import {
   ScheduleStatus,
 } from './entities/schedule.entity';
 import { computeNextOccurrence } from '../shared/utils/recurrence';
+import { AuditService } from './audit.service';
 
 export interface SearchResult {
   items: Schedule[];
@@ -70,7 +71,30 @@ export class SchedulesService {
   constructor(
     @InjectRepository(Schedule)
     private readonly scheduleRepository: Repository<Schedule>,
+    @Optional()
+    private readonly auditService: AuditService | null = null,
   ) {}
+
+  private auditLog(
+    scheduleId: number,
+    userId: string,
+    action:
+      | 'create'
+      | 'update'
+      | 'complete'
+      | 'cancel'
+      | 'delete'
+      | 'restore',
+    changes?: Record<string, { from?: unknown; to?: unknown }> | null,
+  ): void {
+    if (!this.auditService) return;
+    void this.auditService.log({
+      schedule_id: scheduleId,
+      user_id: userId,
+      action,
+      changes: changes ?? null,
+    });
+  }
 
   async create(input: CreateScheduleInput): Promise<Schedule> {
     const schedule = this.scheduleRepository.create({
@@ -94,6 +118,7 @@ export class SchedulesService {
 
     const saved = await this.scheduleRepository.save(schedule);
     this.logger.log(`Đã tạo schedule #${saved.id} cho user ${saved.user_id}`);
+    this.auditLog(saved.id, saved.user_id, 'create');
     return saved;
   }
 
@@ -329,27 +354,58 @@ export class SchedulesService {
    * (start ack + end notification).
    */
   async markCompleted(id: number, now: Date = new Date()): Promise<void> {
+    const before = await this.findById(id);
     await this.scheduleRepository.update(id, {
       status: 'completed',
       remind_at: null,
       acknowledged_at: now,
       end_notified_at: now,
     });
+    if (before) {
+      this.auditLog(id, before.user_id, 'complete');
+    }
   }
 
   async updateStatus(id: number, status: Schedule['status']): Promise<void> {
+    const before = await this.findById(id);
     await this.scheduleRepository.update(id, { status });
+    if (before && before.status !== status) {
+      const action =
+        status === 'completed'
+          ? 'complete'
+          : status === 'cancelled'
+            ? 'cancel'
+            : 'update';
+      this.auditLog(id, before.user_id, action, {
+        status: { from: before.status, to: status },
+      });
+    }
   }
 
   /** Patch các field của schedule. Trả về record sau update. */
   async update(id: number, patch: UpdateSchedulePatch): Promise<Schedule | null> {
     if (Object.keys(patch).length === 0) return this.findById(id);
+    const before = await this.findById(id);
     await this.scheduleRepository.update(id, patch);
-    return this.findById(id);
+    const after = await this.findById(id);
+    if (before && after) {
+      const changes = AuditService.diff(
+        before as unknown as Record<string, unknown>,
+        after as unknown as Record<string, unknown>,
+      );
+      if (changes) {
+        this.auditLog(id, before.user_id, 'update', changes);
+      }
+    }
+    return after;
   }
 
   async delete(id: number): Promise<void> {
+    const before = await this.findById(id);
     await this.scheduleRepository.delete(id);
+    if (before) {
+      this.auditLog(id, before.user_id, 'delete');
+    }
   }
 
   /**
@@ -364,6 +420,7 @@ export class SchedulesService {
     this.logger.log(
       `Đã khôi phục schedule #${snapshot.id} cho user ${snapshot.user_id}`,
     );
+    this.auditLog(snapshot.id, snapshot.user_id, 'restore');
     return entity;
   }
 

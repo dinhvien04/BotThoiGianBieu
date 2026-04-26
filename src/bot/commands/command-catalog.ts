@@ -123,6 +123,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "📅 XEM LỊCH",
   },
   {
+    name: "lich-su",
+    syntax: "lich-su <ID> [trang]",
+    description: "Xem lịch sử thay đổi của một lịch (tạo / sửa / hoàn-thành / xoá)",
+    category: "📅 XEM LỊCH",
+  },
+  {
     name: "tim-kiem",
     syntax: "tim-kiem <từ khoá>",
     description: "Tìm lịch theo từ khoá (tiêu đề / ghi chú)",
