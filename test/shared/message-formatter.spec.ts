@@ -334,6 +334,47 @@ describe('MessageFormatter', () => {
       expect(result).toContain('Không có lịch nào.');
       expect(result).toContain('💡 Chúc bạn một ngày làm việc hiệu quả!');
     });
+
+    it('should format monthly schedule with grouped days and summary', () => {
+      const schedules = [
+        buildSchedule({
+          id: 1,
+          start_time: new Date(2026, 3, 1, 9, 0),
+          title: 'Đầu tháng',
+          status: 'pending',
+        }),
+        buildSchedule({
+          id: 2,
+          start_time: new Date(2026, 3, 15, 14, 30),
+          title: 'Giữa tháng',
+          status: 'completed',
+        }),
+        buildSchedule({
+          id: 3,
+          start_time: new Date(2026, 3, 15, 16, 0),
+          title: 'Họp khẩn',
+          status: 'cancelled',
+        }),
+      ];
+
+      const result = formatter.formatMonthlySchedule(schedules, 2026, 4);
+
+      expect(result).toContain('【 LỊCH TRÌNH THÁNG 04/2026 】');
+      expect(result).toContain('(1/4) — 1 lịch');
+      expect(result).toContain('(15/4) — 2 lịch');
+      expect(result).toContain('**Đầu tháng**');
+      expect(result).toContain('**Giữa tháng**');
+      expect(result).toContain('📊 Tổng: 3 lịch');
+      expect(result).toContain('Đang chờ: 1');
+      expect(result).toContain('Đã hoàn thành: 1');
+      expect(result).toContain('Đã hủy: 1');
+    });
+
+    it('should format empty monthly schedule message', () => {
+      const result = formatter.formatMonthlySchedule([], 2026, 4);
+      expect(result).toContain('【 LỊCH TRÌNH THÁNG 04/2026 】');
+      expect(result).toContain('Không có lịch nào trong tháng 04/2026');
+    });
   });
 
   describe('formatNotInitialized', () => {

@@ -228,6 +228,87 @@ export class MessageFormatter {
     return sections.join("\n\n").trimEnd();
   }
 
+  /**
+   * Render lịch của cả tháng (year, month — 1..12). Group theo ngày, mỗi ngày
+   * có schedules thì show heading "❖ Thứ X (DD/MM)" + danh sách item.
+   * Đầu/cuối có header và summary tổng.
+   */
+  formatMonthlySchedule(
+    schedules: Schedule[],
+    year: number,
+    month: number,
+  ): string {
+    const monthLabel = `${String(month).padStart(2, "0")}/${year}`;
+    const header = `【 LỊCH TRÌNH THÁNG ${monthLabel} 】`;
+    const separator = "━━━━━━━━━━━━━━━━━━━━";
+
+    if (schedules.length === 0) {
+      return (
+        `${header}\n${separator}\n\n` +
+        `Không có lịch nào trong tháng ${monthLabel}.\n` +
+        `💡 Gõ \`*them-lich\` để thêm lịch mới.`
+      );
+    }
+
+    const schedulesByDate = new Map<string, Schedule[]>();
+    for (const schedule of schedules) {
+      const key = formatDateShort(schedule.start_time);
+      const list = schedulesByDate.get(key) ?? [];
+      list.push(schedule);
+      schedulesByDate.set(key, list);
+    }
+
+    const dayNames = [
+      "Chủ nhật",
+      "Thứ 2",
+      "Thứ 3",
+      "Thứ 4",
+      "Thứ 5",
+      "Thứ 6",
+      "Thứ 7",
+    ];
+
+    const sections: string[] = [header, separator];
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    for (let d = 1; d <= daysInMonth; d += 1) {
+      const day = new Date(year, month - 1, d);
+      const key = formatDateShort(day);
+      const daySchedules = schedulesByDate.get(key);
+      if (!daySchedules?.length) continue;
+
+      const dayName = dayNames[day.getDay()];
+      const dayHeader = `❖ ${dayName} (${formatDateNoYear(day)}) — ${daySchedules.length} lịch`;
+      const items = daySchedules.map((schedule) =>
+        this.formatDailyScheduleItem(schedule),
+      );
+      sections.push(`${dayHeader}\n\n${items.join("\n\n")}`);
+    }
+
+    const counts = this.countSchedulesByStatus(schedules);
+    const summaryParts: string[] = [`📊 Tổng: ${schedules.length} lịch`];
+    if (counts.pending) summaryParts.push(`Đang chờ: ${counts.pending}`);
+    if (counts.completed) summaryParts.push(`Đã hoàn thành: ${counts.completed}`);
+    if (counts.cancelled) summaryParts.push(`Đã hủy: ${counts.cancelled}`);
+    sections.push(summaryParts.join(" — "));
+
+    return sections.join("\n\n").trimEnd();
+  }
+
+  private countSchedulesByStatus(
+    schedules: Schedule[],
+  ): Record<ScheduleStatus, number> {
+    const counts: Record<ScheduleStatus, number> = {
+      pending: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+    for (const schedule of schedules) {
+      counts[schedule.status] = (counts[schedule.status] ?? 0) + 1;
+    }
+    return counts;
+  }
+
   formatInvalidDate(input: string, prefix: string, command: string): string {
     return (
       `⚠️ Ngày \`${input}\` không hợp lệ.\n` +
