@@ -3,6 +3,7 @@ import { CommandRegistry } from './command-registry';
 import { BotCommand, CommandContext } from './command.types';
 import { UsersService } from '../../users/users.service';
 import { SchedulesService } from '../../schedules/schedules.service';
+import { UndoService } from '../../schedules/undo.service';
 import { DateParser } from '../../shared/utils/date-parser';
 import { Schedule } from '../../schedules/entities/schedule.entity';
 
@@ -18,6 +19,7 @@ export class HoanThanhCommand implements BotCommand, OnModuleInit {
     private readonly registry: CommandRegistry,
     private readonly usersService: UsersService,
     private readonly schedulesService: SchedulesService,
+    private readonly undoService: UndoService,
     private readonly dateParser: DateParser,
   ) {}
 
@@ -67,8 +69,24 @@ export class HoanThanhCommand implements BotCommand, OnModuleInit {
     }
 
     const now = new Date();
+    const prevRemindAt = schedule.remind_at;
+    const prevAcknowledgedAt = schedule.acknowledged_at;
+    const prevEndNotifiedAt = schedule.end_notified_at;
+
     await this.schedulesService.markCompleted(id, now);
     const next = await this.schedulesService.spawnNextIfRecurring(schedule, now);
+
+    this.undoService.record(schedule.user_id, {
+      kind: 'complete',
+      scheduleId: schedule.id,
+      scheduleTitle: schedule.title,
+      prevStatus: schedule.status,
+      prevRemindAt,
+      prevAcknowledgedAt,
+      prevEndNotifiedAt,
+      spawnedNextId: next?.id ?? null,
+      recordedAt: now,
+    });
 
     await ctx.reply(this.formatDoneMessage(schedule, now, next));
   }
@@ -96,6 +114,7 @@ export class HoanThanhCommand implements BotCommand, OnModuleInit {
 
     lines.push('');
     lines.push(`👏 Làm tốt lắm, tiếp tục phát huy nhé!`);
+    lines.push(`↩️ Lỡ tay? Gõ \`*hoan-tac\` trong vòng 10 phút để hoàn tác.`);
 
     return lines.join('\n');
   }

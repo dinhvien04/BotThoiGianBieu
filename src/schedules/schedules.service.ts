@@ -326,6 +326,21 @@ export class SchedulesService {
   }
 
   /**
+   * Insert lại 1 schedule từ snapshot (giữ nguyên `id`). Dùng cho `*hoan-tac`
+   * sau khi user xoá nhầm. Nếu id đã tồn tại (vd: undo race), throw.
+   */
+  async restoreFromSnapshot(snapshot: Schedule): Promise<Schedule> {
+    const entity = this.scheduleRepository.create({
+      ...snapshot,
+    });
+    await this.scheduleRepository.insert(entity);
+    this.logger.log(
+      `Đã khôi phục schedule #${snapshot.id} cho user ${snapshot.user_id}`,
+    );
+    return entity;
+  }
+
+  /**
    * Tổng hợp thống kê lịch của user trong khoảng `[start, end]` (theo
    * `start_time`). Truyền cả `start` và `end` = null để tính trên toàn bộ
    * lịch của user (all-time). Hot hours = top 3 khung giờ (0-23) bận nhất.
