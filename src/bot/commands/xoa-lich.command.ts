@@ -14,6 +14,7 @@ import {
 } from '../interactions/interaction.types';
 import { UsersService } from '../../users/users.service';
 import { SchedulesService } from '../../schedules/schedules.service';
+import { UndoService } from '../../schedules/undo.service';
 import { DateParser } from '../../shared/utils/date-parser';
 import { Schedule } from '../../schedules/entities/schedule.entity';
 import { findItemTypeOption } from '../../schedules/schedules.constants';
@@ -35,6 +36,7 @@ export class XoaLichCommand implements BotCommand, InteractionHandler, OnModuleI
     private readonly botService: BotService,
     private readonly usersService: UsersService,
     private readonly schedulesService: SchedulesService,
+    private readonly undoService: UndoService,
     private readonly dateParser: DateParser,
   ) {}
 
@@ -101,10 +103,15 @@ export class XoaLichCommand implements BotCommand, InteractionHandler, OnModuleI
     }
 
     await this.schedulesService.delete(scheduleId);
+    this.undoService.record(schedule.user_id, {
+      kind: 'delete',
+      schedule,
+      recordedAt: new Date(),
+    });
     await this.closeForm(ctx);
     await ctx.send(
       `🗑️ Đã xóa lịch \`#${scheduleId}\` — **${schedule.title}**.\n` +
-        `_Lịch đã bị xóa vĩnh viễn khỏi hệ thống._`,
+        `↩️ Gõ \`*hoan-tac\` trong vòng 10 phút để khôi phục.`,
     );
   }
 

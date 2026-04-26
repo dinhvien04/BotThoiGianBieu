@@ -3,6 +3,7 @@ import { HoanThanhCommand } from '../../src/bot/commands/hoan-thanh.command';
 import { CommandRegistry } from '../../src/bot/commands/command-registry';
 import { UsersService } from '../../src/users/users.service';
 import { SchedulesService } from '../../src/schedules/schedules.service';
+import { UndoService } from '../../src/schedules/undo.service';
 import { DateParser } from '../../src/shared/utils/date-parser';
 import { CommandContext } from '../../src/bot/commands/command.types';
 import { User } from '../../src/users/entities/user.entity';
@@ -48,6 +49,7 @@ describe('HoanThanhCommand', () => {
         { provide: CommandRegistry, useValue: mockRegistry },
         { provide: UsersService, useValue: mockUsersService },
         { provide: SchedulesService, useValue: mockSchedulesService },
+        { provide: UndoService, useValue: { record: jest.fn() } as any },
         { provide: DateParser, useValue: mockDateParser },
       ],
     }).compile();

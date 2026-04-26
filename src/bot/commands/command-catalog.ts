@@ -167,6 +167,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "✏️ QUẢN LÝ LỊCH",
   },
   {
+    name: "hoan-tac",
+    syntax: "hoan-tac",
+    description: "Hoàn tác thao tác xoá / hoàn-thành gần nhất (≤10 phút)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
     name: "lich-lap",
     syntax: "lich-lap <ID> <daily|weekly|monthly> [interval] [--den DD/MM/YYYY]",
     description: "Bật lặp cho lịch (hàng ngày / tuần / tháng)",

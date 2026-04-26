@@ -5,6 +5,7 @@ import { InteractionRegistry } from '../../src/bot/interactions/interaction-regi
 import { BotService } from '../../src/bot/bot.service';
 import { UsersService } from '../../src/users/users.service';
 import { SchedulesService } from '../../src/schedules/schedules.service';
+import { UndoService } from '../../src/schedules/undo.service';
 import { DateParser } from '../../src/shared/utils/date-parser';
 import { CommandContext } from '../../src/bot/commands/command.types';
 import { ButtonInteractionContext } from '../../src/bot/interactions/interaction.types';
@@ -23,6 +24,7 @@ describe('XoaLichCommand', () => {
     delete: jest.fn(),
   };
   const mockDateParser = { formatVietnam: jest.fn() };
+  const mockUndoService = { record: jest.fn() };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -33,6 +35,7 @@ describe('XoaLichCommand', () => {
         { provide: BotService, useValue: mockBotService },
         { provide: UsersService, useValue: mockUsersService },
         { provide: SchedulesService, useValue: mockSchedulesService },
+        { provide: UndoService, useValue: mockUndoService },
         { provide: DateParser, useValue: mockDateParser },
       ],
     }).compile();
