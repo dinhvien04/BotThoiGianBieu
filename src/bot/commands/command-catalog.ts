@@ -166,6 +166,18 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Tắt lặp cho lịch",
     category: "✏️ QUẢN LÝ LỊCH",
   },
+  {
+    name: "copy-lich",
+    syntax: "copy-lich <ID> <DD-MM-YYYY>",
+    description: "Sao chép lịch sang ngày khác (giữ nguyên giờ)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "copy-lich",
+    syntax: "copy-lich <ID> <DD-MM-YYYY> <HH:mm>",
+    description: "Sao chép lịch sang ngày + giờ mới",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
 
   // ===== 🔔 Nhắc nhở =====
   {
