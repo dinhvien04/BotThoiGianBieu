@@ -104,6 +104,18 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Tìm lịch theo từ khoá (tiêu đề / ghi chú)",
     category: "📅 XEM LỊCH",
   },
+  {
+    name: "thong-ke",
+    syntax: "thong-ke",
+    description: "Thống kê 30 ngày qua (tỉ lệ hoàn thành, giờ bận, ...)",
+    category: "📅 XEM LỊCH",
+  },
+  {
+    name: "thong-ke",
+    syntax: "thong-ke tuan",
+    description: "Thống kê theo khoảng (tuan | thang | nam | all)",
+    category: "📅 XEM LỊCH",
+  },
 
   // ===== ✏️ Quản lý lịch =====
   {
