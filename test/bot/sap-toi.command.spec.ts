@@ -24,6 +24,7 @@ describe('SapToiCommand', () => {
     recurrence_type: 'none',
     recurrence_interval: 1,
     recurrence_until: null,
+    priority: "normal",
     recurrence_parent_id: null,
   } as any;
 
@@ -45,6 +46,7 @@ describe('SapToiCommand', () => {
     recurrence_type: 'none',
     recurrence_interval: 1,
     recurrence_until: null,
+    priority: "normal",
     recurrence_parent_id: null,
   } as any;
 
@@ -95,7 +97,7 @@ describe('SapToiCommand', () => {
       expect(command.name).toBe('sap-toi');
       expect(command.aliases).toEqual(['saptoi', 'next']);
       expect(command.category).toBe('📅 XEM LỊCH');
-      expect(command.syntax).toBe('sap-toi [số_lượng]');
+      expect(command.syntax).toBe('sap-toi [số_lượng] [--uutien cao|vua|thap]');
     });
   });
 
@@ -131,6 +133,7 @@ describe('SapToiCommand', () => {
         'user123',
         expect.any(Date),
         5,
+        undefined,
       );
       expect(mockFormatter.formatScheduleDigest).toHaveBeenCalledWith(
         [mockSchedule],
@@ -152,6 +155,7 @@ describe('SapToiCommand', () => {
         'user123',
         expect.any(Date),
         7,
+        undefined,
       );
     });
 

@@ -5,6 +5,7 @@ import {
   RecurrenceType,
   Schedule,
   ScheduleItemType,
+  SchedulePriority,
   ScheduleStatus,
 } from './entities/schedule.entity';
 import { computeNextOccurrence } from '../shared/utils/recurrence';
@@ -22,6 +23,7 @@ export interface CreateScheduleInput {
   start_time: Date;
   end_time?: Date | null;
   remind_at?: Date | null;
+  priority?: SchedulePriority;
   recurrence_type?: RecurrenceType;
   recurrence_interval?: number;
   recurrence_until?: Date | null;
@@ -35,6 +37,7 @@ export interface UpdateSchedulePatch {
   start_time?: Date;
   end_time?: Date | null;
   status?: ScheduleStatus;
+  priority?: SchedulePriority;
   remind_at?: Date | null;
   acknowledged_at?: Date | null;
   end_notified_at?: Date | null;
@@ -55,6 +58,7 @@ export interface ScheduleStatistics {
   total: number;
   byStatus: Record<ScheduleStatus, number>;
   byItemType: Record<ScheduleItemType, number>;
+  byPriority: Record<SchedulePriority, number>;
   topHours: Array<{ hour: number; count: number }>;
   recurringActiveCount: number;
 }
@@ -81,6 +85,7 @@ export class SchedulesService {
       acknowledged_at: null,
       end_notified_at: null,
       status: 'pending',
+      priority: input.priority ?? 'normal',
       recurrence_type: input.recurrence_type ?? 'none',
       recurrence_interval: input.recurrence_interval ?? 1,
       recurrence_until: input.recurrence_until ?? null,
@@ -137,15 +142,23 @@ export class SchedulesService {
 
   /**
    * Các lịch `pending` có `start_time` từ `now` trở đi, sắp theo giờ bắt đầu
-   * tăng dần. Dùng cho `*sap-toi` (next upcoming).
+   * tăng dần. Dùng cho `*sap-toi` (next upcoming). Optional `priority` filter
+   * cho phép `*sap-toi --uutien cao`.
    */
-  findUpcoming(userId: string, now: Date, limit = 5): Promise<Schedule[]> {
+  findUpcoming(
+    userId: string,
+    now: Date,
+    limit = 5,
+    priority?: SchedulePriority,
+  ): Promise<Schedule[]> {
+    const where: Record<string, unknown> = {
+      user_id: userId,
+      status: 'pending',
+      start_time: MoreThanOrEqual(now),
+    };
+    if (priority) where.priority = priority;
     return this.scheduleRepository.find({
-      where: {
-        user_id: userId,
-        status: 'pending',
-        start_time: MoreThanOrEqual(now),
-      },
+      where,
       order: { start_time: 'ASC', id: 'ASC' },
       take: limit,
     });
@@ -153,15 +166,18 @@ export class SchedulesService {
 
   /**
    * Toàn bộ lịch `pending` của user (bất kể start_time đã qua hay chưa), có
-   * paginate. Dùng cho `*danh-sach`.
+   * paginate. Dùng cho `*danh-sach`. Optional `priority` filter.
    */
   async findAllPending(
     userId: string,
     limit = 10,
     offset = 0,
+    priority?: SchedulePriority,
   ): Promise<SearchResult> {
+    const where: Record<string, unknown> = { user_id: userId, status: 'pending' };
+    if (priority) where.priority = priority;
     const [items, total] = await this.scheduleRepository.findAndCount({
-      where: { user_id: userId, status: 'pending' },
+      where,
       order: { start_time: 'ASC', id: 'ASC' },
       take: limit,
       skip: offset,
@@ -342,11 +358,18 @@ export class SchedulesService {
       event: 0,
       reminder: 0,
     };
+    const byPriority: Record<SchedulePriority, number> = {
+      low: 0,
+      normal: 0,
+      high: 0,
+    };
     const hourCounts = new Map<number, number>();
 
     for (const item of items) {
       byStatus[item.status] = (byStatus[item.status] ?? 0) + 1;
       byItemType[item.item_type] = (byItemType[item.item_type] ?? 0) + 1;
+      const p = item.priority ?? 'normal';
+      byPriority[p] = (byPriority[p] ?? 0) + 1;
       const hour = item.start_time.getHours();
       hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
     }
@@ -369,6 +392,7 @@ export class SchedulesService {
       total: items.length,
       byStatus,
       byItemType,
+      byPriority,
       topHours,
       recurringActiveCount,
     };
@@ -454,6 +478,7 @@ export class SchedulesService {
       start_time: nextStart,
       end_time: nextEnd,
       remind_at: nextRemindAt,
+      priority: source.priority,
       recurrence_type: source.recurrence_type,
       recurrence_interval: source.recurrence_interval,
       recurrence_until: source.recurrence_until,

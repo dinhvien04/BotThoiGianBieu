@@ -34,6 +34,7 @@ describe('BoLapCommand', () => {
       recurrence_type: 'weekly',
       recurrence_interval: 1,
       recurrence_until: null,
+      priority: "normal",
       recurrence_parent_id: null,
       created_at: new Date(),
       updated_at: new Date(),

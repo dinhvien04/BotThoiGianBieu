@@ -4,6 +4,8 @@ import { SchedulesService } from "../../schedules/schedules.service";
 import { UsersService } from "../../users/users.service";
 import { CommandRegistry } from "./command-registry";
 import { BotCommand, CommandContext } from "./command.types";
+import { extractPriorityFlag } from "../../shared/utils/priority-flag";
+import { formatPriority } from "../../shared/utils/priority";
 
 const PAGE_SIZE = 10;
 
@@ -13,8 +15,8 @@ export class DanhSachCommand implements BotCommand, OnModuleInit {
   readonly aliases = ["danhsach", "pending", "list"];
   readonly description = "Liệt kê tất cả lịch đang chờ";
   readonly category = "📅 XEM LỊCH";
-  readonly syntax = "danh-sach [trang]";
-  readonly example = "danh-sach 2";
+  readonly syntax = "danh-sach [trang] [--uutien cao|vua|thap]";
+  readonly example = "danh-sach 2 --uutien cao";
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -34,10 +36,16 @@ export class DanhSachCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    const page = this.parsePage(ctx.args[0]);
+    const flag = extractPriorityFlag(ctx.args);
+    if (flag.error) {
+      await ctx.reply(flag.error);
+      return;
+    }
+
+    const page = this.parsePage(flag.rest[0]);
     if (page === null) {
       await ctx.reply(
-        `⚠️ Trang không hợp lệ: \`${ctx.args[0]}\`.\n` +
+        `⚠️ Trang không hợp lệ: \`${flag.rest[0]}\`.\n` +
           `Vui lòng nhập số nguyên dương, ví dụ: \`${ctx.prefix}${this.syntax}\`.`,
       );
       return;
@@ -48,15 +56,24 @@ export class DanhSachCommand implements BotCommand, OnModuleInit {
       user.user_id,
       PAGE_SIZE,
       offset,
+      flag.priority,
     );
+
+    const titleSuffix = flag.priority
+      ? ` (Ưu tiên ${formatPriority(flag.priority)})`
+      : "";
+    const emptySuffix = flag.priority
+      ? ` với ưu tiên ${formatPriority(flag.priority)}`
+      : "";
+    const title = `Danh sách lịch chờ${titleSuffix}`;
 
     if (total === 0) {
       await ctx.reply(
-        this.formatter.formatScheduleDigest([], "Danh sách lịch chờ", {
+        this.formatter.formatScheduleDigest([], title, {
           emptyMessage:
-            "Bạn không có lịch nào đang chờ.\n💡 Dùng `" +
+            `Bạn không có lịch nào đang chờ${emptySuffix}.\n💡 Dùng \`` +
             ctx.prefix +
-            "them-lich` để thêm lịch mới.",
+            "them-lich\` để thêm lịch mới.",
         }),
       );
       return;
@@ -70,10 +87,10 @@ export class DanhSachCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    const footer = this.buildFooter(ctx.prefix, page, totalPages, total);
+    const footer = this.buildFooter(ctx.prefix, page, totalPages, total, flag.priority);
 
     await ctx.reply(
-      this.formatter.formatScheduleDigest(items, "Danh sách lịch chờ", {
+      this.formatter.formatScheduleDigest(items, title, {
         footer,
       }),
     );
@@ -101,13 +118,16 @@ export class DanhSachCommand implements BotCommand, OnModuleInit {
     page: number,
     totalPages: number,
     total: number,
+    priority?: ReturnType<typeof extractPriorityFlag>["priority"],
   ): string {
+    const suffix = priority ? ` (ưu tiên ${formatPriority(priority)})` : "";
     const lines = [
-      `💡 Tổng ${total} lịch pending — trang ${page}/${totalPages}.`,
+      `💡 Tổng ${total} lịch pending${suffix} — trang ${page}/${totalPages}.`,
     ];
     if (page < totalPages) {
+      const next = priority ? ` --uutien ${priority}` : "";
       lines.push(
-        `Gõ \`${prefix}${this.name} ${page + 1}\` để xem trang tiếp theo.`,
+        `Gõ \`${prefix}${this.name} ${page + 1}${next}\` để xem trang tiếp theo.`,
       );
     }
     return lines.join("\n");

@@ -33,6 +33,11 @@ import {
   parseRecurrenceType,
   RECURRENCE_TYPE_OPTIONS,
 } from '../../shared/utils/recurrence';
+import {
+  formatPriority,
+  parsePriority,
+  PRIORITY_OPTIONS,
+} from '../../shared/utils/priority';
 
 const INTERACTION_ID = 'sua-lich';
 
@@ -187,6 +192,14 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
         'Tuỳ chọn',
       )
       .addSelectField('item_type', '🏷️ Loại lịch', ITEM_TYPES, typeOption, 'Chọn loại lịch')
+      .addSelectField(
+        'priority',
+        '⚡ Ưu tiên',
+        PRIORITY_OPTIONS,
+        PRIORITY_OPTIONS.find((o) => o.value === (schedule.priority ?? 'normal')) ??
+          PRIORITY_OPTIONS[1],
+        `Hiện tại: ${formatPriority(schedule.priority ?? 'normal')}`,
+      )
       .addInputField(
         'start_date',
         '📅 Ngày bắt đầu *',
@@ -293,6 +306,17 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
       }
       if (itemTypeRaw !== current.item_type) {
         data.item_type = itemTypeRaw as ScheduleItemType;
+      }
+    }
+
+    const priorityRaw = formData.priority?.trim();
+    if (priorityRaw) {
+      const parsed = parsePriority(priorityRaw);
+      if (!parsed) {
+        return { data, error: `❌ Ưu tiên không hợp lệ: \`${priorityRaw}\`.` };
+      }
+      if (parsed !== (current.priority ?? 'normal')) {
+        data.priority = parsed;
       }
     }
 
@@ -424,6 +448,9 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
     if (patch.item_type !== undefined) {
       const label = findItemTypeOption(updated.item_type)?.label ?? updated.item_type;
       changes.push(`🏷️ Loại → ${label}`);
+    }
+    if (patch.priority !== undefined) {
+      changes.push(`⚡ Ưu tiên → ${formatPriority(updated.priority)}`);
     }
     if (patch.start_time !== undefined) {
       changes.push(`⏰ Bắt đầu → \`${this.dateParser.formatVietnam(updated.start_time)}\``);

@@ -26,6 +26,7 @@ describe('SchedulesService', () => {
     recurrence_type: 'none',
     recurrence_interval: 1,
     recurrence_until: null,
+    priority: "normal",
     recurrence_parent_id: null,
   };
 
@@ -93,6 +94,7 @@ describe('SchedulesService', () => {
         recurrence_type: 'none',
         recurrence_interval: 1,
         recurrence_until: null,
+        priority: "normal",
         recurrence_parent_id: null,
       });
       expect(mockRepository.save).toHaveBeenCalledWith(createdSchedule);
@@ -137,6 +139,7 @@ describe('SchedulesService', () => {
         recurrence_type: 'none',
         recurrence_interval: 1,
         recurrence_until: null,
+        priority: "normal",
         recurrence_parent_id: null,
       });
       expect(result.item_type).toBe('task');
@@ -380,6 +383,16 @@ describe('SchedulesService', () => {
       // Assert
       expect(result).toEqual([]);
     });
+
+    it('should filter by priority when provided', async () => {
+      const now = new Date('2026-04-23T09:00:00Z');
+      mockRepository.find.mockResolvedValue([]);
+
+      await service.findUpcoming('user123', now, 5, 'high');
+
+      const call = mockRepository.find.mock.calls[0]?.[0];
+      expect(call?.where).toMatchObject({ priority: 'high' });
+    });
   });
 
   describe('findAllPending', () => {
@@ -422,6 +435,15 @@ describe('SchedulesService', () => {
 
       // Assert
       expect(result).toEqual({ items: [], total: 0 });
+    });
+
+    it('should filter by priority when provided', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAllPending('user123', 10, 0, 'low');
+
+      const call = mockRepository.findAndCount.mock.calls[0]?.[0];
+      expect(call?.where).toMatchObject({ priority: 'low' });
     });
   });
 
@@ -940,8 +962,23 @@ describe('SchedulesService', () => {
       expect(stats.total).toBe(0);
       expect(stats.byStatus).toEqual({ pending: 0, completed: 0, cancelled: 0 });
       expect(stats.byItemType).toEqual({ task: 0, meeting: 0, event: 0, reminder: 0 });
+      expect(stats.byPriority).toEqual({ low: 0, normal: 0, high: 0 });
       expect(stats.topHours).toEqual([]);
       expect(stats.recurringActiveCount).toBe(0);
+    });
+
+    it('should aggregate counts by priority', async () => {
+      const items = [
+        mkItem({ id: 1, priority: 'high', start_time: new Date(2026, 3, 1, 9) }),
+        mkItem({ id: 2, priority: 'high', start_time: new Date(2026, 3, 2, 9) }),
+        mkItem({ id: 3, priority: 'normal', start_time: new Date(2026, 3, 3, 9) }),
+        mkItem({ id: 4, priority: 'low', start_time: new Date(2026, 3, 4, 9) }),
+      ];
+      mockRepository.find.mockResolvedValueOnce(items).mockResolvedValueOnce([]);
+
+      const stats = await service.getStatistics('user123', null, null);
+
+      expect(stats.byPriority).toEqual({ low: 1, normal: 1, high: 2 });
     });
 
     it('should aggregate counts by status, type, and hour', async () => {
@@ -1087,6 +1124,7 @@ describe('SchedulesService', () => {
       recurrence_type: 'weekly',
       recurrence_interval: 1,
       recurrence_until: null,
+      priority: "normal",
       recurrence_parent_id: null,
     } as Schedule;
 

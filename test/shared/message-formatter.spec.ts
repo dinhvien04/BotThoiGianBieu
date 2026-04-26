@@ -248,9 +248,9 @@ describe('MessageFormatter', () => {
       expect(result).toContain('【 LỊCH TRÌNH HÔM NAY 】');
       expect(result).toContain('❖ Trạng thái: Đang chờ (1)');
       expect(result).toContain('❖ Trạng thái: Đã hoàn thành (1)');
-      expect(result).toContain("➤ 『 09:00 』 **Họp team**");
+      expect(result).toContain("➤ 『 09:00 』 🟡 **Họp team**");
       expect(result).toContain('ID: 1 ✦ Ghi chú: Daily meeting');
-      expect(result).toContain("➤ 『 10:30 』 **Review code**");
+      expect(result).toContain("➤ 『 10:30 』 🟡 **Review code**");
       expect(result).toContain('ID: 2 ✦ Ghi chú: Review PR');
     });
 
@@ -286,13 +286,13 @@ describe('MessageFormatter', () => {
       expect(result).toContain('━━━━━━━━━━━━━━━━━━━━');
       expect(result).toContain('❖ Thứ 3 (21/4)');
       expect(result).toContain('❖ Trạng thái: Đang chờ (2)');
-      expect(result).toContain("➤ 『 09:00 』 **Họp team**");
+      expect(result).toContain("➤ 『 09:00 』 🟡 **Họp team**");
       expect(result).toContain('ID: 1 ✦ Ghi chú: Daily meeting');
-      expect(result).toContain("➤ 『 14:00 』 **Review code**");
+      expect(result).toContain("➤ 『 14:00 』 🟡 **Review code**");
       expect(result).toContain('ID: 2 ✦ Ghi chú: Review PR cho dự án mới');
       expect(result).toContain('❖ Thứ 5 (23/4)');
       expect(result).toContain('❖ Trạng thái: Đang chờ (1)');
-      expect(result).toContain("➤ 『 15:40 』 **Onboarding**");
+      expect(result).toContain("➤ 『 15:40 』 🟡 **Onboarding**");
       expect(result).toContain('ID: 3 ✦ Ghi chú: Meeting anh Viễn');
       expect(result).toContain('💡 Chúc bạn một ngày làm việc hiệu quả!');
     });
