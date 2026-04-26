@@ -34,6 +34,7 @@ import { ExportIcsCommand } from './commands/export-ics.command';
 import { TimKiemCommand } from './commands/tim-kiem.command';
 import { SapToiCommand } from './commands/sap-toi.command';
 import { DanhSachCommand } from './commands/danh-sach.command';
+import { LichTreCommand } from './commands/lich-tre.command';
 import { ThongKeCommand } from './commands/thong-ke.command';
 import {
   TagThemCommand,
@@ -82,6 +83,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     TimKiemCommand,
     SapToiCommand,
     DanhSachCommand,
+    LichTreCommand,
     ThongKeCommand,
     TagThemCommand,
     TagXoaCommand,

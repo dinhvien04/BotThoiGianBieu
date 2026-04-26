@@ -117,6 +117,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "📅 XEM LỊCH",
   },
   {
+    name: "lich-tre",
+    syntax: "lich-tre [trang] [--uutien ...]",
+    description: "Liệt kê lịch quá hạn (đã qua giờ bắt đầu, chưa hoàn thành)",
+    category: "📅 XEM LỊCH",
+  },
+  {
     name: "tim-kiem",
     syntax: "tim-kiem <từ khoá>",
     description: "Tìm lịch theo từ khoá (tiêu đề / ghi chú)",

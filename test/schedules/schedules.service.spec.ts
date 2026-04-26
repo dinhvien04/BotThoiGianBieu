@@ -447,6 +447,35 @@ describe('SchedulesService', () => {
     });
   });
 
+  describe('findOverdue', () => {
+    it('should query pending schedules with start_time < now', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[mockSchedule], 1]);
+      const now = new Date('2026-04-25T12:00:00Z');
+
+      const result = await service.findOverdue('user123', now);
+
+      const call = mockRepository.findAndCount.mock.calls[0]?.[0];
+      expect(call?.where).toMatchObject({
+        user_id: 'user123',
+        status: 'pending',
+      });
+      // LessThan operator wrapped — assert presence of start_time clause
+      expect((call?.where as Record<string, unknown>)?.start_time).toBeDefined();
+      expect(call?.take).toBe(10);
+      expect(call?.skip).toBe(0);
+      expect(result).toEqual({ items: [mockSchedule], total: 1 });
+    });
+
+    it('should honor custom limit/offset/priority', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[], 0]);
+      await service.findOverdue('user123', new Date(), 5, 10, 'high');
+      const call = mockRepository.findAndCount.mock.calls[0]?.[0];
+      expect(call?.take).toBe(5);
+      expect(call?.skip).toBe(10);
+      expect(call?.where).toMatchObject({ priority: 'high' });
+    });
+  });
+
   describe('findDueReminders', () => {
     it('should find schedules due for reminder', async () => {
       // Arrange
