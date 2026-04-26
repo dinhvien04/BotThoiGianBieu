@@ -203,6 +203,44 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "✏️ QUẢN LÝ LỊCH",
   },
 
+  // ===== 🏷️ Nhãn =====
+  {
+    name: "tag-them",
+    syntax: "tag-them <name>",
+    description: "Tạo nhãn mới (a-z, 0-9, -, _ ; ≤30 ký tự)",
+    category: "🏷️ NHÃN",
+  },
+  {
+    name: "tag-xoa",
+    syntax: "tag-xoa <name>",
+    description: "Xoá nhãn (gỡ khỏi mọi lịch)",
+    category: "🏷️ NHÃN",
+  },
+  {
+    name: "tag-ds",
+    syntax: "tag-ds",
+    description: "Liệt kê các nhãn của bạn",
+    category: "🏷️ NHÃN",
+  },
+  {
+    name: "tag",
+    syntax: "tag <ID> <name1> [name2 ...]",
+    description: "Gắn nhãn vào lịch (auto-tạo nhãn nếu chưa có)",
+    category: "🏷️ NHÃN",
+  },
+  {
+    name: "untag",
+    syntax: "untag <ID> <name>",
+    description: "Gỡ nhãn khỏi lịch",
+    category: "🏷️ NHÃN",
+  },
+  {
+    name: "lich-tag",
+    syntax: "lich-tag <name> [--cho]",
+    description: "Liệt kê lịch theo nhãn (--cho = chỉ pending)",
+    category: "🏷️ NHÃN",
+  },
+
   // ===== 🔔 Nhắc nhở =====
   {
     name: "nhac",
@@ -245,6 +283,7 @@ export const CATEGORY_ORDER: string[] = [
   "🆕 KHỞI TẠO",
   "📅 XEM LỊCH",
   "✏️ QUẢN LÝ LỊCH",
+  "🏷️ NHÃN",
   "🔔 NHẮC NHỞ",
   "⚙️ CÀI ĐẶT",
   "❓ HỖ TRỢ",

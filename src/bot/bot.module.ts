@@ -35,6 +35,14 @@ import { TimKiemCommand } from './commands/tim-kiem.command';
 import { SapToiCommand } from './commands/sap-toi.command';
 import { DanhSachCommand } from './commands/danh-sach.command';
 import { ThongKeCommand } from './commands/thong-ke.command';
+import {
+  TagThemCommand,
+  TagXoaCommand,
+  TagDsCommand,
+  TagCommand,
+  UntagCommand,
+} from './commands/tag.command';
+import { LichTagCommand } from './commands/lich-tag.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
 
@@ -69,6 +77,12 @@ import { InteractionRouter } from './interactions/interaction-router';
     SapToiCommand,
     DanhSachCommand,
     ThongKeCommand,
+    TagThemCommand,
+    TagXoaCommand,
+    TagDsCommand,
+    TagCommand,
+    UntagCommand,
+    LichTagCommand,
     ThemLichCommand,
     ThemLichExcelCommand,
     MauLichExcelCommand,
