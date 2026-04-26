@@ -1,14 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { UsersService } from '../../src/users/users.service';
 import { User } from '../../src/users/entities/user.entity';
 import { UserSettings } from '../../src/users/entities/user-settings.entity';
 
 describe('UsersService', () => {
   let service: UsersService;
-  let userRepository: Repository<User>;
-  let settingsRepository: Repository<UserSettings>;
 
   const mockUserRepository = {
     findOne: jest.fn(),
@@ -38,8 +35,6 @@ describe('UsersService', () => {
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    userRepository = module.get<Repository<User>>(getRepositoryToken(User));
-    settingsRepository = module.get<Repository<UserSettings>>(getRepositoryToken(UserSettings));
 
     jest.clearAllMocks();
   });

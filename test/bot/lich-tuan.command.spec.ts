@@ -6,7 +6,7 @@ import {
 } from '../../src/bot/commands/lich-tuan.command';
 import { CommandRegistry } from '../../src/bot/commands/command-registry';
 import { UsersService } from '../../src/users/users.service';
-import { ScheduleService } from '../../src/schedules/schedule.service';
+import { SchedulesService } from '../../src/schedules/schedules.service';
 import { MessageFormatter } from '../../src/shared/utils/message-formatter';
 import { CommandContext } from '../../src/bot/commands/command.types';
 import { User } from '../../src/users/entities/user.entity';
@@ -15,7 +15,7 @@ describe('LichTuanCommand', () => {
   let command: LichTuanCommand;
   let mockRegistry: jest.Mocked<CommandRegistry>;
   let mockUsersService: jest.Mocked<UsersService>;
-  let mockSchedulesService: jest.Mocked<ScheduleService>;
+  let mockSchedulesService: jest.Mocked<SchedulesService>;
   let mockFormatter: jest.Mocked<MessageFormatter>;
 
   const mockUser: User = {
@@ -39,7 +39,7 @@ describe('LichTuanCommand', () => {
         LichTuanCommand,
         { provide: CommandRegistry, useValue: mockRegistry },
         { provide: UsersService, useValue: mockUsersService },
-        { provide: ScheduleService, useValue: mockSchedulesService },
+        { provide: SchedulesService, useValue: mockSchedulesService },
         { provide: MessageFormatter, useValue: mockFormatter },
       ],
     }).compile();
@@ -137,7 +137,7 @@ describe('LichTuanTruocCommand', () => {
   let command: LichTuanTruocCommand;
   let mockRegistry: jest.Mocked<CommandRegistry>;
   let mockUsersService: jest.Mocked<UsersService>;
-  let mockSchedulesService: jest.Mocked<ScheduleService>;
+  let mockSchedulesService: jest.Mocked<SchedulesService>;
   let mockFormatter: jest.Mocked<MessageFormatter>;
 
   const mockUser: User = { user_id: 'user123' } as any;
@@ -156,7 +156,7 @@ describe('LichTuanTruocCommand', () => {
         LichTuanTruocCommand,
         { provide: CommandRegistry, useValue: mockRegistry },
         { provide: UsersService, useValue: mockUsersService },
-        { provide: ScheduleService, useValue: mockSchedulesService },
+        { provide: SchedulesService, useValue: mockSchedulesService },
         { provide: MessageFormatter, useValue: mockFormatter },
       ],
     }).compile();
@@ -223,7 +223,7 @@ describe('LichTuanSauCommand', () => {
   let command: LichTuanSauCommand;
   let mockRegistry: jest.Mocked<CommandRegistry>;
   let mockUsersService: jest.Mocked<UsersService>;
-  let mockSchedulesService: jest.Mocked<ScheduleService>;
+  let mockSchedulesService: jest.Mocked<SchedulesService>;
   let mockFormatter: jest.Mocked<MessageFormatter>;
 
   const mockUser: User = { user_id: 'user123' } as any;
@@ -242,7 +242,7 @@ describe('LichTuanSauCommand', () => {
         LichTuanSauCommand,
         { provide: CommandRegistry, useValue: mockRegistry },
         { provide: UsersService, useValue: mockUsersService },
-        { provide: ScheduleService, useValue: mockSchedulesService },
+        { provide: SchedulesService, useValue: mockSchedulesService },
         { provide: MessageFormatter, useValue: mockFormatter },
       ],
     }).compile();

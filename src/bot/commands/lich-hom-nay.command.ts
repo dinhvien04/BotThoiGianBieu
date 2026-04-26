@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { MessageFormatter } from "../../shared/utils/message-formatter";
 import { dayRange } from "../../shared/utils/date-utils";
-import { ScheduleService } from "../../schedules/schedule.service";
+import { SchedulesService } from "../../schedules/schedules.service";
 import { UsersService } from "../../users/users.service";
 import { CommandRegistry } from "./command-registry";
 import { BotCommand, CommandContext } from "./command.types";
@@ -16,7 +16,7 @@ export class LichHomNayCommand implements BotCommand, OnModuleInit {
   constructor(
     private readonly registry: CommandRegistry,
     private readonly usersService: UsersService,
-    private readonly schedulesService: ScheduleService,
+    private readonly schedulesService: SchedulesService,
     private readonly formatter: MessageFormatter,
   ) {}
 

@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LichHomNayCommand } from '../../src/bot/commands/lich-hom-nay.command';
 import { CommandRegistry } from '../../src/bot/commands/command-registry';
 import { UsersService } from '../../src/users/users.service';
-import { ScheduleService } from '../../src/schedules/schedule.service';
+import { SchedulesService } from '../../src/schedules/schedules.service';
 import { MessageFormatter } from '../../src/shared/utils/message-formatter';
 import { CommandContext } from '../../src/bot/commands/command.types';
 import { User } from '../../src/users/entities/user.entity';
@@ -12,7 +12,7 @@ describe('LichHomNayCommand', () => {
   let command: LichHomNayCommand;
   let mockRegistry: jest.Mocked<CommandRegistry>;
   let mockUsersService: jest.Mocked<UsersService>;
-  let mockSchedulesService: jest.Mocked<ScheduleService>;
+  let mockSchedulesService: jest.Mocked<SchedulesService>;
   let mockFormatter: jest.Mocked<MessageFormatter>;
 
   const mockUser: User = {
@@ -71,7 +71,7 @@ describe('LichHomNayCommand', () => {
         LichHomNayCommand,
         { provide: CommandRegistry, useValue: mockRegistry },
         { provide: UsersService, useValue: mockUsersService },
-        { provide: ScheduleService, useValue: mockSchedulesService },
+        { provide: SchedulesService, useValue: mockSchedulesService },
         { provide: MessageFormatter, useValue: mockFormatter },
       ],
     }).compile();

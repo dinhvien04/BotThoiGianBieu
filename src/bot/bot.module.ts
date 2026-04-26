@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SharedModule } from '../shared/shared.module';
 import { UsersModule } from '../users/users.module';
-import { ScheduleModule } from '../schedules/schedule.module';
 import { SchedulesModule } from '../schedules/schedules.module';
 import { BotService } from './bot.service';
 import { BotGateway } from './bot.gateway';
@@ -36,7 +35,7 @@ import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
 
 @Module({
-  imports: [SharedModule, UsersModule, SchedulesModule, ScheduleModule],
+  imports: [SharedModule, UsersModule, SchedulesModule],
   providers: [
     BotService,
     CommandRegistry,

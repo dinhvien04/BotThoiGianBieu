@@ -9,9 +9,6 @@ import { UserSettings } from '../../src/users/entities/user-settings.entity';
 
 describe('BatDauCommand', () => {
   let command: BatDauCommand;
-  let usersService: UsersService;
-  let formatter: MessageFormatter;
-  let registry: CommandRegistry;
 
   const mockUsersService = {
     registerUser: jest.fn(),
@@ -36,9 +33,6 @@ describe('BatDauCommand', () => {
     }).compile();
 
     command = module.get<BatDauCommand>(BatDauCommand);
-    usersService = module.get<UsersService>(UsersService);
-    formatter = module.get<MessageFormatter>(MessageFormatter);
-    registry = module.get<CommandRegistry>(CommandRegistry);
 
     jest.clearAllMocks();
   });

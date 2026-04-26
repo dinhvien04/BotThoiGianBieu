@@ -8,7 +8,6 @@ import { BotCommand, MezonChannelMessage } from '../../src/bot/commands/command.
 describe('CommandRouter', () => {
   let router: CommandRouter;
   let registry: CommandRegistry;
-  let botService: BotService;
 
   const mockBotService = {
     replyToMessage: jest.fn(),
@@ -35,7 +34,6 @@ describe('CommandRouter', () => {
 
     router = module.get<CommandRouter>(CommandRouter);
     registry = module.get<CommandRegistry>(CommandRegistry);
-    botService = module.get<BotService>(BotService);
 
     jest.clearAllMocks();
   });
