@@ -5,6 +5,7 @@ import { Schedule, ScheduleItemType, ScheduleStatus } from "../../schedules/enti
 import { Tag } from "../../schedules/entities/tag.entity";
 import { SchedulesService } from "../../schedules/schedules.service";
 import { TagsService } from "../../schedules/tags.service";
+import { SharesService } from "../../schedules/shares.service";
 import { formatRecurrence } from "../../shared/utils/recurrence";
 import { formatPriority } from "../../shared/utils/priority";
 import { UsersService } from "../../users/users.service";
@@ -23,6 +24,7 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
     private readonly usersService: UsersService,
     private readonly schedulesService: SchedulesService,
     private readonly tagsService: TagsService,
+    private readonly sharesService: SharesService,
     private readonly formatter: MessageFormatter,
     private readonly dateParser: DateParser,
   ) {}
@@ -65,7 +67,11 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
       scheduleId,
     );
 
-    await ctx.reply(this.formatScheduleDetail(schedule, tags));
+    const sharedCount = (
+      await this.sharesService.listSharedUsers(scheduleId, user.user_id)
+    ).length;
+
+    await ctx.reply(this.formatScheduleDetail(schedule, tags, sharedCount));
   }
 
   private formatUsage(prefix: string): string {
@@ -85,7 +91,11 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
     return value;
   }
 
-  private formatScheduleDetail(schedule: Schedule, tags: Tag[]): string {
+  private formatScheduleDetail(
+    schedule: Schedule,
+    tags: Tag[],
+    sharedCount: number,
+  ): string {
     const lines = [
       `📋 CHI TIẾT LỊCH #${schedule.id}`,
       "━━━━━━━━━━━━━━━━━━━━",
@@ -100,6 +110,10 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
       lines.push(
         `➤ Nhãn: ${tags.map((t) => `\`#${t.name}\``).join(", ")}`,
       );
+    }
+
+    if (sharedCount > 0) {
+      lines.push(`➤ Đã chia sẻ với: ${sharedCount} người`);
     }
 
     if (schedule.end_time) {

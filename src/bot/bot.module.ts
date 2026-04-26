@@ -43,6 +43,12 @@ import {
   UntagCommand,
 } from './commands/tag.command';
 import { LichTagCommand } from './commands/lich-tag.command';
+import {
+  ChiaSeCommand,
+  BoChiaSeCommand,
+  LichChiaSeCommand,
+  ChiaSeAiCommand,
+} from './commands/chia-se.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
 
@@ -83,6 +89,10 @@ import { InteractionRouter } from './interactions/interaction-router';
     TagCommand,
     UntagCommand,
     LichTagCommand,
+    ChiaSeCommand,
+    BoChiaSeCommand,
+    LichChiaSeCommand,
+    ChiaSeAiCommand,
     ThemLichCommand,
     ThemLichExcelCommand,
     MauLichExcelCommand,

@@ -241,6 +241,32 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "🏷️ NHÃN",
   },
 
+  // ===== 👥 Chia sẻ =====
+  {
+    name: "chia-se",
+    syntax: "chia-se <ID> <user_id>",
+    description: "Chia sẻ lịch (view-only) cho user khác",
+    category: "👥 CHIA SẺ",
+  },
+  {
+    name: "bo-chia-se",
+    syntax: "bo-chia-se <ID> <user_id>",
+    description: "Gỡ chia sẻ lịch khỏi 1 user",
+    category: "👥 CHIA SẺ",
+  },
+  {
+    name: "chia-se-ai",
+    syntax: "chia-se-ai <ID>",
+    description: "Liệt kê người được chia sẻ 1 lịch",
+    category: "👥 CHIA SẺ",
+  },
+  {
+    name: "lich-chia-se",
+    syntax: "lich-chia-se",
+    description: "Liệt kê lịch được người khác chia sẻ cho bạn",
+    category: "👥 CHIA SẺ",
+  },
+
   // ===== 🔔 Nhắc nhở =====
   {
     name: "nhac",
@@ -284,6 +310,7 @@ export const CATEGORY_ORDER: string[] = [
   "📅 XEM LỊCH",
   "✏️ QUẢN LÝ LỊCH",
   "🏷️ NHÃN",
+  "👥 CHIA SẺ",
   "🔔 NHẮC NHỞ",
   "⚙️ CÀI ĐẶT",
   "❓ HỖ TRỢ",

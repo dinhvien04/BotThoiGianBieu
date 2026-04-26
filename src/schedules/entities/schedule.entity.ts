@@ -130,4 +130,19 @@ export class Schedule {
     inverseJoinColumn: { name: "tag_id", referencedColumnName: "id" },
   })
   tags?: Tag[];
+
+  /**
+   * Danh sách user khác được "share" lịch (view-only). Owner vẫn là
+   * `user_id`. Junction `schedule_shares`.
+   */
+  @ManyToMany(() => User)
+  @JoinTable({
+    name: "schedule_shares",
+    joinColumn: { name: "schedule_id", referencedColumnName: "id" },
+    inverseJoinColumn: {
+      name: "shared_with_user_id",
+      referencedColumnName: "user_id",
+    },
+  })
+  sharedWith?: User[];
 }
