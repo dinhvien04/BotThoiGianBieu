@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.github
+.vscode
+.idea
+test
+coverage
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+KIRO.md
+README.md
+assets
