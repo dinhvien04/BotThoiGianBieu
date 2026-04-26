@@ -6,11 +6,15 @@ Mezon bot quản lý lịch trình, sự kiện và nhắc nhở tự động. X
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
 [![NestJS](https://img.shields.io/badge/NestJS-10.x-red)](https://nestjs.com/)
 
-> 📖 Xem [`KIRO.md`](./KIRO.md) để biết chi tiết kiến trúc, luồng hoạt động và quy ước.
+> 📖 **Tài liệu đầy đủ**: Xem [`doc/README.md`](./doc/README.md) để có **15+ tài liệu chi tiết** về setup, development, deployment và troubleshooting.
+
+> 🤖 **AI Context**: Xem [`KIRO.md`](./KIRO.md) để biết chi tiết kiến trúc, luồng hoạt động và quy ước.
 
 ---
 
 ## 🚀 Khởi động nhanh
+
+> 📚 **Tài liệu chi tiết**: Xem [`doc/setup-installation.md`](./doc/setup-installation.md) để có hướng dẫn setup đầy đủ.
 
 ### 1. Cài đặt dependencies
 
@@ -57,6 +61,8 @@ Nếu mọi thứ OK, bạn sẽ thấy:
 🎧 Bot đang lắng nghe lệnh (prefix: "*")
 ```
 
+> 🚀 **Production Deployment**: Xem [`doc/deployment-guide.md`](./doc/deployment-guide.md) để deploy với Docker/VPS.
+
 ---
 
 ## 🐳 Docker
@@ -81,6 +87,8 @@ docker run --rm --env-file .env bot-thoi-gian-bieu
 ---
 
 ## 📋 Lệnh bot
+
+> 📖 **Tài liệu đầy đủ**: Xem [`doc/command-reference.md`](./doc/command-reference.md) và [`doc/user-guide.md`](./doc/user-guide.md) để có hướng dẫn chi tiết với examples.
 
 > Gõ `*help` trong Mezon để xem danh sách đầy đủ. Bảng dưới là tóm tắt theo nhóm.
 
@@ -199,6 +207,8 @@ CI tự chạy `npm run lint && npm run build && npm test` trên mỗi PR và pu
 
 ## 🛠️ Development
 
+> 📖 **Development Guide**: Xem [`doc/development-guide.md`](./doc/development-guide.md) để có hướng dẫn đầy đủ về workflow, coding standards và best practices.
+
 ```bash
 npm run start:dev          # Watch mode
 npm run build              # Compile TypeScript
@@ -217,12 +227,40 @@ npm test                   # Jest
 4. Viết spec ở `test/bot/<ten>.command.spec.ts`.
 5. Chạy `npm test && npm run lint && npm run build` trước khi mở PR.
 
+> 🔧 **Troubleshooting**: Gặp vấn đề? Xem [`doc/troubleshooting.md`](./doc/troubleshooting.md) để có solutions cho các lỗi thường gặp.
+
 ---
 
 ## 📚 Tài liệu
 
-- [`KIRO.md`](./KIRO.md) — Bối cảnh dự án đầy đủ cho AI assistant / new dev.
-- [`migrations/`](./migrations/) — SQL migrations.
+### 📖 Tài Liệu Chính
+- [`doc/README.md`](./doc/README.md) — **Mục lục tài liệu đầy đủ** - Điểm bắt đầu cho tất cả tài liệu
+- [`KIRO.md`](./KIRO.md) — Bối cảnh dự án đầy đủ cho AI assistant / new dev
+
+### 🚀 Quick Start Guides
+- [`doc/user-guide.md`](./doc/user-guide.md) — **Hướng dẫn sử dụng** cho người dùng cuối
+- [`doc/setup-installation.md`](./doc/setup-installation.md) — **Cài đặt và cấu hình** từ đầu
+- [`doc/deployment-guide.md`](./doc/deployment-guide.md) — **Deploy production** với Docker/VPS
+
+### 🔧 Technical Documentation
+- [`doc/system-overview.md`](./doc/system-overview.md) — Kiến trúc tổng thể và tech stack
+- [`doc/database-schema.md`](./doc/database-schema.md) — Cấu trúc database chi tiết
+- [`doc/api-reference.md`](./doc/api-reference.md) — API documentation và services
+- [`doc/development-guide.md`](./doc/development-guide.md) — Development workflow và best practices
+
+### 🎯 Feature Documentation
+- [`doc/command-reference.md`](./doc/command-reference.md) — **Tài liệu tất cả lệnh bot** với examples
+- [`doc/interactive-features.md`](./doc/interactive-features.md) — Forms, buttons và tương tác
+- [`doc/recurring-events.md`](./doc/recurring-events.md) — Hệ thống lịch lặp lại
+- [`doc/reminder-system.md`](./doc/reminder-system.md) — Hệ thống nhắc nhở tự động
+- [`doc/priority-tags.md`](./doc/priority-tags.md) — Quản lý ưu tiên và nhãn
+
+### 🛠️ Maintenance & Support
+- [`doc/troubleshooting.md`](./doc/troubleshooting.md) — **Xử lý sự cố** thường gặp
+- [`doc/CHANGELOG.md`](./doc/CHANGELOG.md) — Lịch sử thay đổi và versions
+- [`migrations/`](./migrations/) — SQL migrations
+
+> 💡 **Tip**: Bắt đầu với [`doc/README.md`](./doc/README.md) để có overview đầy đủ về tài liệu!
 
 ---
 
