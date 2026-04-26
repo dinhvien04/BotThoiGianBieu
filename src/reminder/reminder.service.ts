@@ -10,6 +10,10 @@ import { BotService } from '../bot/bot.service';
 import { SchedulesService } from '../schedules/schedules.service';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { DateParser } from '../shared/utils/date-parser';
+import {
+  isWithinWorkingHours,
+  nextWorkingStart,
+} from '../shared/utils/working-hours';
 
 /**
  * Interval mặc định (phút) để auto-resend khi user bấm hoãn lấy theo
@@ -83,6 +87,26 @@ export class ReminderService {
 
   private async sendStartReminder(schedule: Schedule, now: Date): Promise<void> {
     const settings = schedule.user?.settings;
+
+    // Tôn trọng working hours: nếu user đặt khung 8-18 nhưng cron chạy
+    // lúc 23:00 → đẩy remind_at về 8h sáng mai và bỏ qua tick này.
+    if (!isWithinWorkingHours(now, settings)) {
+      const nextStart = nextWorkingStart(now, settings);
+      const minutesUntilStart = Math.max(
+        1,
+        Math.round((nextStart.getTime() - now.getTime()) / 60000),
+      );
+      await this.schedulesService.rescheduleAfterPing(
+        schedule.id,
+        minutesUntilStart,
+        now,
+      );
+      this.logger.log(
+        `🌙 Trong giờ yên lặng — dồn reminder #${schedule.id} sang ${this.dateParser.formatVietnam(nextStart)}`,
+      );
+      return;
+    }
+
     const snoozeMinutes = settings?.default_remind_minutes ?? DEFAULT_SNOOZE_MINUTES;
 
     const embed = this.buildStartEmbed(schedule, now);
