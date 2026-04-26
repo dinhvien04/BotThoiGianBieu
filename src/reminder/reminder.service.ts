@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
+  ApiMessageMention,
   ButtonBuilder,
   EButtonMessageStyle,
   InteractiveBuilder,
@@ -86,6 +87,7 @@ export class ReminderService {
 
     const embed = this.buildStartEmbed(schedule, now);
     const buttons = this.buildStartButtons(schedule.id, snoozeMinutes);
+    const mention = this.buildMentionPayload(schedule);
 
     await this.dispatch(
       schedule.user_id,
@@ -93,6 +95,7 @@ export class ReminderService {
       embed,
       buttons,
       this.buildStartDmText(schedule, now),
+      mention,
     );
 
     // Đẩy `remind_at` về future → nếu user ignore thì cron sẽ ping lại sau `snoozeMinutes` phút.
@@ -105,6 +108,7 @@ export class ReminderService {
 
     const embed = this.buildEndEmbed(schedule, now);
     const buttons = this.buildEndButtons(schedule.id);
+    const mention = this.buildMentionPayload(schedule);
 
     await this.dispatch(
       schedule.user_id,
@@ -112,6 +116,7 @@ export class ReminderService {
       embed,
       buttons,
       this.buildEndDmText(schedule, now),
+      mention,
     );
 
     // Chỉ gửi 1 lần — set timestamp để cron không gửi lại.
@@ -137,6 +142,7 @@ export class ReminderService {
     embed: ReturnType<InteractiveBuilder['build']>,
     buttons: unknown[],
     dmText: string,
+    mention?: { text: string; mentions: ApiMessageMention[] } | null,
   ): Promise<void> {
     const wantDm = settings?.notify_via_dm === true;
     const wantChannel = settings?.notify_via_channel !== false; // default true
@@ -147,7 +153,15 @@ export class ReminderService {
 
     if (wantChannel && channelIds.length > 0) {
       for (const channelId of channelIds) {
-        tasks.push(this.botService.sendBuzzInteractive(channelId, embed, buttons));
+        tasks.push(
+          this.botService.sendBuzzInteractive(
+            channelId,
+            embed,
+            buttons,
+            mention?.text,
+            mention?.mentions,
+          ),
+        );
       }
       hasInteractiveChannel = true;
     }
@@ -232,7 +246,38 @@ export class ReminderService {
       );
     }
 
+    // Hoãn tuỳ ý — mở form ephemeral cho user nhập số phút.
+    builder.addButton(
+      `${REMINDER_INTERACTION_ID}:custom:${scheduleId}`,
+      '✏️ Hoãn tuỳ ý',
+      EButtonMessageStyle.SECONDARY,
+    );
+
     return builder.build();
+  }
+
+  /**
+   * Build payload mention `@username` để Mezon gửi notification thật cho
+   * user (đèn đỏ + push) khi reminder rơi vào channel chung. Trả `null`
+   * nếu schedule không có user/username.
+   */
+  private buildMentionPayload(
+    schedule: Schedule,
+  ): { text: string; mentions: ApiMessageMention[] } | null {
+    const username = schedule.user?.username;
+    if (!username) return null;
+    const display = `@${username}`;
+    return {
+      text: `${display} `,
+      mentions: [
+        {
+          user_id: schedule.user_id,
+          username,
+          s: 0,
+          e: display.length,
+        },
+      ],
+    };
   }
 
   private formatSnoozeLabel(minutes: number): string {

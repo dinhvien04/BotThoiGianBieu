@@ -1,9 +1,15 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  ButtonBuilder,
+  EButtonMessageStyle,
+  InteractiveBuilder,
+} from 'mezon-sdk';
 import { InteractionRegistry } from '../bot/interactions/interaction-registry';
 import {
   ButtonInteractionContext,
   InteractionHandler,
 } from '../bot/interactions/interaction.types';
+import { BotService } from '../bot/bot.service';
 import { SchedulesService } from '../schedules/schedules.service';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { UsersService } from '../users/users.service';
@@ -15,6 +21,9 @@ import { REMINDER_INTERACTION_ID } from './reminder.service';
  *   - "reminder:ack:<scheduleId>"              → start reminder: đánh dấu đã nhận, dừng nhắc
  *   - "reminder:snooze:<scheduleId>"           → start reminder: hoãn theo user_settings (legacy)
  *   - "reminder:snooze:<scheduleId>:<minutes>" → start reminder: hoãn đúng X phút (preset button)
+ *   - "reminder:custom:<scheduleId>"           → mở form ephemeral cho user nhập số phút tuỳ ý
+ *   - "reminder:csub:<scheduleId>"             → submit form custom snooze (formData.minutes)
+ *   - "reminder:ccancel:<scheduleId>"          → đóng form custom snooze
  *   - "reminder:done:<scheduleId>"             → end notification: mark completed
  *   - "reminder:later:<scheduleId>"            → end notification: đóng form, không làm gì
  */
@@ -28,6 +37,7 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     private readonly registry: InteractionRegistry,
     private readonly schedulesService: SchedulesService,
     private readonly usersService: UsersService,
+    private readonly botService: BotService,
     private readonly dateParser: DateParser,
   ) {}
 
@@ -36,7 +46,7 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
   }
 
   async handleButton(ctx: ButtonInteractionContext): Promise<void> {
-    // action format: "ack:<id>" / "snooze:<id>" / "snooze:<id>:<minutes>"
+    // action format: "ack:<id>" / "snooze:<id>" / "snooze:<id>:<minutes>" / "custom:<id>" / "csub:<id>" / "ccancel:<id>"
     const parts = ctx.action.split(':');
     const [actionType, idStr, minutesStr] = parts;
     const scheduleId = Number(idStr);
@@ -65,6 +75,15 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
         return;
       case 'snooze':
         await this.handleSnooze(ctx, scheduleId, minutesStr);
+        return;
+      case 'custom':
+        await this.handleCustomOpen(ctx, scheduleId);
+        return;
+      case 'csub':
+        await this.handleCustomSubmit(ctx, scheduleId);
+        return;
+      case 'ccancel':
+        await this.handleCustomCancel(ctx);
         return;
       case 'done':
         await this.handleDone(ctx, schedule);
@@ -112,6 +131,96 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
       `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${this.dateParser.formatMinutes(minutes)}**.\n` +
         `Sẽ nhắc lại lúc: \`${this.dateParser.formatVietnam(nextAt)}\``,
     );
+  }
+
+  /**
+   * Mở form ephemeral để user nhập số phút hoãn tuỳ ý.
+   * Form chỉ hiển thị cho user click — channel khác không thấy.
+   */
+  private async handleCustomOpen(
+    ctx: ButtonInteractionContext,
+    scheduleId: number,
+  ): Promise<void> {
+    const user = await this.usersService.findByUserId(ctx.clickerId);
+    const defaultMin = user?.settings?.default_remind_minutes ?? 30;
+
+    const embed = new InteractiveBuilder('✏️ HOÃN TUỲ Ý')
+      .setDescription(
+        `Nhập số phút muốn hoãn lịch \`#${scheduleId}\`.\n` +
+          `Vd: \`15\` (15 phút), \`90\` (1 giờ rưỡi), tối đa 7 ngày (10080).`,
+      )
+      .addInputField('minutes', '⏱️ Số phút', `Vd: ${defaultMin}`, {
+        defaultValue: String(defaultMin),
+      })
+      .build();
+
+    const buttons = new ButtonBuilder()
+      .addButton(
+        `${REMINDER_INTERACTION_ID}:csub:${scheduleId}`,
+        '⏰ Hoãn',
+        EButtonMessageStyle.PRIMARY,
+      )
+      .addButton(
+        `${REMINDER_INTERACTION_ID}:ccancel:${scheduleId}`,
+        '❌ Huỷ',
+        EButtonMessageStyle.DANGER,
+      )
+      .build();
+
+    try {
+      await this.botService.sendEphemeralInteractive(
+        ctx.channelId,
+        ctx.clickerId,
+        embed,
+        buttons,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Không mở được ephemeral form snooze custom: ${(err as Error).message}`,
+      );
+      await ctx.send(
+        `⚠️ Không mở được form. Hãy dùng button preset hoặc gõ \`*nhac-sau ${scheduleId} <thời gian>\`.`,
+      );
+    }
+  }
+
+  private async handleCustomSubmit(
+    ctx: ButtonInteractionContext,
+    scheduleId: number,
+  ): Promise<void> {
+    const raw = (ctx.formData.minutes ?? '').trim();
+    const minutes = Number(raw);
+    if (!/^\d+$/.test(raw) || !Number.isInteger(minutes) || minutes < 1) {
+      await ctx.ephemeralSend(
+        `⚠️ "${raw || '(rỗng)'}" không phải số phút hợp lệ. Vui lòng nhập số nguyên dương.`,
+      );
+      return;
+    }
+    if (minutes > 10080) {
+      await ctx.ephemeralSend(
+        `⚠️ Tối đa hoãn 7 ngày (10080 phút). Bạn nhập ${minutes}.`,
+      );
+      return;
+    }
+
+    const nextAt = await this.schedulesService.snooze(scheduleId, minutes);
+    await this.safeDeleteEphemeral(ctx);
+
+    if (!nextAt) {
+      await ctx.ephemeralSend(
+        `ℹ️ Lịch #${scheduleId} đã được xác nhận hoặc xử lý ở channel khác, không hoãn nữa.`,
+      );
+      return;
+    }
+
+    await ctx.ephemeralSend(
+      `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${this.dateParser.formatMinutes(minutes)}**.\n` +
+        `Sẽ nhắc lại lúc: \`${this.dateParser.formatVietnam(nextAt)}\``,
+    );
+  }
+
+  private async handleCustomCancel(ctx: ButtonInteractionContext): Promise<void> {
+    await this.safeDeleteEphemeral(ctx);
   }
 
   private async resolveSnoozeMinutes(
@@ -162,6 +271,14 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
   private async safeDelete(ctx: ButtonInteractionContext): Promise<void> {
     try {
       await ctx.deleteForm();
+    } catch {
+      // best-effort
+    }
+  }
+
+  private async safeDeleteEphemeral(ctx: ButtonInteractionContext): Promise<void> {
+    try {
+      await ctx.deleteEphemeralForm();
     } catch {
       // best-effort
     }
