@@ -16,11 +16,15 @@ import {
 import { UsersService } from '../../users/users.service';
 import { SchedulesService } from '../../schedules/schedules.service';
 import { DateParser } from '../../shared/utils/date-parser';
-import { ScheduleItemType } from '../../schedules/entities/schedule.entity';
+import {
+  ScheduleItemType,
+  SchedulePriority,
+} from '../../schedules/entities/schedule.entity';
 import {
   findItemTypeOption,
   isValidItemType,
 } from '../../schedules/schedules.constants';
+import { formatPriority, parsePriority } from '../../shared/utils/priority';
 
 const INTERACTION_ID = 'them-lich-excel';
 const MAX_ROWS = 100;
@@ -39,6 +43,7 @@ interface ParsedExcelRow {
   title: string;
   description: string | null;
   itemType: ScheduleItemType;
+  priority: SchedulePriority;
   startTime: Date;
   endTime: Date;
   remindMinutes: number | null;
@@ -177,6 +182,7 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
         item_type: row.itemType,
         title: row.title,
         description: row.description,
+        priority: row.priority,
         start_time: row.startTime,
         end_time: row.endTime,
         remind_at: remindAt,
@@ -271,6 +277,24 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
     const itemType = this.parseItemType(itemTypeRaw);
     if (!itemType) return { rowNumber, message: `Loại lịch không hợp lệ: ${itemTypeRaw}.` };
 
+    const priorityRaw = this.getCell(row, [
+      'uu_tien',
+      'priority',
+      'muc_uu_tien',
+      'do_uu_tien',
+    ]);
+    let priority: SchedulePriority = 'normal';
+    if (priorityRaw) {
+      const parsed = parsePriority(priorityRaw);
+      if (!parsed) {
+        return {
+          rowNumber,
+          message: `Ưu tiên không hợp lệ: ${priorityRaw}.`,
+        };
+      }
+      priority = parsed;
+    }
+
     const startInput = this.getDateTimeCell(row, {
       combinedKeys: ['bat_dau', 'start', 'start_at', 'start_datetime'],
       dateKeys: ['ngay_bat_dau', 'start_date', 'date_start'],
@@ -326,6 +350,7 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
       title,
       description: this.getCell(row, ['mo_ta', 'description', 'ghi_chu']) || null,
       itemType,
+      priority,
       startTime,
       endTime,
       remindMinutes: remindRaw ? remindMinutes : null,
@@ -416,7 +441,7 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
       for (const row of rows.slice(0, 5)) {
         const typeLabel = findItemTypeOption(row.itemType)?.label ?? row.itemType;
         lines.push(
-          `• Dòng ${row.rowNumber}: ${row.title} | ${typeLabel} | ` +
+          `• Dòng ${row.rowNumber}: ${row.title} | ${typeLabel} | ${formatPriority(row.priority)} | ` +
             `${this.dateParser.formatVietnam(row.startTime)} - ${this.dateParser.formatVietnam(row.endTime)}`,
         );
       }
@@ -444,9 +469,10 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
       `⚠️ Gửi kèm file \`.xlsx\` rồi gõ \`${prefix}them-lich-excel\`, hoặc dùng:\n` +
       `\`${prefix}them-lich-excel <url_file_xlsx>\`\n\n` +
       `Cột hỗ trợ:\n` +
-      `\`tieu_de | mo_ta | loai | ngay_bat_dau | gio_bat_dau | ngay_ket_thuc | gio_ket_thuc | nhac_truoc_phut\`\n\n` +
+      `\`tieu_de | mo_ta | loai | uu_tien | ngay_bat_dau | gio_bat_dau | ngay_ket_thuc | gio_ket_thuc | nhac_truoc_phut\`\n\n` +
       `File cũ có \`bat_dau\` và \`ket_thuc\` dạng \`25/04/2026 09:00\` vẫn dùng được.\n` +
-      `Loại lịch: \`task\`, \`meeting\`, \`event\`, \`reminder\`.`
+      `Loại lịch: \`task\`, \`meeting\`, \`event\`, \`reminder\`.\n` +
+      `Ưu tiên: \`cao\`, \`vua\`, \`thap\` (mặc định \`vua\` nếu bỏ trống).`
     );
   }
 

@@ -7,6 +7,7 @@ type ParseWorkbookResult = {
     title: string;
     startTime: Date;
     endTime: Date;
+    priority: 'low' | 'normal' | 'high';
   }>;
   errors: Array<{
     rowNumber: number;
@@ -57,6 +58,42 @@ describe('ThemLichExcelCommand', () => {
     expect(result.errors).toEqual([]);
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].title).toBe('Legacy row');
+  });
+
+  it('should default priority to normal when column missing', () => {
+    const result = parseWorkbook(command, [
+      ['tieu_de', 'loai', 'bat_dau', 'ket_thuc'],
+      ['Default prio', 'task', '01/05/2099 09:00', '01/05/2099 10:00'],
+    ]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.rows[0].priority).toBe('normal');
+  });
+
+  it('should parse priority column with VN values', () => {
+    const result = parseWorkbook(command, [
+      ['tieu_de', 'loai', 'uu_tien', 'bat_dau', 'ket_thuc'],
+      ['High row', 'task', 'cao', '01/05/2099 09:00', '01/05/2099 10:00'],
+      ['Low row', 'task', 'thap', '01/05/2099 11:00', '01/05/2099 12:00'],
+    ]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.rows.map((r) => r.priority)).toEqual(['high', 'low']);
+  });
+
+  it('should reject invalid priority value', () => {
+    const result = parseWorkbook(command, [
+      ['tieu_de', 'loai', 'uu_tien', 'bat_dau', 'ket_thuc'],
+      ['Bad prio', 'task', 'sieu-cao', '01/05/2099 09:00', '01/05/2099 10:00'],
+    ]);
+
+    expect(result.rows).toEqual([]);
+    expect(result.errors).toEqual([
+      {
+        rowNumber: 2,
+        message: 'Ưu tiên không hợp lệ: sieu-cao.',
+      },
+    ]);
   });
 
   it('should report missing split datetime parts', () => {
