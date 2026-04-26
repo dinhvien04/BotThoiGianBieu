@@ -81,6 +81,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "📅 XEM LỊCH",
   },
   {
+    name: "export-ics",
+    syntax: "export-ics [DD-MM-YYYY DD-MM-YYYY | tat-ca]",
+    description: "Xuất lịch ra file .ics (Google/Apple Calendar)",
+    category: "📅 XEM LỊCH",
+  },
+  {
     name: "chi-tiet",
     syntax: "chi-tiet <ID>",
     description: "Xem chi tiết lịch",
