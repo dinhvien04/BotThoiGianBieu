@@ -74,8 +74,8 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     }
 
     const now = new Date();
-    const defaultStart = new Date(now.getTime() + 60 * 60 * 1000); // +1h
-    const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000); // +1h duration
+    const defaultStart = now;
+    const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000); // +1h duration
 
     const embed = new InteractiveBuilder('📋 THÊM LỊCH MỚI')
       .setDescription(
