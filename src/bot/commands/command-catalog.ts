@@ -396,6 +396,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Đặt nhanh khung giờ làm việc — reminder ngoài khung dồn về sáng hôm sau",
     category: "⚙️ CÀI ĐẶT",
   },
+  {
+    name: "timezone",
+    syntax: "timezone [<IANA> | reset | list]",
+    description: "Xem hoặc đổi múi giờ cá nhân (IANA, vd Asia/Tokyo)",
+    category: "⚙️ CÀI ĐẶT",
+  },
 
   // ===== 📋 Template =====
   {

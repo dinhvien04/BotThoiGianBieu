@@ -53,6 +53,7 @@ import { LichTreCommand } from './commands/lich-tre.command';
 import { StreakCommand } from './commands/streak.command';
 import { LichSuCommand } from './commands/lich-su.command';
 import { GioLamCommand } from './commands/gio-lam.command';
+import { TimezoneCommand } from './commands/timezone.command';
 import {
   TaoTemplateCommand,
   TuTemplateCommand,
@@ -124,6 +125,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     StreakCommand,
     LichSuCommand,
     GioLamCommand,
+    TimezoneCommand,
     TaoTemplateCommand,
     TuTemplateCommand,
     DsTemplateCommand,
