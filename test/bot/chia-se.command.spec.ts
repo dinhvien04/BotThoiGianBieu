@@ -1,8 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import {
   BoChiaSeCommand,
+  BoChiaSeEditCommand,
   ChiaSeAiCommand,
   ChiaSeCommand,
+  ChiaSeEditCommand,
   LichChiaSeCommand,
 } from "../../src/bot/commands/chia-se.command";
 import { CommandRegistry } from "../../src/bot/commands/command-registry";
@@ -45,6 +47,10 @@ describe("Chia-se commands", () => {
       listSharedUsers: jest.fn(),
       findSchedulesSharedWith: jest.fn(),
       getParticipantUserIds: jest.fn(),
+      grantEdit: jest.fn(),
+      revokeEdit: jest.fn(),
+      canEdit: jest.fn(),
+      listEditors: jest.fn().mockResolvedValue([]),
     } as any;
     mockFormatter = {
       formatNotInitialized: jest.fn(() => "NOT_INIT"),
@@ -256,6 +262,137 @@ describe("Chia-se commands", () => {
       expect(reply).toContain("alice");
       expect(reply).toContain("Bob");
       expect(reply).toContain("`u2`");
+    });
+
+    it("annotates editors with ✏️", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      mockSharesService.listSharedUsers.mockResolvedValue([
+        { user_id: "u2", username: "alice" } as User,
+        { user_id: "u3", username: "bob" } as User,
+      ]);
+      mockSharesService.listEditors.mockResolvedValue([
+        { user_id: "u2" } as User,
+      ]);
+      const ctx = buildContext(["5"]);
+      await cmd.execute(ctx);
+      const reply = (ctx.reply as jest.Mock).mock.calls[0][0];
+      expect(reply).toMatch(/alice.*✏️/);
+      expect(reply).not.toMatch(/bob.*✏️/);
+    });
+  });
+
+  describe("ChiaSeEditCommand", () => {
+    let cmd: ChiaSeEditCommand;
+    beforeEach(async () => {
+      cmd = await build<ChiaSeEditCommand>(ChiaSeEditCommand);
+    });
+
+    it("rejects when user not initialised", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(null);
+      const ctx = buildContext(["5", "u2"]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith("NOT_INIT");
+    });
+
+    it("rejects missing args", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      const ctx = buildContext(["5"]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("Cú pháp"),
+      );
+    });
+
+    it("rejects granting to self", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      const ctx = buildContext(["5", "owner1"]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("chính mình"),
+      );
+    });
+
+    it("strips @ and grants edit", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      mockSharesService.grantEdit.mockResolvedValue({
+        added: true,
+        editors: [{ user_id: "u2" } as User],
+      });
+      const ctx = buildContext(["5", "@u2"]);
+      await cmd.execute(ctx);
+      expect(mockSharesService.grantEdit).toHaveBeenCalledWith(
+        5,
+        "owner1",
+        "u2",
+      );
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("Đã cấp quyền EDIT"),
+      );
+    });
+
+    it("reports already-granted", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      mockSharesService.grantEdit.mockResolvedValue({
+        added: false,
+        editors: [{ user_id: "u2" } as User],
+      });
+      const ctx = buildContext(["5", "u2"]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("đã có quyền edit"),
+      );
+    });
+
+    it("reports not-found / not-owner", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      mockSharesService.grantEdit.mockResolvedValue(null);
+      const ctx = buildContext(["5", "u2"]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("Không thể cấp quyền"),
+      );
+    });
+  });
+
+  describe("BoChiaSeEditCommand", () => {
+    let cmd: BoChiaSeEditCommand;
+    beforeEach(async () => {
+      cmd = await build<BoChiaSeEditCommand>(BoChiaSeEditCommand);
+    });
+
+    it("rejects missing args", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      const ctx = buildContext(["5"]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("Cú pháp"),
+      );
+    });
+
+    it("revokes edit", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      mockSharesService.revokeEdit.mockResolvedValue({
+        removed: true,
+        editors: [],
+      });
+      const ctx = buildContext(["5", "u2"]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("Đã gỡ quyền edit"),
+      );
+    });
+
+    it("reports user-not-editor", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      mockSharesService.revokeEdit.mockResolvedValue({
+        removed: false,
+        editors: [],
+      });
+      const ctx = buildContext(["5", "u2"]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("chưa có quyền edit"),
+      );
     });
   });
 });

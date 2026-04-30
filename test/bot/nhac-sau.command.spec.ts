@@ -95,7 +95,7 @@ describe('NhacSauCommand', () => {
       expect(command.name).toBe('nhac-sau');
       expect(command.aliases).toEqual(['nhacsau', 'remindin']);
       expect(command.category).toBe('🔔 NHẮC NHỞ');
-      expect(command.syntax).toBe('nhac-sau <ID> <thời gian>');
+      expect(command.syntax).toBe('nhac-sau <ID> <thời gian | khung>');
     });
   });
 

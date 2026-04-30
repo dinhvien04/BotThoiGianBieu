@@ -1,4 +1,8 @@
-import { parseIcs, parseIcsDateTime } from "../../src/shared/utils/ics-parser";
+import {
+  parseIcs,
+  parseIcsDateTime,
+  parseRrule,
+} from "../../src/shared/utils/ics-parser";
 
 describe("parseIcsDateTime", () => {
   it("UTC datetime", () => {
@@ -143,5 +147,95 @@ END:VCALENDAR`;
     const r = parseIcs("hello world");
     expect(r.events).toHaveLength(0);
     expect(r.errors).toHaveLength(0);
+  });
+});
+
+describe("parseRrule", () => {
+  const start = new Date("2026-04-25T02:00:00.000Z");
+
+  it("FREQ=DAILY → daily/1", () => {
+    const r = parseRrule("FREQ=DAILY", start);
+    expect(r.recurrence).toEqual({ type: "daily", interval: 1, until: null });
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("FREQ=WEEKLY;INTERVAL=2 → weekly/2", () => {
+    const r = parseRrule("FREQ=WEEKLY;INTERVAL=2", start);
+    expect(r.recurrence).toEqual({
+      type: "weekly",
+      interval: 2,
+      until: null,
+    });
+  });
+
+  it("FREQ=MONTHLY;UNTIL=...", () => {
+    const r = parseRrule("FREQ=MONTHLY;UNTIL=20261231T000000Z", start);
+    expect(r.recurrence!.type).toBe("monthly");
+    expect(r.recurrence!.until!.toISOString()).toBe(
+      "2026-12-31T00:00:00.000Z",
+    );
+  });
+
+  it("COUNT computes until daily", () => {
+    const r = parseRrule("FREQ=DAILY;COUNT=5", start);
+    // start + 4 days
+    expect(r.recurrence!.until!.toISOString()).toBe("2026-04-29T02:00:00.000Z");
+  });
+
+  it("COUNT computes until weekly with interval", () => {
+    const r = parseRrule("FREQ=WEEKLY;INTERVAL=2;COUNT=3", start);
+    // start + 2*7*2 = 28 days
+    expect(r.recurrence!.until!.toISOString()).toBe("2026-05-23T02:00:00.000Z");
+  });
+
+  it("FREQ=YEARLY → null + warning", () => {
+    const r = parseRrule("FREQ=YEARLY", start);
+    expect(r.recurrence).toBeNull();
+    expect(r.warnings.join(" ")).toMatch(/YEARLY/);
+  });
+
+  it("BYDAY warning but recurrence kept", () => {
+    const r = parseRrule("FREQ=WEEKLY;BYDAY=MO,WE,FR", start);
+    expect(r.recurrence?.type).toBe("weekly");
+    expect(r.warnings.join(" ")).toMatch(/BYDAY/);
+  });
+
+  it("invalid FREQ → null", () => {
+    const r = parseRrule("FREQ=GARBAGE", start);
+    expect(r.recurrence).toBeNull();
+  });
+});
+
+describe("parseIcs RRULE integration", () => {
+  it("parses VEVENT with RRULE WEEKLY into recurrence", () => {
+    const ics = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+SUMMARY:Họp tuần
+DTSTART:20260425T020000Z
+RRULE:FREQ=WEEKLY;INTERVAL=1
+END:VEVENT
+END:VCALENDAR`;
+    const r = parseIcs(ics);
+    expect(r.events).toHaveLength(1);
+    expect(r.events[0].recurrence).toEqual({
+      type: "weekly",
+      interval: 1,
+      until: null,
+    });
+    expect(r.events[0].warnings).toEqual([]);
+  });
+
+  it("emits warnings for unsupported RRULE", () => {
+    const ics = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+SUMMARY:Test
+DTSTART:20260425T020000Z
+RRULE:FREQ=YEARLY
+END:VEVENT
+END:VCALENDAR`;
+    const r = parseIcs(ics);
+    expect(r.events).toHaveLength(1);
+    expect(r.events[0].recurrence).toBeNull();
+    expect(r.events[0].warnings.length).toBeGreaterThan(0);
   });
 });

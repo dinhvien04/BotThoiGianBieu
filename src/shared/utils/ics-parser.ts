@@ -1,19 +1,31 @@
 /**
  * Parser tối thiểu cho file iCalendar (.ics) — RFC 5545. Hỗ trợ:
  * - Line unfolding (dòng bắt đầu bằng space/tab nối với dòng trên).
- * - VEVENT blocks với SUMMARY / DESCRIPTION / DTSTART / DTEND / UID.
+ * - VEVENT blocks với SUMMARY / DESCRIPTION / DTSTART / DTEND / UID / RRULE.
  * - DTSTART/DTEND format: `YYYYMMDDTHHMMSSZ` (UTC), `YYYYMMDDTHHMMSS`
  *   (floating — coi như VN local), `YYYYMMDD` (all-day → 00:00 VN).
  * - TZID parameter — coi tất cả các timezone có chữ "Ho_Chi_Minh"
  *   hoặc Asia/Bangkok như VN; các TZID khác fallback floating.
  * - Escape sequences: `\n`/`\N` → newline, `\,` → `,`, `\;` → `;`,
  *   `\\` → `\`.
+ * - RRULE → recurrence (DAILY/WEEKLY/MONTHLY + INTERVAL + UNTIL/COUNT).
+ *   Các RRULE phức tạp khác (BYDAY, BYMONTHDAY, BYSETPOS, SECONDLY/MINUTELY/
+ *   HOURLY/YEARLY) sẽ ghi nhận warning và skip RRULE (event vẫn được nhập
+ *   nhưng không lặp).
  *
- * KHÔNG hỗ trợ (out of scope): RRULE, EXDATE, VTIMEZONE block,
+ * KHÔNG hỗ trợ (out of scope): EXDATE, VTIMEZONE block,
  * VTODO/VJOURNAL, ATTENDEE, recurrence-id.
  */
 
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+export type IcsRecurrenceType = "daily" | "weekly" | "monthly";
+
+export interface IcsRecurrence {
+  type: IcsRecurrenceType;
+  interval: number; // ≥ 1
+  until: Date | null;
+}
 
 export interface IcsEvent {
   index: number; // vị trí trong file (1-based)
@@ -23,6 +35,9 @@ export interface IcsEvent {
   start: Date;
   end: Date | null;
   allDay: boolean;
+  recurrence: IcsRecurrence | null;
+  /** Warnings trong RRULE — vd "BYDAY không hỗ trợ" */
+  warnings: string[];
 }
 
 export interface IcsParseError {
@@ -136,6 +151,116 @@ export function parseIcsDateTime(
   return { date: new Date(utcMs), allDay: false };
 }
 
+/**
+ * Parse RRULE value (rhs of `RRULE:`). Returns null nếu không thể map sang
+ * recurrence schema của bot. Warnings được populate cho user biết tính năng
+ * RRULE nào bị bỏ qua.
+ *
+ * Map:
+ * - `FREQ=DAILY` → daily, `FREQ=WEEKLY` → weekly, `FREQ=MONTHLY` → monthly.
+ * - `INTERVAL=N` → interval (mặc định 1).
+ * - `UNTIL=...` → until (parse như DTSTART).
+ * - `COUNT=N` → tính `until = start + (N-1)*interval-by-freq`.
+ *
+ * Các BYDAY / BYMONTHDAY / BYSETPOS / WKST / BYHOUR ... được ghi nhận warning
+ * và bỏ qua (recurrence vẫn dùng, nhưng có thể lệch so với calendar gốc).
+ */
+export function parseRrule(
+  value: string,
+  start: Date,
+): { recurrence: IcsRecurrence | null; warnings: string[] } {
+  const warnings: string[] = [];
+  const parts = value.split(";").filter((s) => s.length > 0);
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    const eq = p.indexOf("=");
+    if (eq <= 0) continue;
+    map[p.slice(0, eq).toUpperCase()] = p.slice(eq + 1);
+  }
+
+  const freq = (map.FREQ ?? "").toUpperCase();
+  let type: IcsRecurrenceType | null = null;
+  if (freq === "DAILY") type = "daily";
+  else if (freq === "WEEKLY") type = "weekly";
+  else if (freq === "MONTHLY") type = "monthly";
+  else if (freq === "YEARLY") {
+    warnings.push("FREQ=YEARLY chưa hỗ trợ — bỏ qua RRULE.");
+    return { recurrence: null, warnings };
+  } else if (freq === "HOURLY" || freq === "MINUTELY" || freq === "SECONDLY") {
+    warnings.push(`FREQ=${freq} chưa hỗ trợ — bỏ qua RRULE.`);
+    return { recurrence: null, warnings };
+  } else {
+    warnings.push(`FREQ không hợp lệ — bỏ qua RRULE.`);
+    return { recurrence: null, warnings };
+  }
+
+  let interval = 1;
+  if (map.INTERVAL) {
+    const n = Number(map.INTERVAL);
+    if (Number.isInteger(n) && n > 0) interval = n;
+    else warnings.push(`INTERVAL=${map.INTERVAL} không hợp lệ — dùng 1.`);
+  }
+
+  const unsupported = [
+    "BYDAY",
+    "BYMONTHDAY",
+    "BYMONTH",
+    "BYSETPOS",
+    "BYHOUR",
+    "BYMINUTE",
+    "BYSECOND",
+    "BYWEEKNO",
+    "BYYEARDAY",
+  ];
+  for (const k of unsupported) {
+    if (map[k] != null) {
+      warnings.push(`${k} không hỗ trợ — recurrence có thể lệch.`);
+    }
+  }
+
+  let until: Date | null = null;
+  if (map.UNTIL) {
+    const parsed = parseIcsDateTime(map.UNTIL, {});
+    if (parsed) until = parsed.date;
+    else warnings.push(`UNTIL=${map.UNTIL} không hợp lệ — bỏ qua.`);
+  } else if (map.COUNT) {
+    const n = Number(map.COUNT);
+    if (Number.isInteger(n) && n > 0) {
+      until = computeUntilFromCount(start, type, interval, n);
+    } else {
+      warnings.push(`COUNT=${map.COUNT} không hợp lệ — bỏ qua.`);
+    }
+  }
+
+  return {
+    recurrence: { type, interval, until },
+    warnings,
+  };
+}
+
+function computeUntilFromCount(
+  start: Date,
+  type: IcsRecurrenceType,
+  interval: number,
+  count: number,
+): Date {
+  const offsets = count - 1;
+  if (type === "daily") {
+    return new Date(
+      start.getTime() + offsets * interval * 24 * 60 * 60 * 1000,
+    );
+  }
+  if (type === "weekly") {
+    return new Date(
+      start.getTime() + offsets * interval * 7 * 24 * 60 * 60 * 1000,
+    );
+  }
+  // monthly: shift bằng calendar (UTC) để khỏi xảy ra rò DST.
+  const d = new Date(start.getTime());
+  d.setUTCMonth(d.getUTCMonth() + offsets * interval);
+  return d;
+}
+
 export function parseIcs(text: string): IcsParseResult {
   const events: IcsEvent[] = [];
   const errors: IcsParseError[] = [];
@@ -152,7 +277,12 @@ export function parseIcs(text: string): IcsParseResult {
     if (prop.name === "BEGIN" && prop.value.toUpperCase() === "VEVENT") {
       inEvent = true;
       eventIndex += 1;
-      current = { index: eventIndex, uid: null };
+      current = {
+        index: eventIndex,
+        uid: null,
+        recurrence: null,
+        warnings: [],
+      };
       continue;
     }
 
@@ -178,6 +308,8 @@ export function parseIcs(text: string): IcsParseResult {
             start: current.start,
             end: current.end ?? null,
             allDay: current.allDay ?? false,
+            recurrence: current.recurrence ?? null,
+            warnings: current.warnings ?? [],
           });
         }
       }
@@ -217,6 +349,22 @@ export function parseIcs(text: string): IcsParseResult {
         const parsed = parseIcsDateTime(prop.value, prop.params);
         if (parsed) {
           current.end = parsed.date;
+        }
+        break;
+      }
+      case "RRULE": {
+        if (!current.start) {
+          // RRULE phải đứng sau DTSTART theo RFC; nếu không có DTSTART
+          // sẽ skip — hiếm gặp.
+          (current.warnings ??= []).push(
+            "RRULE đứng trước DTSTART — bỏ qua.",
+          );
+          break;
+        }
+        const { recurrence, warnings } = parseRrule(prop.value, current.start);
+        if (recurrence) current.recurrence = recurrence;
+        if (warnings.length > 0) {
+          (current.warnings ??= []).push(...warnings);
         }
         break;
       }

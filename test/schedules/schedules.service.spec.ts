@@ -28,6 +28,8 @@ describe('SchedulesService', () => {
     recurrence_until: null,
     priority: "normal",
     recurrence_parent_id: null,
+    is_pinned: false,
+    is_hidden: false,
   };
 
   beforeEach(async () => {
@@ -240,8 +242,9 @@ describe('SchedulesService', () => {
         where: {
           user_id: 'user123',
           start_time: Between(start, end),
+          is_hidden: false,
         },
-        order: { start_time: 'ASC' },
+        order: { is_pinned: 'DESC', start_time: 'ASC' },
       });
       expect(result).toEqual(schedules);
     });
@@ -270,7 +273,7 @@ describe('SchedulesService', () => {
 
       // Assert
       const callArgs = mockRepository.find.mock.calls[0]?.[0];
-      expect(callArgs?.order).toEqual({ start_time: 'ASC' });
+      expect(callArgs?.order).toEqual({ is_pinned: 'DESC', start_time: 'ASC' });
     });
   });
 
@@ -285,10 +288,10 @@ describe('SchedulesService', () => {
       // Assert
       expect(mockRepository.findAndCount).toHaveBeenCalledWith({
         where: [
-          { user_id: 'user123', title: ILike('%Team%') },
-          { user_id: 'user123', description: ILike('%Team%') },
+          { user_id: 'user123', title: ILike('%Team%'), is_hidden: false },
+          { user_id: 'user123', description: ILike('%Team%'), is_hidden: false },
         ],
-        order: { start_time: 'ASC', id: 'ASC' },
+        order: { is_pinned: 'DESC', start_time: 'ASC', id: 'ASC' },
         take: 10,
         skip: 0,
       });
@@ -329,8 +332,8 @@ describe('SchedulesService', () => {
       // Assert
       const call = mockRepository.findAndCount.mock.calls[0]?.[0];
       expect(call?.where).toEqual([
-        { user_id: 'user123', title: ILike('%họp khách hàng%') },
-        { user_id: 'user123', description: ILike('%họp khách hàng%') },
+        { user_id: 'user123', title: ILike('%họp khách hàng%'), is_hidden: false },
+        { user_id: 'user123', description: ILike('%họp khách hàng%'), is_hidden: false },
       ]);
     });
   });
@@ -350,8 +353,9 @@ describe('SchedulesService', () => {
           user_id: 'user123',
           status: 'pending',
           start_time: MoreThanOrEqual(now),
+          is_hidden: false,
         },
-        order: { start_time: 'ASC', id: 'ASC' },
+        order: { is_pinned: 'DESC', start_time: 'ASC', id: 'ASC' },
         take: 5,
       });
       expect(result).toEqual([mockSchedule]);
@@ -405,8 +409,8 @@ describe('SchedulesService', () => {
 
       // Assert
       expect(mockRepository.findAndCount).toHaveBeenCalledWith({
-        where: { user_id: 'user123', status: 'pending' },
-        order: { start_time: 'ASC', id: 'ASC' },
+        where: { user_id: 'user123', status: 'pending', is_hidden: false },
+        order: { is_pinned: 'DESC', start_time: 'ASC', id: 'ASC' },
         take: 10,
         skip: 0,
       });
@@ -1155,6 +1159,8 @@ describe('SchedulesService', () => {
       recurrence_until: null,
       priority: "normal",
       recurrence_parent_id: null,
+    is_pinned: false,
+    is_hidden: false,
     } as Schedule;
 
     it('should return null for non-recurring schedule', async () => {

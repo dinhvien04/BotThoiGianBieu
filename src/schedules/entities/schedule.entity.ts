@@ -109,6 +109,14 @@ export class Schedule {
   @Column({ type: "integer", nullable: true })
   recurrence_parent_id!: number | null;
 
+  /** Ghim lịch lên đầu các digest commands. */
+  @Column({ type: "boolean", default: false })
+  is_pinned!: boolean;
+
+  /** Ẩn lịch khỏi digest commands (vẫn xem được qua *chi-tiet, *lich-tag). */
+  @Column({ type: "boolean", default: false })
+  is_hidden!: boolean;
+
   @CreateDateColumn({ type: "timestamp with time zone" })
   created_at!: Date;
 
@@ -145,4 +153,20 @@ export class Schedule {
     },
   })
   sharedWith?: User[];
+
+  /**
+   * Danh sách user được cấp quyền EDIT lịch (ngoài view). Junction
+   * `schedule_editors`. Owner vẫn là user_id và là người duy nhất xoá /
+   * cấp quyền tiếp.
+   */
+  @ManyToMany(() => User)
+  @JoinTable({
+    name: "schedule_editors",
+    joinColumn: { name: "schedule_id", referencedColumnName: "id" },
+    inverseJoinColumn: {
+      name: "editor_user_id",
+      referencedColumnName: "user_id",
+    },
+  })
+  editors?: User[];
 }

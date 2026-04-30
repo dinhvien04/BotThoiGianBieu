@@ -177,6 +177,135 @@ describe("SharesService", () => {
     });
   });
 
+  describe("grantEdit", () => {
+    it("rejects grant to self", async () => {
+      expect(await service.grantEdit(5, ownerId, ownerId)).toBeNull();
+    });
+
+    it("returns null when schedule not owned by ownerUserId", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue(null);
+      expect(await service.grantEdit(5, ownerId, targetId)).toBeNull();
+    });
+
+    it("returns null when target user does not exist", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue({
+        id: 5,
+        user_id: ownerId,
+        editors: [],
+      } as any);
+      mockUserRepo.findOne.mockResolvedValue(null);
+      expect(await service.grantEdit(5, ownerId, targetId)).toBeNull();
+    });
+
+    it("returns added=false when target already has edit", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue({
+        id: 5,
+        user_id: ownerId,
+        editors: [{ user_id: targetId }],
+      } as any);
+      mockUserRepo.findOne.mockResolvedValue({ user_id: targetId } as any);
+      const r = await service.grantEdit(5, ownerId, targetId);
+      expect(r).toEqual({ added: false, editors: [{ user_id: targetId }] });
+      expect(mockScheduleRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("adds editor when not present", async () => {
+      const sched = { id: 5, user_id: ownerId, editors: [] } as any;
+      mockScheduleRepo.findOne.mockResolvedValue(sched);
+      mockUserRepo.findOne.mockResolvedValue({ user_id: targetId } as any);
+      mockScheduleRepo.save.mockResolvedValue(sched);
+      const r = await service.grantEdit(5, ownerId, targetId);
+      expect(r?.added).toBe(true);
+      expect(r?.editors).toHaveLength(1);
+      expect(mockScheduleRepo.save).toHaveBeenCalled();
+    });
+  });
+
+  describe("revokeEdit", () => {
+    it("returns null when not owner", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue(null);
+      expect(await service.revokeEdit(5, ownerId, targetId)).toBeNull();
+    });
+
+    it("returns removed=false when target was not editor", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue({
+        id: 5,
+        user_id: ownerId,
+        editors: [{ user_id: "other" }],
+      } as any);
+      const r = await service.revokeEdit(5, ownerId, targetId);
+      expect(r).toEqual({
+        removed: false,
+        editors: [{ user_id: "other" }],
+      });
+    });
+
+    it("removes editor when present", async () => {
+      const sched = {
+        id: 5,
+        user_id: ownerId,
+        editors: [{ user_id: targetId }, { user_id: "other" }],
+      } as any;
+      mockScheduleRepo.findOne.mockResolvedValue(sched);
+      mockScheduleRepo.save.mockResolvedValue(sched);
+      const r = await service.revokeEdit(5, ownerId, targetId);
+      expect(r?.removed).toBe(true);
+      expect(r?.editors).toEqual([{ user_id: "other" }]);
+    });
+  });
+
+  describe("canEdit", () => {
+    it("returns true for owner", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue({
+        id: 5,
+        user_id: ownerId,
+        editors: [],
+      } as any);
+      expect(await service.canEdit(5, ownerId)).toBe(true);
+    });
+
+    it("returns true for editor", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue({
+        id: 5,
+        user_id: ownerId,
+        editors: [{ user_id: targetId }],
+      } as any);
+      expect(await service.canEdit(5, targetId)).toBe(true);
+    });
+
+    it("returns false for view-only participant", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue({
+        id: 5,
+        user_id: ownerId,
+        editors: [],
+      } as any);
+      expect(await service.canEdit(5, "view-only-user")).toBe(false);
+    });
+
+    it("returns false when schedule not found", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue(null);
+      expect(await service.canEdit(5, ownerId)).toBe(false);
+    });
+  });
+
+  describe("listEditors", () => {
+    it("returns editors for owner", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue({
+        id: 5,
+        user_id: ownerId,
+        editors: [{ user_id: targetId }],
+      } as any);
+      const editors = await service.listEditors(5, ownerId);
+      expect(editors).toEqual([{ user_id: targetId }]);
+    });
+
+    it("returns [] when schedule not found / not owner", async () => {
+      mockScheduleRepo.findOne.mockResolvedValue(null);
+      const editors = await service.listEditors(5, ownerId);
+      expect(editors).toEqual([]);
+    });
+  });
+
   describe("getParticipantUserIds", () => {
     it("returns user_ids from sharedWith", async () => {
       mockScheduleRepo.findOne.mockResolvedValue({

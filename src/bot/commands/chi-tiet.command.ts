@@ -96,6 +96,10 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
     tags: Tag[],
     sharedCount: number,
   ): string {
+    const flags: string[] = [];
+    if (schedule.is_pinned) flags.push("📌 Ghim");
+    if (schedule.is_hidden) flags.push("🙈 Ẩn");
+
     const lines = [
       `📋 CHI TIẾT LỊCH #${schedule.id}`,
       "━━━━━━━━━━━━━━━━━━━━",
@@ -105,6 +109,10 @@ export class ChiTietCommand implements BotCommand, OnModuleInit {
       `➤ Trạng thái: ${this.formatStatus(schedule.status)}`,
       `➤ Bắt đầu: ${this.dateParser.formatVietnam(schedule.start_time)}`,
     ];
+
+    if (flags.length > 0) {
+      lines.push(`➤ Trạng thái khác: ${flags.join(", ")}`);
+    }
 
     if (tags.length > 0) {
       lines.push(

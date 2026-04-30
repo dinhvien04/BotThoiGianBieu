@@ -29,6 +29,18 @@ import { LichLapCommand } from './commands/lich-lap.command';
 import { BoLapCommand } from './commands/bo-lap.command';
 import { CopyLichCommand } from './commands/copy-lich.command';
 import { NhanhCommand } from './commands/nhanh.command';
+import { GhiChuCommand } from './commands/ghi-chu.command';
+import {
+  HoanThanhTatCaCommand,
+  XoaTheoTagCommand,
+  XoaCompletedTruocCommand,
+} from './commands/bulk-ops.command';
+import {
+  GhimCommand,
+  BoGhimCommand,
+  LichAnCommand,
+  HienCommand,
+} from './commands/pin-hide.command';
 import { LichThangCommand } from './commands/lich-thang.command';
 import { HoanTacCommand } from './commands/hoan-tac.command';
 import { ExportIcsCommand } from './commands/export-ics.command';
@@ -38,6 +50,7 @@ import { TimKiemCommand } from './commands/tim-kiem.command';
 import { SapToiCommand } from './commands/sap-toi.command';
 import { DanhSachCommand } from './commands/danh-sach.command';
 import { LichTreCommand } from './commands/lich-tre.command';
+import { StreakCommand } from './commands/streak.command';
 import { LichSuCommand } from './commands/lich-su.command';
 import { GioLamCommand } from './commands/gio-lam.command';
 import {
@@ -60,6 +73,8 @@ import {
   BoChiaSeCommand,
   LichChiaSeCommand,
   ChiaSeAiCommand,
+  ChiaSeEditCommand,
+  BoChiaSeEditCommand,
 } from './commands/chia-se.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
@@ -89,6 +104,14 @@ import { InteractionRouter } from './interactions/interaction-router';
     BoLapCommand,
     CopyLichCommand,
     NhanhCommand,
+    GhiChuCommand,
+    HoanThanhTatCaCommand,
+    XoaTheoTagCommand,
+    XoaCompletedTruocCommand,
+    GhimCommand,
+    BoGhimCommand,
+    LichAnCommand,
+    HienCommand,
     LichThangCommand,
     HoanTacCommand,
     ExportIcsCommand,
@@ -98,6 +121,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     SapToiCommand,
     DanhSachCommand,
     LichTreCommand,
+    StreakCommand,
     LichSuCommand,
     GioLamCommand,
     TaoTemplateCommand,
@@ -115,6 +139,8 @@ import { InteractionRouter } from './interactions/interaction-router';
     BoChiaSeCommand,
     LichChiaSeCommand,
     ChiaSeAiCommand,
+    ChiaSeEditCommand,
+    BoChiaSeEditCommand,
     ThemLichCommand,
     ThemLichExcelCommand,
     MauLichExcelCommand,

@@ -153,6 +153,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "📅 XEM LỊCH",
   },
   {
+    name: "streak",
+    syntax: "streak",
+    description: "Chuỗi ngày liên tiếp hoàn-thành lịch + huy hiệu",
+    category: "📅 XEM LỊCH",
+  },
+  {
     name: "backup",
     syntax: "backup",
     description: "Sao lưu toàn bộ data (lịch + tag + template + cài-đặt) ra JSON",
@@ -170,6 +176,54 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     name: "nhanh",
     syntax: 'nhanh <câu mô tả>',
     description: "Quick add lịch bằng câu tiếng Việt (vd: họp team 9h sáng mai)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "ghi-chu",
+    syntax: "ghi-chu <ID> <nội dung>",
+    description: "Thêm nhanh ghi chú vào description của lịch (append)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "hoan-thanh-tat-ca",
+    syntax: "hoan-thanh-tat-ca <từ khoá|--tag X> [--xacnhan]",
+    description: "Đánh dấu hoàn-thành hàng loạt theo từ khoá hoặc tag",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "xoa-theo-tag",
+    syntax: "xoa-theo-tag <name> [--xacnhan]",
+    description: "Xoá hàng loạt mọi lịch có tag",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "xoa-completed-truoc",
+    syntax: "xoa-completed-truoc <DD-MM-YYYY> [--xacnhan]",
+    description: "Xoá hàng loạt lịch đã hoàn-thành trước ngày",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "ghim",
+    syntax: "ghim <ID>",
+    description: "Ghim lịch lên đầu các digest commands",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "bo-ghim",
+    syntax: "bo-ghim <ID>",
+    description: "Bỏ ghim lịch",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "lich-an",
+    syntax: "lich-an <ID>",
+    description: "Ẩn lịch khỏi digest (vẫn xem được qua *chi-tiet)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "hien",
+    syntax: "hien <ID>",
+    description: "Hiện lại lịch đã ẩn",
     category: "✏️ QUẢN LÝ LỊCH",
   },
   {
@@ -294,6 +348,18 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     name: "lich-chia-se",
     syntax: "lich-chia-se",
     description: "Liệt kê lịch được người khác chia sẻ cho bạn",
+    category: "👥 CHIA SẺ",
+  },
+  {
+    name: "chia-se-edit",
+    syntax: "chia-se-edit <ID> <user_id>",
+    description: "Cấp quyền EDIT lịch cho user khác",
+    category: "👥 CHIA SẺ",
+  },
+  {
+    name: "bo-chia-se-edit",
+    syntax: "bo-chia-se-edit <ID> <user_id>",
+    description: "Gỡ quyền edit lịch khỏi 1 user",
     category: "👥 CHIA SẺ",
   },
 

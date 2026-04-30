@@ -3,6 +3,7 @@ import { CommandRegistry } from './command-registry';
 import { BotCommand, CommandContext } from './command.types';
 import { UsersService } from '../../users/users.service';
 import { SchedulesService } from '../../schedules/schedules.service';
+import { SharesService } from '../../schedules/shares.service';
 import { UndoService } from '../../schedules/undo.service';
 import { DateParser } from '../../shared/utils/date-parser';
 import { Schedule } from '../../schedules/entities/schedule.entity';
@@ -19,6 +20,7 @@ export class HoanThanhCommand implements BotCommand, OnModuleInit {
     private readonly registry: CommandRegistry,
     private readonly usersService: UsersService,
     private readonly schedulesService: SchedulesService,
+    private readonly sharesService: SharesService,
     private readonly undoService: UndoService,
     private readonly dateParser: DateParser,
   ) {}
@@ -46,10 +48,18 @@ export class HoanThanhCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    const schedule = await this.schedulesService.findById(id, ctx.message.sender_id);
+    // Cho phép owner hoặc editor (chia-se-edit) đánh dấu hoàn thành.
+    const schedule = await this.schedulesService.findById(id);
     if (!schedule) {
       await ctx.reply(
-        `❌ Không tìm thấy lịch \`#${id}\` — có thể đã bị xóa hoặc không phải của bạn.`,
+        `❌ Không tìm thấy lịch \`#${id}\` — có thể đã bị xóa.`,
+      );
+      return;
+    }
+    const allowed = await this.sharesService.canEdit(id, ctx.message.sender_id);
+    if (!allowed) {
+      await ctx.reply(
+        `⚠️ Lịch \`#${id}\` không phải của bạn và bạn không được cấp quyền edit.`,
       );
       return;
     }

@@ -13,6 +13,7 @@ import { UndoService } from './undo.service';
 import { TemplatesService } from './templates.service';
 import { AuditService } from './audit.service';
 import { BackupService } from './backup.service';
+import { StreakService } from './streak.service';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { BackupService } from './backup.service';
     TemplatesService,
     AuditService,
     BackupService,
+    StreakService,
   ],
   exports: [
     SchedulesService,
@@ -42,6 +44,7 @@ import { BackupService } from './backup.service';
     TemplatesService,
     AuditService,
     BackupService,
+    StreakService,
   ],
 })
 export class SchedulesModule {}

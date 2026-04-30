@@ -17,6 +17,7 @@ import {
   SchedulesService,
   UpdateSchedulePatch,
 } from '../../schedules/schedules.service';
+import { SharesService } from '../../schedules/shares.service';
 import { DateParser } from '../../shared/utils/date-parser';
 import {
   RecurrenceType,
@@ -56,6 +57,7 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
     private readonly botService: BotService,
     private readonly usersService: UsersService,
     private readonly schedulesService: SchedulesService,
+    private readonly sharesService: SharesService,
     private readonly dateParser: DateParser,
   ) {}
 
@@ -85,11 +87,18 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
       return;
     }
 
-    // findById với userId để verify ownership ở tầng DB luôn
-    const schedule = await this.schedulesService.findById(id, ctx.message.sender_id);
+    // Cho phép owner hoặc editor (chia-se-edit) sửa lịch.
+    const schedule = await this.schedulesService.findById(id);
     if (!schedule) {
       await ctx.reply(
-        `❌ Không tìm thấy lịch \`#${id}\` — có thể đã bị xóa hoặc không phải của bạn.`,
+        `❌ Không tìm thấy lịch \`#${id}\` — có thể đã bị xóa.`,
+      );
+      return;
+    }
+    const allowed = await this.sharesService.canEdit(id, ctx.message.sender_id);
+    if (!allowed) {
+      await ctx.reply(
+        `⚠️ Lịch \`#${id}\` không phải của bạn và bạn không được cấp quyền edit.`,
       );
       return;
     }
@@ -120,7 +129,8 @@ export class SuaLichCommand implements BotCommand, InteractionHandler, OnModuleI
       await ctx.send(`❌ Không tìm thấy lịch \`#${scheduleId}\` (có thể đã bị xóa).`);
       return;
     }
-    if (schedule.user_id !== ctx.clickerId) {
+    const allowed = await this.sharesService.canEdit(scheduleId, ctx.clickerId);
+    if (!allowed) {
       await ctx.send(`⚠️ Bạn không có quyền sửa lịch này.`);
       return;
     }

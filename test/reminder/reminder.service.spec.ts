@@ -24,6 +24,8 @@ describe('ReminderService', () => {
     recurrence_until: null,
     priority: "normal",
     recurrence_parent_id: null,
+    is_pinned: false,
+    is_hidden: false,
   } as any;
 
   const mockSettings: UserSettings = {
@@ -39,6 +41,8 @@ describe('ReminderService', () => {
     recurrence_until: null,
     priority: "normal",
     recurrence_parent_id: null,
+    is_pinned: false,
+    is_hidden: false,
   } as any;
 
   const mockSchedule: Schedule = {
@@ -62,6 +66,8 @@ describe('ReminderService', () => {
     recurrence_until: null,
     priority: "normal",
     recurrence_parent_id: null,
+    is_pinned: false,
+    is_hidden: false,
   };
 
   beforeEach(async () => {
