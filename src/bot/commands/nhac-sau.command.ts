@@ -2,6 +2,10 @@ import { Injectable, OnModuleInit } from "@nestjs/common";
 import { DateParser } from "../../shared/utils/date-parser";
 import { parseDurationMinutes } from "../../shared/utils/duration-parser";
 import { MessageFormatter } from "../../shared/utils/message-formatter";
+import {
+  parseSnoozeFrame,
+  listSnoozeFrames,
+} from "../../shared/utils/snooze-frame";
 import { SchedulesService } from "../../schedules/schedules.service";
 import { UsersService } from "../../users/users.service";
 import { CommandRegistry } from "./command-registry";
@@ -11,9 +15,10 @@ import { BotCommand, CommandContext } from "./command.types";
 export class NhacSauCommand implements BotCommand, OnModuleInit {
   readonly name = "nhac-sau";
   readonly aliases = ["nhacsau", "remindin"];
-  readonly description = "Đặt nhắc lịch sau X phút/giờ/ngày (tương đối)";
+  readonly description =
+    "Đặt nhắc lịch sau X phút/giờ/ngày, hoặc đến khung giờ (đến tối, đến giờ làm…)";
   readonly category = "🔔 NHẮC NHỞ";
-  readonly syntax = "nhac-sau <ID> <thời gian>";
+  readonly syntax = "nhac-sau <ID> <thời gian | khung>";
   readonly example = "nhac-sau 5 30p";
 
   constructor(
@@ -50,11 +55,40 @@ export class NhacSauCommand implements BotCommand, OnModuleInit {
     }
 
     const durationRaw = ctx.args.slice(1).join(" ");
-    const minutes = parseDurationMinutes(durationRaw);
-    if (minutes === null) {
+    const now = new Date();
+
+    // Thử frame keyword trước (vd "đến giờ làm", "đến tối")
+    const frame = parseSnoozeFrame(durationRaw, now, {
+      workStartHour: user.settings?.work_start_hour ?? 0,
+      workEndHour: user.settings?.work_end_hour ?? 0,
+    });
+
+    let remindAt: Date;
+    let snoozeLabel: string;
+
+    if (frame) {
+      remindAt = frame.remindAt;
+      snoozeLabel = frame.label;
+    } else {
+      const minutes = parseDurationMinutes(durationRaw);
+      if (minutes === null) {
+        await ctx.reply(
+          `⚠️ Thời gian không hợp lệ: \`${durationRaw}\`.\n` +
+            `Ví dụ duration: \`30p\`, \`2h\`, \`2h30p\`, \`1d\`, \`1 ngày 12 giờ\`.\n` +
+            `Hoặc khung giờ: ${listSnoozeFrames()
+              .map((f) => `\`${f}\``)
+              .join(", ")}.`,
+        );
+        return;
+      }
+      remindAt = new Date(now.getTime() + minutes * 60 * 1000);
+      snoozeLabel = this.dateParser.formatMinutes(minutes);
+    }
+
+    if (remindAt.getTime() <= now.getTime()) {
       await ctx.reply(
-        `⚠️ Thời gian không hợp lệ: \`${durationRaw}\`.\n` +
-          `Ví dụ: \`30p\`, \`2h\`, \`2h30p\`, \`1d\`, \`1 ngày 12 giờ\`.`,
+        `⚠️ Thời điểm nhắc đã ở quá khứ (${this.dateParser.formatVietnam(remindAt)}). ` +
+          `Hãy thử khung khác.`,
       );
       return;
     }
@@ -75,7 +109,6 @@ export class NhacSauCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    const remindAt = new Date(Date.now() + minutes * 60 * 1000);
     await this.schedulesService.setReminder(schedule.id, remindAt);
 
     const warning =
@@ -86,7 +119,7 @@ export class NhacSauCommand implements BotCommand, OnModuleInit {
     const lines = [
       `✅ Đã đặt nhắc cho lịch #${schedule.id}`,
       `➤ Tiêu đề: ${schedule.title}`,
-      `➤ Nhắc sau: ${this.dateParser.formatMinutes(minutes)}`,
+      `➤ Nhắc: ${snoozeLabel}`,
       `➤ Sẽ nhắc lúc: ${this.dateParser.formatVietnam(remindAt)}${warning}`,
     ];
 
@@ -97,7 +130,12 @@ export class NhacSauCommand implements BotCommand, OnModuleInit {
     return (
       `⚠️ Sai cú pháp.\nDùng: \`${prefix}${this.syntax}\`\n` +
       `Ví dụ: \`${prefix}${this.example}\` (nhắc sau 30 phút)\n` +
-      `        \`${prefix}${this.name} 5 2h30p\` (nhắc sau 2 giờ 30 phút)`
+      `        \`${prefix}${this.name} 5 2h30p\` (nhắc sau 2 giờ 30 phút)\n` +
+      `        \`${prefix}${this.name} 5 đến tối\` (nhắc lúc 19h)\n` +
+      `        \`${prefix}${this.name} 5 đến giờ làm\` (theo cài đặt giờ làm việc)\n` +
+      `Khung khác: ${listSnoozeFrames()
+        .map((f) => `\`${f}\``)
+        .join(", ")}.`
     );
   }
 
