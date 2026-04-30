@@ -33,6 +33,7 @@ import { LichThangCommand } from './commands/lich-thang.command';
 import { HoanTacCommand } from './commands/hoan-tac.command';
 import { ExportIcsCommand } from './commands/export-ics.command';
 import { ImportIcsCommand } from './commands/import-ics.command';
+import { BackupCommand } from './commands/backup.command';
 import { TimKiemCommand } from './commands/tim-kiem.command';
 import { SapToiCommand } from './commands/sap-toi.command';
 import { DanhSachCommand } from './commands/danh-sach.command';
@@ -92,6 +93,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     HoanTacCommand,
     ExportIcsCommand,
     ImportIcsCommand,
+    BackupCommand,
     TimKiemCommand,
     SapToiCommand,
     DanhSachCommand,

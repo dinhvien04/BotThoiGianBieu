@@ -152,6 +152,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Thống kê theo khoảng (tuan | thang | nam | all)",
     category: "📅 XEM LỊCH",
   },
+  {
+    name: "backup",
+    syntax: "backup",
+    description: "Sao lưu toàn bộ data (lịch + tag + template + cài-đặt) ra JSON",
+    category: "📅 XEM LỊCH",
+  },
 
   // ===== ✏️ Quản lý lịch =====
   {
