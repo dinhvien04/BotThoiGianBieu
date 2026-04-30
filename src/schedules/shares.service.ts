@@ -128,4 +128,92 @@ export class SharesService {
     });
     return (schedule?.sharedWith ?? []).map((u) => u.user_id);
   }
+
+  /**
+   * Cấp quyền EDIT lịch cho `targetUserId`. Trả:
+   * - null nếu schedule không tồn tại / không phải owner / target chưa
+   *   từng dùng bot.
+   * - { added: false } nếu user mục tiêu đã có quyền edit từ trước.
+   * - { added: true, editors } nếu thêm thành công.
+   *
+   * Không cho cấp cho chính owner.
+   */
+  async grantEdit(
+    scheduleId: number,
+    ownerUserId: string,
+    targetUserId: string,
+  ): Promise<{ added: boolean; editors: User[] } | null> {
+    if (!targetUserId || targetUserId === ownerUserId) return null;
+
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id: scheduleId, user_id: ownerUserId },
+      relations: ["editors"],
+    });
+    if (!schedule) return null;
+
+    const target = await this.userRepository.findOne({
+      where: { user_id: targetUserId },
+    });
+    if (!target) return null;
+
+    const list = schedule.editors ?? [];
+    if (list.some((u) => u.user_id === targetUserId)) {
+      return { added: false, editors: list };
+    }
+
+    schedule.editors = [...list, target];
+    await this.scheduleRepository.save(schedule);
+    return { added: true, editors: schedule.editors };
+  }
+
+  /**
+   * Gỡ quyền edit của `targetUserId`. Trả null nếu schedule không tồn
+   * tại / không phải owner. Trả `{ removed, editors }`.
+   */
+  async revokeEdit(
+    scheduleId: number,
+    ownerUserId: string,
+    targetUserId: string,
+  ): Promise<{ removed: boolean; editors: User[] } | null> {
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id: scheduleId, user_id: ownerUserId },
+      relations: ["editors"],
+    });
+    if (!schedule) return null;
+
+    const before = schedule.editors ?? [];
+    const after = before.filter((u) => u.user_id !== targetUserId);
+    if (after.length === before.length) {
+      return { removed: false, editors: before };
+    }
+
+    schedule.editors = after;
+    await this.scheduleRepository.save(schedule);
+    return { removed: true, editors: after };
+  }
+
+  /**
+   * Trả `true` nếu `userId` được phép edit lịch — owner hoặc editor.
+   */
+  async canEdit(scheduleId: number, userId: string): Promise<boolean> {
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id: scheduleId },
+      relations: ["editors"],
+    });
+    if (!schedule) return false;
+    if (schedule.user_id === userId) return true;
+    return (schedule.editors ?? []).some((u) => u.user_id === userId);
+  }
+
+  /** List editors của schedule. Chỉ owner mới được gọi. */
+  async listEditors(
+    scheduleId: number,
+    ownerUserId: string,
+  ): Promise<User[]> {
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id: scheduleId, user_id: ownerUserId },
+      relations: ["editors"],
+    });
+    return schedule?.editors ?? [];
+  }
 }

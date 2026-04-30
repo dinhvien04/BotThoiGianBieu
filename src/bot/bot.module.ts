@@ -71,6 +71,8 @@ import {
   BoChiaSeCommand,
   LichChiaSeCommand,
   ChiaSeAiCommand,
+  ChiaSeEditCommand,
+  BoChiaSeEditCommand,
 } from './commands/chia-se.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
@@ -133,6 +135,8 @@ import { InteractionRouter } from './interactions/interaction-router';
     BoChiaSeCommand,
     LichChiaSeCommand,
     ChiaSeAiCommand,
+    ChiaSeEditCommand,
+    BoChiaSeEditCommand,
     ThemLichCommand,
     ThemLichExcelCommand,
     MauLichExcelCommand,
