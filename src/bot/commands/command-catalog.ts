@@ -167,6 +167,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "✏️ QUẢN LÝ LỊCH",
   },
   {
+    name: "ghi-chu",
+    syntax: "ghi-chu <ID> <nội dung>",
+    description: "Thêm nhanh ghi chú vào description của lịch (append)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
     name: "them-lich-excel",
     syntax: "them-lich-excel",
     description: "Thêm nhiều lịch từ file Excel",
