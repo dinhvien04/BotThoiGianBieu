@@ -296,6 +296,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Gỡ quyền edit lịch khỏi 1 user",
     category: "👥 CHIA SẺ",
   },
+  {
+    name: "lich-share-cua-toi",
+    syntax: "lich-share-cua-toi",
+    description: "Liệt kê các lịch của bạn đã chia sẻ cho người khác",
+    category: "👥 CHIA SẺ",
+  },
 
   // ===== 🔔 Nhắc nhở =====
   {

@@ -6,6 +6,7 @@ import {
   ChiaSeCommand,
   ChiaSeEditCommand,
   LichChiaSeCommand,
+  LichShareCuaToiCommand,
 } from "../../src/bot/commands/chia-se.command";
 import { CommandRegistry } from "../../src/bot/commands/command-registry";
 import { UsersService } from "../../src/users/users.service";
@@ -51,6 +52,7 @@ describe("Chia-se commands", () => {
       revokeEdit: jest.fn(),
       canEdit: jest.fn(),
       listEditors: jest.fn().mockResolvedValue([]),
+      findSchedulesIShared: jest.fn(),
     } as any;
     mockFormatter = {
       formatNotInitialized: jest.fn(() => "NOT_INIT"),
@@ -393,6 +395,64 @@ describe("Chia-se commands", () => {
       expect(ctx.reply).toHaveBeenCalledWith(
         expect.stringContaining("chưa có quyền edit"),
       );
+    });
+  });
+
+  describe("LichShareCuaToiCommand", () => {
+    let cmd: LichShareCuaToiCommand;
+    beforeEach(async () => {
+      cmd = await build<LichShareCuaToiCommand>(LichShareCuaToiCommand);
+    });
+
+    it("rejects when user not initialised", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(null);
+      const ctx = buildContext([]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith("NOT_INIT");
+    });
+
+    it("reports empty list", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      mockSharesService.findSchedulesIShared.mockResolvedValue([]);
+      const ctx = buildContext([]);
+      await cmd.execute(ctx);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining("chưa chia sẻ lịch nào"),
+      );
+    });
+
+    it("renders schedules with editors and viewers", async () => {
+      mockUsersService.findByUserId.mockResolvedValue(ownerUser);
+      mockSharesService.findSchedulesIShared.mockResolvedValue([
+        {
+          id: 5,
+          title: "Họp team",
+          start_time: new Date("2026-05-01T02:00:00Z"),
+          sharedWith: [
+            { user_id: "u2", username: "alice" } as User,
+            { user_id: "u3", display_name: "Bob" } as User,
+          ],
+          editors: [{ user_id: "u2", username: "alice" } as User],
+        } as any,
+        {
+          id: 6,
+          title: "Solo",
+          start_time: new Date("2026-05-02T02:00:00Z"),
+          sharedWith: [{ user_id: "u4", username: "carol" } as User],
+          editors: [],
+        } as any,
+      ]);
+      const ctx = buildContext([]);
+      await cmd.execute(ctx);
+      const reply = (ctx.reply as jest.Mock).mock.calls[0][0];
+      expect(reply).toContain("LỊCH BẠN ĐÃ CHIA SẺ");
+      expect(reply).toContain("#5");
+      expect(reply).toContain("Họp team");
+      expect(reply).toContain("✏️ Edit (1)");
+      expect(reply).toContain("👁️ View (1)"); // Bob (alice promoted to edit)
+      expect(reply).toContain("#6");
+      expect(reply).toContain("👁️ View (1)");
+      expect(reply).toContain("Tổng: 2 lịch — 1 editor, 2 viewer");
     });
   });
 });

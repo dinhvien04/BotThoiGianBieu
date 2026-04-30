@@ -60,6 +60,7 @@ import {
   ChiaSeAiCommand,
   ChiaSeEditCommand,
   BoChiaSeEditCommand,
+  LichShareCuaToiCommand,
 } from './commands/chia-se.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
@@ -115,6 +116,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     ChiaSeAiCommand,
     ChiaSeEditCommand,
     BoChiaSeEditCommand,
+    LichShareCuaToiCommand,
     ThemLichCommand,
     ThemLichExcelCommand,
     MauLichExcelCommand,

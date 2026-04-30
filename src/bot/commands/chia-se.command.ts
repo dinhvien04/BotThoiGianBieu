@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from "@nestjs/common";
 import { MessageFormatter } from "../../shared/utils/message-formatter";
 import { SharesService } from "../../schedules/shares.service";
 import { UsersService } from "../../users/users.service";
+import { formatDateShort, formatTime } from "../../shared/utils/date-utils";
 import { CommandRegistry } from "./command-registry";
 import { BotCommand, CommandContext } from "./command.types";
 
@@ -413,5 +414,94 @@ export class BoChiaSeEditCommand implements BotCommand, OnModuleInit {
         `ℹ️ User \`${targetId}\` chưa có quyền edit lịch #${scheduleId}.`,
       );
     }
+  }
+}
+
+@Injectable()
+export class LichShareCuaToiCommand implements BotCommand, OnModuleInit {
+  readonly name = "lich-share-cua-toi";
+  readonly aliases = ["lichsharecuatoi", "my-shared", "shared-by-me"];
+  readonly description =
+    "Liệt kê các lịch của bạn đã chia sẻ cho người khác (kèm editor / viewer)";
+  readonly category = CATEGORY;
+  readonly syntax = "lich-share-cua-toi";
+  readonly example = "lich-share-cua-toi";
+
+  constructor(
+    private readonly registry: CommandRegistry,
+    private readonly usersService: UsersService,
+    private readonly sharesService: SharesService,
+    private readonly formatter: MessageFormatter,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register(this);
+  }
+
+  async execute(ctx: CommandContext): Promise<void> {
+    const user = await this.usersService.findByUserId(ctx.message.sender_id);
+    if (!user) {
+      await ctx.reply(this.formatter.formatNotInitialized(ctx.prefix));
+      return;
+    }
+
+    const schedules = await this.sharesService.findSchedulesIShared(
+      user.user_id,
+    );
+    if (schedules.length === 0) {
+      await ctx.reply(
+        `📭 Bạn chưa chia sẻ lịch nào.\n` +
+          `💡 Chia sẻ: \`${ctx.prefix}chia-se <ID> <user_id>\` ` +
+          `hoặc cấp quyền edit: \`${ctx.prefix}chia-se-edit <ID> <user_id>\`.`,
+      );
+      return;
+    }
+
+    const header = `【 LỊCH BẠN ĐÃ CHIA SẺ 】`;
+    const separator = "━━━━━━━━━━━━━━━━━━━━";
+
+    const items = schedules.map((schedule) => {
+      const when = `${formatDateShort(schedule.start_time)} ${formatTime(schedule.start_time)}`;
+      const editors = schedule.editors ?? [];
+      const editorIds = new Set(editors.map((u) => u.user_id));
+      const viewers = (schedule.sharedWith ?? []).filter(
+        (u) => !editorIds.has(u.user_id),
+      );
+
+      const lines = [`➤ \`#${schedule.id}\` 『 ${when} 』 **${schedule.title}**`];
+      if (editors.length > 0) {
+        const list = editors
+          .map((u) => `${u.display_name || u.username || u.user_id} (\`${u.user_id}\`)`)
+          .join(", ");
+        lines.push(`   ✏️ Edit (${editors.length}): ${list}`);
+      }
+      if (viewers.length > 0) {
+        const list = viewers
+          .map((u) => `${u.display_name || u.username || u.user_id} (\`${u.user_id}\`)`)
+          .join(", ");
+        lines.push(`   👁️ View (${viewers.length}): ${list}`);
+      }
+      return lines.join("\n");
+    });
+
+    const totalEditors = schedules.reduce(
+      (sum, s) => sum + (s.editors?.length ?? 0),
+      0,
+    );
+    const totalViewers = schedules.reduce(
+      (sum, s) =>
+        sum +
+        (s.sharedWith ?? []).filter(
+          (u) => !(s.editors ?? []).some((e) => e.user_id === u.user_id),
+        ).length,
+      0,
+    );
+    const footer =
+      `💡 Tổng: ${schedules.length} lịch — ${totalEditors} editor, ${totalViewers} viewer.\n` +
+      `Gỡ: \`${ctx.prefix}bo-chia-se <ID> <user_id>\` / \`${ctx.prefix}bo-chia-se-edit <ID> <user_id>\`.`;
+
+    await ctx.reply(
+      [header, separator, items.join("\n\n"), footer].join("\n\n"),
+    );
   }
 }

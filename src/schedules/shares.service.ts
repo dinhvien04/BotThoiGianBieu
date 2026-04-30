@@ -216,4 +216,22 @@ export class SharesService {
     });
     return schedule?.editors ?? [];
   }
+
+  /**
+   * List schedules mà OWNER đã share cho người khác (view-only HOẶC
+   * editor). Trả schedule kèm `sharedWith` và `editors` để tầng UI có
+   * thể đếm/render. Sắp theo start_time ASC.
+   */
+  async findSchedulesIShared(ownerUserId: string): Promise<Schedule[]> {
+    const schedules = await this.scheduleRepository.find({
+      where: { user_id: ownerUserId },
+      relations: ["sharedWith", "editors"],
+      order: { start_time: "ASC" },
+    });
+    return schedules.filter(
+      (s) =>
+        (s.sharedWith && s.sharedWith.length > 0) ||
+        (s.editors && s.editors.length > 0),
+    );
+  }
 }

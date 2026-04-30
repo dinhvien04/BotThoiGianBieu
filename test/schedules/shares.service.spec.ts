@@ -23,6 +23,7 @@ describe("SharesService", () => {
     };
     mockScheduleRepo = {
       findOne: jest.fn(),
+      find: jest.fn(),
       save: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(mockQb),
     } as any;
@@ -303,6 +304,42 @@ describe("SharesService", () => {
       mockScheduleRepo.findOne.mockResolvedValue(null);
       const editors = await service.listEditors(5, ownerId);
       expect(editors).toEqual([]);
+    });
+  });
+
+  describe("findSchedulesIShared", () => {
+    it("returns only schedules with at least one viewer or editor", async () => {
+      const sched1 = {
+        id: 1,
+        user_id: ownerId,
+        sharedWith: [{ user_id: "u2" }],
+        editors: [],
+      };
+      const sched2 = {
+        id: 2,
+        user_id: ownerId,
+        sharedWith: [],
+        editors: [{ user_id: "u3" }],
+      };
+      const sched3 = {
+        id: 3,
+        user_id: ownerId,
+        sharedWith: [],
+        editors: [],
+      };
+      (mockScheduleRepo.find as jest.Mock).mockResolvedValue([
+        sched1,
+        sched2,
+        sched3,
+      ] as any);
+      const result = await service.findSchedulesIShared(ownerId);
+      expect(result.map((s) => s.id)).toEqual([1, 2]);
+    });
+
+    it("returns [] when owner has no schedules", async () => {
+      (mockScheduleRepo.find as jest.Mock).mockResolvedValue([] as any);
+      const result = await service.findSchedulesIShared(ownerId);
+      expect(result).toEqual([]);
     });
   });
 
