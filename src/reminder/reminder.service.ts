@@ -270,6 +270,18 @@ export class ReminderService {
       );
     }
 
+    // Frame snooze — đến khung giờ thay vì cố định số phút.
+    builder.addButton(
+      `${REMINDER_INTERACTION_ID}:frame:${scheduleId}:work`,
+      '🌅 Đến giờ làm',
+      EButtonMessageStyle.SECONDARY,
+    );
+    builder.addButton(
+      `${REMINDER_INTERACTION_ID}:frame:${scheduleId}:evening`,
+      '🌙 Đến tối',
+      EButtonMessageStyle.SECONDARY,
+    );
+
     // Hoãn tuỳ ý — mở form ephemeral cho user nhập số phút.
     builder.addButton(
       `${REMINDER_INTERACTION_ID}:custom:${scheduleId}`,

@@ -14,13 +14,23 @@ import { SchedulesService } from '../schedules/schedules.service';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { UsersService } from '../users/users.service';
 import { DateParser } from '../shared/utils/date-parser';
+import { parseSnoozeFrame } from '../shared/utils/snooze-frame';
 import { REMINDER_INTERACTION_ID } from './reminder.service';
+
+const FRAME_KEYWORDS: Record<string, string> = {
+  work: 'đến giờ làm',
+  evening: 'đến tối',
+  noon: 'đến trưa',
+  afternoon: 'đến chiều',
+  eod: 'đến cuối ngày',
+};
 
 /**
  * Xử lý button click trên message reminder:
  *   - "reminder:ack:<scheduleId>"              → start reminder: đánh dấu đã nhận, dừng nhắc
  *   - "reminder:snooze:<scheduleId>"           → start reminder: hoãn theo user_settings (legacy)
  *   - "reminder:snooze:<scheduleId>:<minutes>" → start reminder: hoãn đúng X phút (preset button)
+ *   - "reminder:frame:<scheduleId>:<key>"      → start reminder: hoãn đến khung giờ (work/evening/...)
  *   - "reminder:custom:<scheduleId>"           → mở form ephemeral cho user nhập số phút tuỳ ý
  *   - "reminder:csub:<scheduleId>"             → submit form custom snooze (formData.minutes)
  *   - "reminder:ccancel:<scheduleId>"          → đóng form custom snooze
@@ -75,6 +85,9 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
         return;
       case 'snooze':
         await this.handleSnooze(ctx, scheduleId, minutesStr);
+        return;
+      case 'frame':
+        await this.handleFrame(ctx, scheduleId, minutesStr);
         return;
       case 'custom':
         await this.handleCustomOpen(ctx, scheduleId);
@@ -137,6 +150,49 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
    * Mở form ephemeral để user nhập số phút hoãn tuỳ ý.
    * Form chỉ hiển thị cho user click — channel khác không thấy.
    */
+  private async handleFrame(
+    ctx: ButtonInteractionContext,
+    scheduleId: number,
+    frameKey: string | undefined,
+  ): Promise<void> {
+    const keyword = frameKey ? FRAME_KEYWORDS[frameKey] : undefined;
+    if (!keyword) {
+      this.logger.warn(`Frame key không hợp lệ: ${frameKey}`);
+      await ctx.send(`⚠️ Khung giờ không hợp lệ.`);
+      return;
+    }
+
+    const user = await this.usersService.findByUserId(ctx.clickerId);
+    const now = new Date();
+    const frame = parseSnoozeFrame(keyword, now, {
+      workStartHour: user?.settings?.work_start_hour ?? 0,
+      workEndHour: user?.settings?.work_end_hour ?? 0,
+    });
+    if (!frame) {
+      await ctx.send(`⚠️ Không tính được khung giờ "${keyword}".`);
+      return;
+    }
+
+    const minutes = Math.max(
+      1,
+      Math.ceil((frame.remindAt.getTime() - now.getTime()) / 60000),
+    );
+    const nextAt = await this.schedulesService.snooze(scheduleId, minutes);
+
+    await this.safeDelete(ctx);
+    if (!nextAt) {
+      await ctx.send(
+        `ℹ️ Lịch #${scheduleId} đã được xác nhận hoặc xử lý ở channel khác, không hoãn nữa.`,
+      );
+      return;
+    }
+
+    await ctx.send(
+      `⏰ Đã hoãn nhắc lịch #${scheduleId} **${frame.label}**.\n` +
+        `Sẽ nhắc lại lúc: \`${this.dateParser.formatVietnam(nextAt)}\``,
+    );
+  }
+
   private async handleCustomOpen(
     ctx: ButtonInteractionContext,
     scheduleId: number,
