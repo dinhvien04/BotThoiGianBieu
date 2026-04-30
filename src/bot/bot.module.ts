@@ -29,6 +29,18 @@ import { LichLapCommand } from './commands/lich-lap.command';
 import { BoLapCommand } from './commands/bo-lap.command';
 import { CopyLichCommand } from './commands/copy-lich.command';
 import { NhanhCommand } from './commands/nhanh.command';
+import { GhiChuCommand } from './commands/ghi-chu.command';
+import {
+  HoanThanhTatCaCommand,
+  XoaTheoTagCommand,
+  XoaCompletedTruocCommand,
+} from './commands/bulk-ops.command';
+import {
+  GhimCommand,
+  BoGhimCommand,
+  LichAnCommand,
+  HienCommand,
+} from './commands/pin-hide.command';
 import { LichThangCommand } from './commands/lich-thang.command';
 import { HoanTacCommand } from './commands/hoan-tac.command';
 import { ExportIcsCommand } from './commands/export-ics.command';
@@ -88,6 +100,14 @@ import { InteractionRouter } from './interactions/interaction-router';
     BoLapCommand,
     CopyLichCommand,
     NhanhCommand,
+    GhiChuCommand,
+    HoanThanhTatCaCommand,
+    XoaTheoTagCommand,
+    XoaCompletedTruocCommand,
+    GhimCommand,
+    BoGhimCommand,
+    LichAnCommand,
+    HienCommand,
     LichThangCommand,
     HoanTacCommand,
     ExportIcsCommand,
