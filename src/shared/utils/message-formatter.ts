@@ -209,9 +209,10 @@ export class MessageFormatter {
         schedule.recurrence_type && schedule.recurrence_type !== "none"
           ? " 🔁"
           : "";
+      const pinnedBadge = schedule.is_pinned ? " 📌" : "";
       const prio = priorityBadge(schedule.priority ?? "normal");
       const lines = [
-        `➤ 『 ${when} 』 ${prio} **${schedule.title}**${recurringBadge} — ${statusLabel}`,
+        `➤ 『 ${when} 』 ${prio} **${schedule.title}**${pinnedBadge}${recurringBadge} — ${statusLabel}`,
       ];
       if (schedule.description) {
         lines.push(`   ID: ${schedule.id} ✦ Ghi chú: ${schedule.description}`);
@@ -356,8 +357,9 @@ export class MessageFormatter {
 
   private formatDailyScheduleItem(schedule: Schedule): string {
     const prio = priorityBadge(schedule.priority ?? "normal");
+    const pinnedBadge = schedule.is_pinned ? " 📌" : "";
     const lines = [
-      `➤ 『 ${formatTime(schedule.start_time)} 』 ${prio} **${schedule.title}**`,
+      `➤ 『 ${formatTime(schedule.start_time)} 』 ${prio} **${schedule.title}**${pinnedBadge}`,
     ];
 
     if (schedule.description) {

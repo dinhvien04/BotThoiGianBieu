@@ -128,13 +128,20 @@ export class SchedulesService {
     });
   }
 
-  findByDateRange(userId: string, start: Date, end: Date): Promise<Schedule[]> {
+  findByDateRange(
+    userId: string,
+    start: Date,
+    end: Date,
+    options: { includeHidden?: boolean } = {},
+  ): Promise<Schedule[]> {
+    const where: Record<string, unknown> = {
+      user_id: userId,
+      start_time: Between(start, end),
+    };
+    if (!options.includeHidden) where.is_hidden = false;
     return this.scheduleRepository.find({
-      where: {
-        user_id: userId,
-        start_time: Between(start, end),
-      },
-      order: { start_time: 'ASC' },
+      where,
+      order: { is_pinned: 'DESC', start_time: 'ASC' },
     });
   }
 
@@ -148,16 +155,25 @@ export class SchedulesService {
     keyword: string,
     limit = 10,
     offset = 0,
+    options: { includeHidden?: boolean } = {},
   ): Promise<SearchResult> {
     const pattern = `%${keyword}%`;
-    const whereClauses = [
-      { user_id: userId, title: ILike(pattern) },
-      { user_id: userId, description: ILike(pattern) },
-    ];
+    const baseTitle: Record<string, unknown> = {
+      user_id: userId,
+      title: ILike(pattern),
+    };
+    const baseDesc: Record<string, unknown> = {
+      user_id: userId,
+      description: ILike(pattern),
+    };
+    if (!options.includeHidden) {
+      baseTitle.is_hidden = false;
+      baseDesc.is_hidden = false;
+    }
 
     const [items, total] = await this.scheduleRepository.findAndCount({
-      where: whereClauses,
-      order: { start_time: 'ASC', id: 'ASC' },
+      where: [baseTitle, baseDesc],
+      order: { is_pinned: 'DESC', start_time: 'ASC', id: 'ASC' },
       take: limit,
       skip: offset,
     });
@@ -175,6 +191,7 @@ export class SchedulesService {
     now: Date,
     limit = 5,
     priority?: SchedulePriority,
+    options: { includeHidden?: boolean } = {},
   ): Promise<Schedule[]> {
     const where: Record<string, unknown> = {
       user_id: userId,
@@ -182,9 +199,10 @@ export class SchedulesService {
       start_time: MoreThanOrEqual(now),
     };
     if (priority) where.priority = priority;
+    if (!options.includeHidden) where.is_hidden = false;
     return this.scheduleRepository.find({
       where,
-      order: { start_time: 'ASC', id: 'ASC' },
+      order: { is_pinned: 'DESC', start_time: 'ASC', id: 'ASC' },
       take: limit,
     });
   }
@@ -200,6 +218,7 @@ export class SchedulesService {
     limit = 10,
     offset = 0,
     priority?: SchedulePriority,
+    options: { includeHidden?: boolean } = {},
   ): Promise<SearchResult> {
     const where: Record<string, unknown> = {
       user_id: userId,
@@ -207,9 +226,10 @@ export class SchedulesService {
       start_time: LessThan(now),
     };
     if (priority) where.priority = priority;
+    if (!options.includeHidden) where.is_hidden = false;
     const [items, total] = await this.scheduleRepository.findAndCount({
       where,
-      order: { start_time: 'ASC', id: 'ASC' },
+      order: { is_pinned: 'DESC', start_time: 'ASC', id: 'ASC' },
       take: limit,
       skip: offset,
     });
@@ -225,12 +245,14 @@ export class SchedulesService {
     limit = 10,
     offset = 0,
     priority?: SchedulePriority,
+    options: { includeHidden?: boolean } = {},
   ): Promise<SearchResult> {
     const where: Record<string, unknown> = { user_id: userId, status: 'pending' };
     if (priority) where.priority = priority;
+    if (!options.includeHidden) where.is_hidden = false;
     const [items, total] = await this.scheduleRepository.findAndCount({
       where,
-      order: { start_time: 'ASC', id: 'ASC' },
+      order: { is_pinned: 'DESC', start_time: 'ASC', id: 'ASC' },
       take: limit,
       skip: offset,
     });
@@ -450,6 +472,40 @@ export class SchedulesService {
     if (before) {
       this.auditLog(id, before.user_id, 'complete');
     }
+  }
+
+  /** Đặt cờ `is_pinned`. Trả schedule sau update hoặc null nếu không thuộc user. */
+  async setPinned(
+    userId: string,
+    id: number,
+    pinned: boolean,
+  ): Promise<Schedule | null> {
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id, user_id: userId },
+    });
+    if (!schedule) return null;
+    if (schedule.is_pinned !== pinned) {
+      await this.scheduleRepository.update(id, { is_pinned: pinned });
+      schedule.is_pinned = pinned;
+    }
+    return schedule;
+  }
+
+  /** Đặt cờ `is_hidden`. Trả schedule sau update hoặc null nếu không thuộc user. */
+  async setHidden(
+    userId: string,
+    id: number,
+    hidden: boolean,
+  ): Promise<Schedule | null> {
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id, user_id: userId },
+    });
+    if (!schedule) return null;
+    if (schedule.is_hidden !== hidden) {
+      await this.scheduleRepository.update(id, { is_hidden: hidden });
+      schedule.is_hidden = hidden;
+    }
+    return schedule;
   }
 
   async updateStatus(id: number, status: Schedule['status']): Promise<void> {

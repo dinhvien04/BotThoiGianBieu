@@ -191,6 +191,30 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "✏️ QUẢN LÝ LỊCH",
   },
   {
+    name: "ghim",
+    syntax: "ghim <ID>",
+    description: "Ghim lịch lên đầu các digest commands",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "bo-ghim",
+    syntax: "bo-ghim <ID>",
+    description: "Bỏ ghim lịch",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "lich-an",
+    syntax: "lich-an <ID>",
+    description: "Ẩn lịch khỏi digest (vẫn xem được qua *chi-tiet)",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "hien",
+    syntax: "hien <ID>",
+    description: "Hiện lại lịch đã ẩn",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
     name: "them-lich-excel",
     syntax: "them-lich-excel",
     description: "Thêm nhiều lịch từ file Excel",
