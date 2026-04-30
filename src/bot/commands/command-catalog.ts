@@ -152,6 +152,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Thống kê theo khoảng (tuan | thang | nam | all)",
     category: "📅 XEM LỊCH",
   },
+  {
+    name: "streak",
+    syntax: "streak",
+    description: "Chuỗi ngày liên tiếp hoàn-thành lịch + huy hiệu",
+    category: "📅 XEM LỊCH",
+  },
 
   // ===== ✏️ Quản lý lịch =====
   {
