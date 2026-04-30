@@ -194,6 +194,9 @@ export class ImportIcsCommand
         start_time: ev.start,
         end_time: ev.end,
         remind_at: remindAt,
+        recurrence_type: ev.recurrence?.type ?? "none",
+        recurrence_interval: ev.recurrence?.interval ?? 1,
+        recurrence_until: ev.recurrence?.until ?? null,
       });
       createdIds.push(schedule.id);
     }
@@ -290,6 +293,9 @@ export class ImportIcsCommand
         : "";
       lines.push(`#${ev.index}. **${ev.summary}**`);
       lines.push(`  ⏰ ${startTxt}${endTxt}`);
+      if (ev.recurrence) {
+        lines.push(`  🔁 ${this.formatRecurrence(ev.recurrence)}`);
+      }
       if (ev.description) {
         const short =
           ev.description.length > 80
@@ -300,6 +306,18 @@ export class ImportIcsCommand
     }
     if (events.length > preview.length) {
       lines.push(`_…và ${events.length - preview.length} sự kiện nữa._`);
+    }
+
+    const warnEvents = events.filter((e) => e.warnings.length > 0);
+    if (warnEvents.length > 0) {
+      lines.push("");
+      lines.push(`ℹ️ ${warnEvents.length} sự kiện có cảnh báo RRULE:`);
+      for (const ev of warnEvents.slice(0, 5)) {
+        lines.push(`  • #${ev.index}: ${ev.warnings.join("; ")}`);
+      }
+      if (warnEvents.length > 5) {
+        lines.push(`  • …và ${warnEvents.length - 5} sự kiện nữa.`);
+      }
     }
 
     if (errors.length > 0) {
@@ -314,6 +332,21 @@ export class ImportIcsCommand
     }
 
     return lines.join("\n");
+  }
+
+  private formatRecurrence(r: {
+    type: "daily" | "weekly" | "monthly";
+    interval: number;
+    until: Date | null;
+  }): string {
+    const label =
+      r.type === "daily" ? "ngày" : r.type === "weekly" ? "tuần" : "tháng";
+    const head =
+      r.interval === 1 ? `Lặp mỗi ${label}` : `Lặp mỗi ${r.interval} ${label}`;
+    if (r.until) {
+      return `${head} đến ${this.dateParser.formatVietnamDate(r.until)}`;
+    }
+    return head;
   }
 
   private cleanupPending(): void {
