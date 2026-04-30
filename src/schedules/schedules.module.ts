@@ -11,6 +11,7 @@ import { SharesService } from './shares.service';
 import { UndoService } from './undo.service';
 import { TemplatesService } from './templates.service';
 import { AuditService } from './audit.service';
+import { StreakService } from './streak.service';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AuditService } from './audit.service';
     UndoService,
     TemplatesService,
     AuditService,
+    StreakService,
   ],
   exports: [
     SchedulesService,
@@ -37,6 +39,7 @@ import { AuditService } from './audit.service';
     UndoService,
     TemplatesService,
     AuditService,
+    StreakService,
   ],
 })
 export class SchedulesModule {}

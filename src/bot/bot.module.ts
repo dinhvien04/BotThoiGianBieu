@@ -37,6 +37,7 @@ import { TimKiemCommand } from './commands/tim-kiem.command';
 import { SapToiCommand } from './commands/sap-toi.command';
 import { DanhSachCommand } from './commands/danh-sach.command';
 import { LichTreCommand } from './commands/lich-tre.command';
+import { StreakCommand } from './commands/streak.command';
 import { LichSuCommand } from './commands/lich-su.command';
 import { GioLamCommand } from './commands/gio-lam.command';
 import {
@@ -96,6 +97,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     SapToiCommand,
     DanhSachCommand,
     LichTreCommand,
+    StreakCommand,
     LichSuCommand,
     GioLamCommand,
     TaoTemplateCommand,
