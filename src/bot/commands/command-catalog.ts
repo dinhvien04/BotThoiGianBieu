@@ -284,6 +284,18 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Liệt kê lịch được người khác chia sẻ cho bạn",
     category: "👥 CHIA SẺ",
   },
+  {
+    name: "chia-se-edit",
+    syntax: "chia-se-edit <ID> <user_id>",
+    description: "Cấp quyền EDIT lịch cho user khác",
+    category: "👥 CHIA SẺ",
+  },
+  {
+    name: "bo-chia-se-edit",
+    syntax: "bo-chia-se-edit <ID> <user_id>",
+    description: "Gỡ quyền edit lịch khỏi 1 user",
+    category: "👥 CHIA SẺ",
+  },
 
   // ===== 🔔 Nhắc nhở =====
   {

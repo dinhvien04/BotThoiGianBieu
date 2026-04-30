@@ -145,4 +145,20 @@ export class Schedule {
     },
   })
   sharedWith?: User[];
+
+  /**
+   * Danh sách user được cấp quyền EDIT lịch (ngoài view). Junction
+   * `schedule_editors`. Owner vẫn là user_id và là người duy nhất xoá /
+   * cấp quyền tiếp.
+   */
+  @ManyToMany(() => User)
+  @JoinTable({
+    name: "schedule_editors",
+    joinColumn: { name: "schedule_id", referencedColumnName: "id" },
+    inverseJoinColumn: {
+      name: "editor_user_id",
+      referencedColumnName: "user_id",
+    },
+  })
+  editors?: User[];
 }

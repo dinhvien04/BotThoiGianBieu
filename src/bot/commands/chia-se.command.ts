@@ -258,13 +258,160 @@ export class ChiaSeAiCommand implements BotCommand, OnModuleInit {
       return;
     }
 
+    const editors = await this.sharesService.listEditors(
+      scheduleId,
+      user.user_id,
+    );
+    const editorIds = new Set(editors.map((u) => u.user_id));
     const lines = users.map((u) => {
       const label = u.display_name || u.username || u.user_id;
-      return `• ${label} (\`${u.user_id}\`)`;
+      const role = editorIds.has(u.user_id) ? " ✏️ (edit)" : "";
+      return `• ${label} (\`${u.user_id}\`)${role}`;
     });
     await ctx.reply(
       `👥 Lịch #${scheduleId} được chia sẻ cho ${users.length} người:\n` +
         lines.join("\n"),
     );
+  }
+}
+
+@Injectable()
+export class ChiaSeEditCommand implements BotCommand, OnModuleInit {
+  readonly name = "chia-se-edit";
+  readonly aliases = ["chiaseedit", "share-edit"];
+  readonly description =
+    "Cấp quyền EDIT lịch cho user khác (cần đã chia sẻ trước)";
+  readonly category = CATEGORY;
+  readonly syntax = "chia-se-edit <ID> <user_id>";
+  readonly example = "chia-se-edit 5 1234567890";
+
+  constructor(
+    private readonly registry: CommandRegistry,
+    private readonly usersService: UsersService,
+    private readonly sharesService: SharesService,
+    private readonly formatter: MessageFormatter,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register(this);
+  }
+
+  async execute(ctx: CommandContext): Promise<void> {
+    const user = await this.usersService.findByUserId(ctx.message.sender_id);
+    if (!user) {
+      await ctx.reply(this.formatter.formatNotInitialized(ctx.prefix));
+      return;
+    }
+
+    if (ctx.args.length < 2) {
+      await ctx.reply(
+        `⚠️ Cú pháp: \`${ctx.prefix}${this.syntax}\`\n` +
+          `Vd: \`${ctx.prefix}${this.example}\``,
+      );
+      return;
+    }
+
+    const scheduleId = parsePositiveInteger(ctx.args[0]);
+    if (!scheduleId) {
+      await ctx.reply(`⚠️ ID lịch không hợp lệ: \`${ctx.args[0]}\`.`);
+      return;
+    }
+
+    const targetId = normalizeUserId(ctx.args[1]);
+    if (!targetId) {
+      await ctx.reply(`⚠️ user_id không hợp lệ: \`${ctx.args[1]}\`.`);
+      return;
+    }
+    if (targetId === user.user_id) {
+      await ctx.reply("⚠️ Không thể cấp quyền edit cho chính mình.");
+      return;
+    }
+
+    const result = await this.sharesService.grantEdit(
+      scheduleId,
+      user.user_id,
+      targetId,
+    );
+    if (!result) {
+      await ctx.reply(
+        `⚠️ Không thể cấp quyền. Kiểm tra: lịch #${scheduleId} có phải của bạn? ` +
+          `User \`${targetId}\` đã dùng bot chưa (\`${ctx.prefix}batdau\`)?`,
+      );
+      return;
+    }
+
+    if (result.added) {
+      await ctx.reply(
+        `✏️ Đã cấp quyền EDIT lịch #${scheduleId} cho \`${targetId}\`. ` +
+          `Tổng editor: ${result.editors.length} người.\n` +
+          `💡 Họ giờ có thể \`${ctx.prefix}sua-lich ${scheduleId}\` và \`${ctx.prefix}hoan-thanh ${scheduleId}\`.`,
+      );
+    } else {
+      await ctx.reply(
+        `ℹ️ User \`${targetId}\` đã có quyền edit lịch #${scheduleId} từ trước.`,
+      );
+    }
+  }
+}
+
+@Injectable()
+export class BoChiaSeEditCommand implements BotCommand, OnModuleInit {
+  readonly name = "bo-chia-se-edit";
+  readonly aliases = ["bochiaseedit", "unshare-edit"];
+  readonly description = "Gỡ quyền edit lịch khỏi 1 user";
+  readonly category = CATEGORY;
+  readonly syntax = "bo-chia-se-edit <ID> <user_id>";
+  readonly example = "bo-chia-se-edit 5 1234567890";
+
+  constructor(
+    private readonly registry: CommandRegistry,
+    private readonly usersService: UsersService,
+    private readonly sharesService: SharesService,
+    private readonly formatter: MessageFormatter,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register(this);
+  }
+
+  async execute(ctx: CommandContext): Promise<void> {
+    const user = await this.usersService.findByUserId(ctx.message.sender_id);
+    if (!user) {
+      await ctx.reply(this.formatter.formatNotInitialized(ctx.prefix));
+      return;
+    }
+
+    if (ctx.args.length < 2) {
+      await ctx.reply(`⚠️ Cú pháp: \`${ctx.prefix}${this.syntax}\``);
+      return;
+    }
+
+    const scheduleId = parsePositiveInteger(ctx.args[0]);
+    if (!scheduleId) {
+      await ctx.reply(`⚠️ ID lịch không hợp lệ: \`${ctx.args[0]}\`.`);
+      return;
+    }
+
+    const targetId = normalizeUserId(ctx.args[1]);
+    const result = await this.sharesService.revokeEdit(
+      scheduleId,
+      user.user_id,
+      targetId,
+    );
+    if (!result) {
+      await ctx.reply(`⚠️ Không tìm thấy lịch #${scheduleId} của bạn.`);
+      return;
+    }
+
+    if (result.removed) {
+      await ctx.reply(
+        `🗑️ Đã gỡ quyền edit lịch #${scheduleId} với \`${targetId}\`. ` +
+          `Còn lại: ${result.editors.length} editor.`,
+      );
+    } else {
+      await ctx.reply(
+        `ℹ️ User \`${targetId}\` chưa có quyền edit lịch #${scheduleId}.`,
+      );
+    }
   }
 }

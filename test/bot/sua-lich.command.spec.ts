@@ -5,6 +5,7 @@ import { InteractionRegistry } from '../../src/bot/interactions/interaction-regi
 import { BotService } from '../../src/bot/bot.service';
 import { UsersService } from '../../src/users/users.service';
 import { SchedulesService } from '../../src/schedules/schedules.service';
+import { SharesService } from '../../src/schedules/shares.service';
 import { DateParser } from '../../src/shared/utils/date-parser';
 import { CommandContext } from '../../src/bot/commands/command.types';
 import { ButtonInteractionContext } from '../../src/bot/interactions/interaction.types';
@@ -23,6 +24,9 @@ describe('SuaLichCommand', () => {
     findById: jest.fn(),
     update: jest.fn(),
   };
+  const mockSharesService = {
+    canEdit: jest.fn(),
+  };
   const mockDateParser = {
     toDatetimeLocalVietnam: jest.fn(),
     toDateInputVietnam: jest.fn(),
@@ -40,6 +44,7 @@ describe('SuaLichCommand', () => {
         { provide: BotService, useValue: mockBotService },
         { provide: UsersService, useValue: mockUsersService },
         { provide: SchedulesService, useValue: mockSchedulesService },
+        { provide: SharesService, useValue: mockSharesService },
         { provide: DateParser, useValue: mockDateParser },
       ],
     }).compile();
@@ -47,6 +52,7 @@ describe('SuaLichCommand', () => {
     command = module.get<SuaLichCommand>(SuaLichCommand);
 
     jest.clearAllMocks();
+    mockSharesService.canEdit.mockResolvedValue(true);
   });
 
   it('should be defined', () => {
@@ -218,6 +224,7 @@ describe('SuaLichCommand', () => {
     it('should reject if user does not own schedule', async () => {
       mockSchedule.user_id = 'different-user';
       mockSchedulesService.findById.mockResolvedValue(mockSchedule);
+      mockSharesService.canEdit.mockResolvedValue(false);
 
       await command.handleButton(mockContext);
 
