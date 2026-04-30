@@ -158,6 +158,12 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Chuỗi ngày liên tiếp hoàn-thành lịch + huy hiệu",
     category: "📅 XEM LỊCH",
   },
+  {
+    name: "backup",
+    syntax: "backup",
+    description: "Sao lưu toàn bộ data (lịch + tag + template + cài-đặt) ra JSON",
+    category: "📅 XEM LỊCH",
+  },
 
   // ===== ✏️ Quản lý lịch =====
   {
