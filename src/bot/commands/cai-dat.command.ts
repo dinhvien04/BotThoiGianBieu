@@ -188,7 +188,7 @@ export class CaiDatCommand implements BotCommand, InteractionHandler, OnModuleIn
       )
       .addField(
         '🕐 Múi giờ',
-        `\`${settings.timezone}\` _(tạm thời chỉ hỗ trợ giờ VN)_`,
+        `\`${settings.timezone}\` _(đổi: \`*timezone <IANA>\`)_`,
         false,
       )
       .addInputField(

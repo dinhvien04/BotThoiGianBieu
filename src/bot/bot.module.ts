@@ -39,6 +39,7 @@ import { DanhSachCommand } from './commands/danh-sach.command';
 import { LichTreCommand } from './commands/lich-tre.command';
 import { LichSuCommand } from './commands/lich-su.command';
 import { GioLamCommand } from './commands/gio-lam.command';
+import { TimezoneCommand } from './commands/timezone.command';
 import {
   TaoTemplateCommand,
   TuTemplateCommand,
@@ -98,6 +99,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     LichTreCommand,
     LichSuCommand,
     GioLamCommand,
+    TimezoneCommand,
     TaoTemplateCommand,
     TuTemplateCommand,
     DsTemplateCommand,
