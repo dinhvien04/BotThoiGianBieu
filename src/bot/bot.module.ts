@@ -28,6 +28,7 @@ import { NhacSauCommand } from './commands/nhac-sau.command';
 import { LichLapCommand } from './commands/lich-lap.command';
 import { BoLapCommand } from './commands/bo-lap.command';
 import { CopyLichCommand } from './commands/copy-lich.command';
+import { NhanhCommand } from './commands/nhanh.command';
 import { LichThangCommand } from './commands/lich-thang.command';
 import { HoanTacCommand } from './commands/hoan-tac.command';
 import { ExportIcsCommand } from './commands/export-ics.command';
@@ -86,6 +87,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     LichLapCommand,
     BoLapCommand,
     CopyLichCommand,
+    NhanhCommand,
     LichThangCommand,
     HoanTacCommand,
     ExportIcsCommand,
