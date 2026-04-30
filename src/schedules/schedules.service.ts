@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, ILike, IsNull, LessThan, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { Between, ILike, In, IsNull, LessThan, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import {
   RecurrenceType,
   Schedule,
@@ -347,6 +347,92 @@ export class SchedulesService {
   /** Đánh dấu đã gửi notification kết thúc (chỉ gửi 1 lần). */
   async markEndNotified(id: number, now: Date = new Date()): Promise<void> {
     await this.scheduleRepository.update(id, { end_notified_at: now });
+  }
+
+  /**
+   * Liệt kê các lịch `pending` của user khớp keyword (title hoặc description).
+   * Dùng cho bulk operations. Sắp `start_time` ASC. Tối đa `limit` rows.
+   */
+  async findPendingByKeyword(
+    userId: string,
+    keyword: string,
+    limit = 100,
+  ): Promise<Schedule[]> {
+    const pattern = `%${keyword}%`;
+    return this.scheduleRepository.find({
+      where: [
+        { user_id: userId, status: 'pending', title: ILike(pattern) },
+        { user_id: userId, status: 'pending', description: ILike(pattern) },
+      ],
+      order: { start_time: 'ASC', id: 'ASC' },
+      take: limit,
+    });
+  }
+
+  /**
+   * Liệt kê các lịch `completed` có `start_time` < `before` của user.
+   * Dùng cho `*xoa-completed-truoc`. Sắp `start_time` ASC.
+   */
+  async findCompletedBefore(
+    userId: string,
+    before: Date,
+    limit = 100,
+  ): Promise<Schedule[]> {
+    return this.scheduleRepository.find({
+      where: {
+        user_id: userId,
+        status: 'completed',
+        start_time: LessThan(before),
+      },
+      order: { start_time: 'ASC', id: 'ASC' },
+      take: limit,
+    });
+  }
+
+  /**
+   * Bulk mark completed cho danh sách scheduleIds (chỉ những lịch thuộc
+   * `userId` và `status='pending'` mới bị thay đổi). Trả số rows thực sự
+   * đổi. Có audit log per-row qua `markCompleted`.
+   */
+  async bulkComplete(
+    userId: string,
+    ids: number[],
+    now: Date = new Date(),
+  ): Promise<number> {
+    if (ids.length === 0) return 0;
+    const targets = await this.scheduleRepository.find({
+      where: {
+        user_id: userId,
+        status: 'pending',
+        id: In(ids),
+      },
+    });
+    let count = 0;
+    for (const s of targets) {
+      await this.markCompleted(s.id, now);
+      count += 1;
+    }
+    return count;
+  }
+
+  /**
+   * Bulk delete cho danh sách scheduleIds (chỉ thuộc `userId`). Trả số rows
+   * đã xoá. Có audit log per-row qua `delete`.
+   */
+  async bulkDelete(userId: string, ids: number[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    const targets = await this.scheduleRepository.find({
+      where: {
+        user_id: userId,
+        id: In(ids),
+      },
+    });
+    let count = 0;
+    for (const s of targets) {
+      await this.delete(s.id);
+      count += 1;
+    }
+    return count;
   }
 
   /**

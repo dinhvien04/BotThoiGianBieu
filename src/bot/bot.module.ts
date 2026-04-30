@@ -30,6 +30,11 @@ import { BoLapCommand } from './commands/bo-lap.command';
 import { CopyLichCommand } from './commands/copy-lich.command';
 import { NhanhCommand } from './commands/nhanh.command';
 import { GhiChuCommand } from './commands/ghi-chu.command';
+import {
+  HoanThanhTatCaCommand,
+  XoaTheoTagCommand,
+  XoaCompletedTruocCommand,
+} from './commands/bulk-ops.command';
 import { LichThangCommand } from './commands/lich-thang.command';
 import { HoanTacCommand } from './commands/hoan-tac.command';
 import { ExportIcsCommand } from './commands/export-ics.command';
@@ -90,6 +95,9 @@ import { InteractionRouter } from './interactions/interaction-router';
     CopyLichCommand,
     NhanhCommand,
     GhiChuCommand,
+    HoanThanhTatCaCommand,
+    XoaTheoTagCommand,
+    XoaCompletedTruocCommand,
     LichThangCommand,
     HoanTacCommand,
     ExportIcsCommand,

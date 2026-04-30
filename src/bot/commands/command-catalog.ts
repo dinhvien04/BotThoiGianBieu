@@ -173,6 +173,24 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     category: "✏️ QUẢN LÝ LỊCH",
   },
   {
+    name: "hoan-thanh-tat-ca",
+    syntax: "hoan-thanh-tat-ca <từ khoá|--tag X> [--xacnhan]",
+    description: "Đánh dấu hoàn-thành hàng loạt theo từ khoá hoặc tag",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "xoa-theo-tag",
+    syntax: "xoa-theo-tag <name> [--xacnhan]",
+    description: "Xoá hàng loạt mọi lịch có tag",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
+    name: "xoa-completed-truoc",
+    syntax: "xoa-completed-truoc <DD-MM-YYYY> [--xacnhan]",
+    description: "Xoá hàng loạt lịch đã hoàn-thành trước ngày",
+    category: "✏️ QUẢN LÝ LỊCH",
+  },
+  {
     name: "them-lich-excel",
     syntax: "them-lich-excel",
     description: "Thêm nhiều lịch từ file Excel",
