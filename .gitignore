@@ -29,4 +29,6 @@ coverage/
 *.tsbuildinfo
 
 # Mezon cache
-/mezon-cache
+/mezon-cache# web dependencies
+web/node_modules/
+web/.next/
