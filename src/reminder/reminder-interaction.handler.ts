@@ -4,17 +4,17 @@ import {
   EButtonMessageStyle,
   InteractiveBuilder,
 } from 'mezon-sdk';
+import { BotService } from '../bot/bot.service';
 import { InteractionRegistry } from '../bot/interactions/interaction-registry';
 import {
   ButtonInteractionContext,
   InteractionHandler,
 } from '../bot/interactions/interaction.types';
-import { BotService } from '../bot/bot.service';
-import { SchedulesService } from '../schedules/schedules.service';
-import { Schedule } from '../schedules/entities/schedule.entity';
-import { UsersService } from '../users/users.service';
 import { DateParser } from '../shared/utils/date-parser';
 import { parseSnoozeFrame } from '../shared/utils/snooze-frame';
+import { Schedule } from '../schedules/entities/schedule.entity';
+import { SchedulesService } from '../schedules/schedules.service';
+import { UsersService } from '../users/users.service';
 import { REMINDER_INTERACTION_ID } from './reminder.service';
 
 const FRAME_KEYWORDS: Record<string, string> = {
@@ -24,6 +24,9 @@ const FRAME_KEYWORDS: Record<string, string> = {
   afternoon: 'đến chiều',
   eod: 'đến cuối ngày',
 };
+
+const DEFAULT_SNOOZE_MINUTES = 30;
+const MAX_CUSTOM_SNOOZE_MINUTES = 7 * 24 * 60;
 
 /**
  * Xử lý button click trên message reminder:
@@ -36,6 +39,23 @@ const FRAME_KEYWORDS: Record<string, string> = {
  *   - "reminder:ccancel:<scheduleId>"          → đóng form custom snooze
  *   - "reminder:done:<scheduleId>"             → end notification: mark completed
  *   - "reminder:later:<scheduleId>"            → end notification: đóng form, không làm gì
+import { Schedule } from '../schedules/entities/schedule.entity';
+import { SchedulesService } from '../schedules/schedules.service';
+import { UsersService } from '../users/users.service';
+import { REMINDER_INTERACTION_ID } from './reminder.service';
+
+const DEFAULT_SNOOZE_MINUTES = 30;
+const MAX_CUSTOM_SNOOZE_MINUTES = 7 * 24 * 60;
+
+/**
+ * Xử lý button click trên reminder:
+ * - "reminder:ack:<scheduleId>"
+ * - "reminder:snooze:<scheduleId>[:minutes]"
+ * - "reminder:custom:<scheduleId>"  → mở form ephemeral
+ * - "reminder:csub:<scheduleId>"    → submit form custom snooze
+ * - "reminder:ccancel:<scheduleId>" → đóng form custom snooze
+ * - "reminder:done:<scheduleId>"
+ * - "reminder:later:<scheduleId>"
  */
 @Injectable()
 export class ReminderInteractionHandler implements InteractionHandler, OnModuleInit {
@@ -45,9 +65,9 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
 
   constructor(
     private readonly registry: InteractionRegistry,
+    private readonly botService: BotService,
     private readonly schedulesService: SchedulesService,
     private readonly usersService: UsersService,
-    private readonly botService: BotService,
     private readonly dateParser: DateParser,
   ) {}
 
@@ -56,26 +76,26 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
   }
 
   async handleButton(ctx: ButtonInteractionContext): Promise<void> {
-    // action format: "ack:<id>" / "snooze:<id>" / "snooze:<id>:<minutes>" / "custom:<id>" / "csub:<id>" / "ccancel:<id>"
-    const parts = ctx.action.split(':');
-    const [actionType, idStr, minutesStr] = parts;
-    const scheduleId = Number(idStr);
+    const [actionType, idStr, extraArg] = ctx.action.split(':');
+    const scheduleId = this.parsePositiveInteger(idStr);
 
-    if (!scheduleId || Number.isNaN(scheduleId)) {
+    if (!scheduleId) {
       this.logger.warn(`button_id không hợp lệ: ${ctx.event.button_id}`);
       return;
     }
 
     const schedule = await this.schedulesService.findById(scheduleId);
     if (!schedule) {
-      await ctx.send(`❌ Không tìm thấy lịch #${scheduleId} (có thể đã bị xóa).`);
-      await this.safeDelete(ctx);
+      await this.handleMissingSchedule(ctx, actionType, scheduleId);
       return;
     }
 
-    // Chỉ chủ lịch mới được ack/snooze
     if (schedule.user_id !== ctx.clickerId) {
-      await ctx.send(`⚠️ Bạn không có quyền thao tác trên lịch này.`);
+      await this.replyByAction(
+        ctx,
+        actionType,
+        `⚠️ Bạn không có quyền thao tác trên lịch này.`,
+      );
       return;
     }
 
@@ -84,13 +104,13 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
         await this.handleAck(ctx, scheduleId);
         return;
       case 'snooze':
-        await this.handleSnooze(ctx, scheduleId, minutesStr);
+        await this.handleSnooze(ctx, scheduleId, this.parsePositiveInteger(extraArg));
         return;
       case 'frame':
-        await this.handleFrame(ctx, scheduleId, minutesStr);
+        await this.handleFrame(ctx, scheduleId, extraArg);
         return;
       case 'custom':
-        await this.handleCustomOpen(ctx, scheduleId);
+        await this.handleCustom(ctx, scheduleId);
         return;
       case 'csub':
         await this.handleCustomSubmit(ctx, scheduleId);
@@ -109,39 +129,49 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     }
   }
 
-  private async handleAck(ctx: ButtonInteractionContext, scheduleId: number): Promise<void> {
+  private async handleAck(
+    ctx: ButtonInteractionContext,
+    scheduleId: number,
+  ): Promise<void> {
     const acknowledged = await this.schedulesService.acknowledge(scheduleId);
     await this.safeDelete(ctx);
+
     if (!acknowledged) {
       await ctx.send(
-        `ℹ️ Lịch #${scheduleId} đã được xử lý ở nơi khác hoặc không còn ở trạng thái chờ.`,
+        `ℹ️ Lịch #${scheduleId} đã được xử lý ở nơi khác, không cần xác nhận lại.`,
       );
       return;
     }
+
     await ctx.send(
       `✅ Đã ghi nhận bạn **bắt đầu công việc #${scheduleId}**.\n` +
-        `Chúc bạn làm việc năng suất! 💪`,
+        `Chúc bạn làm việc năng suất!`,
     );
   }
 
   private async handleSnooze(
     ctx: ButtonInteractionContext,
     scheduleId: number,
-    minutesStr: string | undefined,
+    explicitMinutes: number | null,
   ): Promise<void> {
-    const minutes = await this.resolveSnoozeMinutes(ctx, minutesStr);
-    const nextAt = await this.schedulesService.snooze(scheduleId, minutes);
+    let minutes = explicitMinutes;
+    if (!minutes) {
+      const user = await this.usersService.findByUserId(ctx.clickerId);
+      minutes = user?.settings?.default_remind_minutes ?? DEFAULT_SNOOZE_MINUTES;
+    }
 
+    const nextAt = await this.schedulesService.snooze(scheduleId, minutes);
     await this.safeDelete(ctx);
+
     if (!nextAt) {
       await ctx.send(
-        `ℹ️ Lịch #${scheduleId} đã được xác nhận hoặc xử lý ở channel khác, không hoãn nữa.`,
+        `ℹ️ Lịch #${scheduleId} đã được xử lý nên không hoãn nữa.`,
       );
       return;
     }
 
     await ctx.send(
-      `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${this.dateParser.formatMinutes(minutes)}**.\n` +
+      `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${minutes} phút**.\n` +
         `Sẽ nhắc lại lúc: \`${this.dateParser.formatVietnam(nextAt)}\``,
     );
   }
@@ -193,32 +223,41 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     );
   }
 
-  private async handleCustomOpen(
+  private async handleCustom(
     ctx: ButtonInteractionContext,
     scheduleId: number,
   ): Promise<void> {
     const user = await this.usersService.findByUserId(ctx.clickerId);
-    const defaultMin = user?.settings?.default_remind_minutes ?? 30;
+    const defaultMinutes =
+      user?.settings?.default_remind_minutes ?? DEFAULT_SNOOZE_MINUTES;
 
-    const embed = new InteractiveBuilder('✏️ HOÃN TUỲ Ý')
+    const embed = new InteractiveBuilder(`⏰ HOÃN NHẮC LỊCH #${scheduleId}`)
       .setDescription(
-        `Nhập số phút muốn hoãn lịch \`#${scheduleId}\`.\n` +
-          `Vd: \`15\` (15 phút), \`90\` (1 giờ rưỡi), tối đa 7 ngày (10080).`,
+        `Nhập số phút muốn hoãn. Tối đa ${Math.floor(
+          MAX_CUSTOM_SNOOZE_MINUTES / (24 * 60),
+        )} ngày.`,
       )
-      .addInputField('minutes', '⏱️ Số phút', `Vd: ${defaultMin}`, {
-        defaultValue: String(defaultMin),
-      })
+      .addInputField(
+        'minutes',
+        'Số phút hoãn *',
+        'Vd: 45',
+        {
+          type: 'number',
+          defaultValue: String(defaultMinutes),
+        },
+        'Bắt buộc, số nguyên dương.',
+      )
       .build();
 
     const buttons = new ButtonBuilder()
       .addButton(
         `${REMINDER_INTERACTION_ID}:csub:${scheduleId}`,
-        '⏰ Hoãn',
-        EButtonMessageStyle.PRIMARY,
+        '✅ Xác nhận',
+        EButtonMessageStyle.SUCCESS,
       )
       .addButton(
         `${REMINDER_INTERACTION_ID}:ccancel:${scheduleId}`,
-        '❌ Huỷ',
+        '❌ Hủy',
         EButtonMessageStyle.DANGER,
       )
       .build();
@@ -231,11 +270,11 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
         buttons,
       );
     } catch (err) {
-      this.logger.warn(
-        `Không mở được ephemeral form snooze custom: ${(err as Error).message}`,
-      );
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Không mở được custom snooze form: ${reason}`);
       await ctx.send(
-        `⚠️ Không mở được form. Hãy dùng button preset hoặc gõ \`*nhac-sau ${scheduleId} <thời gian>\`.`,
+        `⚠️ Không mở được form hoãn tuỳ ý lúc này.\n` +
+          `Bạn có thể dùng \`*nhac-sau ${scheduleId} 45p\` hoặc \`*nhac-sau ${scheduleId} 2h\`.`,
       );
     }
   }
@@ -244,17 +283,25 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     ctx: ButtonInteractionContext,
     scheduleId: number,
   ): Promise<void> {
-    const raw = (ctx.formData.minutes ?? '').trim();
-    const minutes = Number(raw);
-    if (!/^\d+$/.test(raw) || !Number.isInteger(minutes) || minutes < 1) {
+    const minutesRaw = (ctx.formData.minutes ?? '').trim();
+    if (!minutesRaw) {
       await ctx.ephemeralSend(
-        `⚠️ "${raw || '(rỗng)'}" không phải số phút hợp lệ. Vui lòng nhập số nguyên dương.`,
+        `⚠️ Giá trị phút hoãn không hợp lệ: \`${minutesRaw || '(rỗng)'}\`.`,
       );
       return;
     }
-    if (minutes > 10080) {
+
+    const minutes = this.parsePositiveInteger(minutesRaw);
+    if (!minutes) {
       await ctx.ephemeralSend(
-        `⚠️ Tối đa hoãn 7 ngày (10080 phút). Bạn nhập ${minutes}.`,
+        `⚠️ \`${minutesRaw}\` không phải số phút hợp lệ.`,
+      );
+      return;
+    }
+
+    if (minutes > MAX_CUSTOM_SNOOZE_MINUTES) {
+      await ctx.ephemeralSend(
+        `⚠️ Tối đa hoãn ${Math.floor(MAX_CUSTOM_SNOOZE_MINUTES / (24 * 60))} ngày.`,
       );
       return;
     }
@@ -264,34 +311,19 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
 
     if (!nextAt) {
       await ctx.ephemeralSend(
-        `ℹ️ Lịch #${scheduleId} đã được xác nhận hoặc xử lý ở channel khác, không hoãn nữa.`,
+        `ℹ️ Lịch #${scheduleId} đã được xử lý nên không hoãn nữa.`,
       );
       return;
     }
 
     await ctx.ephemeralSend(
-      `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${this.dateParser.formatMinutes(minutes)}**.\n` +
+      `⏰ Đã hoãn nhắc lịch #${scheduleId} thêm **${minutes} phút**.\n` +
         `Sẽ nhắc lại lúc: \`${this.dateParser.formatVietnam(nextAt)}\``,
     );
   }
 
   private async handleCustomCancel(ctx: ButtonInteractionContext): Promise<void> {
     await this.safeDeleteEphemeral(ctx);
-  }
-
-  private async resolveSnoozeMinutes(
-    ctx: ButtonInteractionContext,
-    minutesStr: string | undefined,
-  ): Promise<number> {
-    if (minutesStr !== undefined && /^\d+$/.test(minutesStr)) {
-      const parsed = Number(minutesStr);
-      if (Number.isInteger(parsed) && parsed > 0) {
-        return parsed;
-      }
-      this.logger.warn(`Snooze minutes không hợp lệ: "${minutesStr}", fallback sang default.`);
-    }
-    const user = await this.usersService.findByUserId(ctx.clickerId);
-    return user?.settings?.default_remind_minutes ?? 30;
   }
 
   private async handleDone(
@@ -301,27 +333,81 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     const now = new Date();
     await this.schedulesService.markCompleted(schedule.id, now);
 
-    const next =
-      schedule.recurrence_type && schedule.recurrence_type !== 'none'
-        ? await this.schedulesService.spawnNextIfRecurring(schedule, now)
-        : null;
+    let message =
+      `🎉 Đã đánh dấu **hoàn thành** lịch #${schedule.id}!`;
 
-    const suffix = next
-      ? `\n🔁 Đã tạo lịch lặp kế tiếp #${next.id} lúc \`${this.dateParser.formatVietnam(next.start_time)}\`.`
-      : '';
+    if (
+      schedule.recurrence_type === 'daily' ||
+      schedule.recurrence_type === 'weekly' ||
+      schedule.recurrence_type === 'monthly'
+    ) {
+      const next = await this.schedulesService.spawnNextIfRecurring(schedule, now);
+      if (next) {
+        message +=
+          `\n🔁 Đã tạo lịch lặp kế tiếp #${next.id} ` +
+          `(${this.dateParser.formatVietnam(next.start_time)}).`;
+      }
+    }
 
     await this.safeDelete(ctx);
-    await ctx.send(
-      `🎉 Đã đánh dấu **hoàn thành** lịch #${schedule.id}!\nLàm tốt lắm 👏${suffix}`,
-    );
+    await ctx.send(message);
   }
 
-  private async handleLater(ctx: ButtonInteractionContext, scheduleId: number): Promise<void> {
+  private async handleLater(
+    ctx: ButtonInteractionContext,
+    scheduleId: number,
+  ): Promise<void> {
     await this.safeDelete(ctx);
     await ctx.send(
       `📋 Đã đóng thông báo lịch #${scheduleId}.\n` +
         `Khi nào xong nhớ gõ \`*hoan-thanh ${scheduleId}\` để đánh dấu hoàn thành nhé.`,
     );
+  }
+
+  private async handleMissingSchedule(
+    ctx: ButtonInteractionContext,
+    actionType: string,
+    scheduleId: number,
+  ): Promise<void> {
+    await this.deleteByAction(ctx, actionType);
+    await this.replyByAction(
+      ctx,
+      actionType,
+      `❌ Không tìm thấy lịch #${scheduleId} (có thể đã bị xóa).`,
+    );
+  }
+
+  private async deleteByAction(
+    ctx: ButtonInteractionContext,
+    actionType: string,
+  ): Promise<void> {
+    if (this.isCustomFormAction(actionType)) {
+      await this.safeDeleteEphemeral(ctx);
+      return;
+    }
+    await this.safeDelete(ctx);
+  }
+
+  private async replyByAction(
+    ctx: ButtonInteractionContext,
+    actionType: string,
+    text: string,
+  ): Promise<void> {
+    if (this.isCustomFormAction(actionType)) {
+      await ctx.ephemeralSend(text);
+      return;
+    }
+    await ctx.send(text);
+  }
+
+  private isCustomFormAction(actionType: string): boolean {
+    return actionType === 'csub' || actionType === 'ccancel';
+  }
+
+  private parsePositiveInteger(raw: string | undefined): number | null {
+    if (!raw || !/^\d+$/.test(raw)) return null;
+    const value = Number(raw);
+    return Number.isInteger(value) && value > 0 ? value : null;
   }
 
   private async safeDelete(ctx: ButtonInteractionContext): Promise<void> {

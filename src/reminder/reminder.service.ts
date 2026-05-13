@@ -53,32 +53,36 @@ export class ReminderService {
     this.running = true;
 
     try {
-      const now = new Date();
+      try {
+        const now = new Date();
 
-      // 1) Reminders bắt đầu (lặp đến khi user ack)
-      const dueStart = await this.schedulesService.findDueReminders(now);
-      if (dueStart.length > 0) {
-        this.logger.log(`🔔 ${dueStart.length} start-reminder(s) cần gửi`);
-        for (const schedule of dueStart) {
-          try {
-            await this.sendStartReminder(schedule, now);
-          } catch (err) {
-            this.logError(`Lỗi gửi start reminder #${schedule.id}`, err);
+        // 1) Reminders bắt đầu (lặp đến khi user ack)
+        const dueStart = await this.schedulesService.findDueReminders(now);
+        if (dueStart.length > 0) {
+          this.logger.log(`🔔 ${dueStart.length} start-reminder(s) cần gửi`);
+          for (const schedule of dueStart) {
+            try {
+              await this.sendStartReminder(schedule, now);
+            } catch (err) {
+              this.logError(`Lỗi gửi start reminder #${schedule.id}`, err);
+            }
           }
         }
-      }
 
-      // 2) Notification kết thúc (chỉ gửi 1 lần)
-      const dueEnd = await this.schedulesService.findDueEndNotifications(now);
-      if (dueEnd.length > 0) {
-        this.logger.log(`🏁 ${dueEnd.length} end-notification(s) cần gửi`);
-        for (const schedule of dueEnd) {
-          try {
-            await this.sendEndNotification(schedule, now);
-          } catch (err) {
-            this.logError(`Lỗi gửi end notification #${schedule.id}`, err);
+        // 2) Notification kết thúc (chỉ gửi 1 lần)
+        const dueEnd = await this.schedulesService.findDueEndNotifications(now);
+        if (dueEnd.length > 0) {
+          this.logger.log(`🏁 ${dueEnd.length} end-notification(s) cần gửi`);
+          for (const schedule of dueEnd) {
+            try {
+              await this.sendEndNotification(schedule, now);
+            } catch (err) {
+              this.logError(`Lỗi gửi end notification #${schedule.id}`, err);
+            }
           }
         }
+      } catch (err) {
+        this.logError('Reminder tick lỗi ở tầng truy vấn / hạ tầng', err);
       }
     } finally {
       this.running = false;

@@ -6,6 +6,7 @@ import {
   MezonClient,
   TypeMessage,
 } from "mezon-sdk";
+import { DefaultSocket } from "mezon-sdk/dist/cjs/socket";
 
 export interface ChannelSendTarget {
   channelId: string;
@@ -37,7 +38,7 @@ export class BotService implements OnModuleDestroy {
   private _client: MezonClient | null = null;
   private isReady = false;
 
-  constructor(private readonly config: ConfigService) { }
+  constructor(private readonly config: ConfigService) {}
 
   get client(): MezonClient {
     if (!this._client) {
@@ -46,6 +47,10 @@ export class BotService implements OnModuleDestroy {
       );
     }
     return this._client;
+  }
+
+  isConnected(): boolean {
+    return this.isReady && this._client !== null;
   }
 
   async initialize(): Promise<void> {
@@ -62,11 +67,23 @@ export class BotService implements OnModuleDestroy {
       throw new Error("Thiếu biến môi trường APPLICATION_ID (Bot ID)");
     }
 
-    // timeout=30s (default 10s) — cần tăng vì Railway (US) → Mezon (VN) có latency cao
-    this._client = new MezonClient({ botId, token, timeout: 30000 });
-    await this._client.login();
-    this.isReady = true;
-    this.logger.log("✅ MezonClient đã đăng nhập thành công");
+    this.closeClient(this._client);
+    this._client = null;
+    this.isReady = false;
+
+    const timeout = this.resolveTimeoutMs();
+    this.configureSocketTimeout();
+    const client = new MezonClient({ botId, token, timeout });
+
+    try {
+      await client.login();
+      this._client = client;
+      this.isReady = true;
+      this.logger.log("✅ MezonClient đã đăng nhập thành công");
+    } catch (err) {
+      this.closeClient(client);
+      throw err;
+    }
   }
 
   async sendMessage(channel: string | ChannelSendTarget, text: string): Promise<void> {
@@ -95,9 +112,9 @@ export class BotService implements OnModuleDestroy {
   ): Promise<void> {
     const sendTarget = target
       ? {
-        ...target,
-        channelId,
-      }
+          ...target,
+          channelId,
+        }
       : undefined;
 
     if (sendTarget && this.canSendDirect(sendTarget)) {
@@ -197,10 +214,10 @@ export class BotService implements OnModuleDestroy {
         components: [{ components }],
       },
       mentions,
-      undefined, // attachments
-      false, // mention_everyone
-      false, // anonymous_message
-      undefined, // topic_id
+      undefined,
+      false,
+      false,
+      undefined,
       TypeMessage.MessageBuzz,
     );
   }
@@ -225,13 +242,9 @@ export class BotService implements OnModuleDestroy {
   }
 
   onModuleDestroy(): void {
-    if (this._client) {
-      try {
-        this._client.closeSocket();
-      } catch (err) {
-        this.logger.warn(`Lỗi khi đóng MezonClient: ${(err as Error).message}`);
-      }
-    }
+    this.closeClient(this._client);
+    this._client = null;
+    this.isReady = false;
   }
 
   /**
@@ -302,7 +315,9 @@ export class BotService implements OnModuleDestroy {
     });
   }
 
-  private buildReplyReference(replyTo: NonNullable<ChannelSendTarget["replyTo"]>): Record<string, unknown> {
+  private buildReplyReference(
+    replyTo: NonNullable<ChannelSendTarget["replyTo"]>,
+  ): Record<string, unknown> {
     return {
       message_id: "0",
       message_ref_id: replyTo.messageId,
@@ -315,5 +330,33 @@ export class BotService implements OnModuleDestroy {
       content: JSON.stringify(replyTo.content ?? {}),
       has_attachment: false,
     };
+  }
+
+  private resolveTimeoutMs(): number {
+    const raw = this.config.get<string>("MEZON_TIMEOUT_MS");
+    const parsed = raw ? Number(raw) : 30000;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
+  }
+
+  private configureSocketTimeout(): void {
+    const raw = this.config.get<string>("MEZON_SOCKET_TIMEOUT_MS");
+    const parsed = raw ? Number(raw) : 20000;
+    const timeout = Number.isFinite(parsed) && parsed > 0 ? parsed : 20000;
+    const socketDefaults = DefaultSocket as unknown as {
+      DefaultSendTimeoutMs: number;
+      DefaultHeartbeatTimeoutMs: number;
+    };
+
+    socketDefaults.DefaultSendTimeoutMs = timeout;
+    socketDefaults.DefaultHeartbeatTimeoutMs = timeout;
+  }
+
+  private closeClient(client: MezonClient | null): void {
+    if (!client) return;
+    try {
+      client.closeSocket();
+    } catch (err) {
+      this.logger.warn(`Lỗi khi đóng MezonClient: ${(err as Error).message}`);
+    }
   }
 }

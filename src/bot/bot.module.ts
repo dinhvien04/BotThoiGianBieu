@@ -79,6 +79,7 @@ import {
 } from './commands/chia-se.command';
 import { InteractionRegistry } from './interactions/interaction-registry';
 import { InteractionRouter } from './interactions/interaction-router';
+import { LocalConsoleGateway } from './local-console.gateway';
 
 @Module({
   imports: [SharedModule, UsersModule, SchedulesModule],
@@ -89,6 +90,7 @@ import { InteractionRouter } from './interactions/interaction-router';
     InteractionRegistry,
     InteractionRouter,
     BotGateway,
+    LocalConsoleGateway,
     HelpCommand,
     BatDauCommand,
     LichHomNayCommand,

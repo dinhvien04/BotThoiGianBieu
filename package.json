@@ -10,6 +10,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
+    "start:local": "node dist/main",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest"
@@ -21,7 +22,7 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/schedule": "^4.1.2",
     "@nestjs/typeorm": "^10.0.2",
-    "mezon-sdk": "^2.8.44",
+    "mezon-sdk": "^2.8.46",
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
