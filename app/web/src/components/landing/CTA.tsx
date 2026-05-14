@@ -16,7 +16,7 @@ export default function CTA() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            href="/dang-ky"
+            href="/dang-nhap"
             className="bg-brand-teal text-brand-charcoal px-12 py-4 rounded-xl font-bold text-body-md hover:brightness-110 transition-all"
           >
             Bắt đầu miễn phí

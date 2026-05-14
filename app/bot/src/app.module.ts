@@ -8,6 +8,7 @@ import { UsersModule } from "./users/users.module";
 import { SchedulesModule } from "./schedules/schedules.module";
 import { SharedModule } from "./shared/shared.module";
 import { ReminderModule } from "./reminder/reminder.module";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ReminderModule } from "./reminder/reminder.module";
     NestScheduleModule.forRoot(),
     SharedModule,
     UsersModule,
+    AuthModule,
     SchedulesModule,
     BotModule,
     ReminderModule,

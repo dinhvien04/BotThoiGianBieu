@@ -22,7 +22,7 @@ export default function Hero() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            href="/dang-ky"
+            href="/dang-nhap"
             className="bg-brand-teal text-brand-charcoal px-10 py-4 rounded-xl font-bold text-body-md hover:scale-105 transition-transform inline-flex items-center gap-2 justify-center"
           >
             Dùng thử ngay
@@ -40,7 +40,10 @@ export default function Hero() {
               />
             </svg>
           </Link>
-          <button className="border border-brand-orange text-brand-orange px-10 py-4 rounded-xl font-bold text-body-md hover:bg-brand-orange/10 transition-all inline-flex items-center gap-2 justify-center">
+          <Link
+            href="/dang-nhap"
+            className="border border-brand-orange text-brand-orange px-10 py-4 rounded-xl font-bold text-body-md hover:bg-brand-orange/10 transition-all inline-flex items-center gap-2 justify-center"
+          >
             <svg
               className="w-5 h-5"
               fill="none"
@@ -55,7 +58,7 @@ export default function Hero() {
               />
             </svg>
             Kết nối Mezon
-          </button>
+          </Link>
         </div>
       </div>
 

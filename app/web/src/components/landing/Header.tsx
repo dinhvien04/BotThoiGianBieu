@@ -57,7 +57,7 @@ export default function Header() {
           Đăng nhập
         </Link>
         <Link
-          href="/dang-ky"
+          href="/dang-nhap"
           className="bg-brand-teal text-brand-charcoal text-body-sm font-bold px-6 py-2 rounded-lg hover:brightness-110 transition-all"
         >
           Bắt đầu
