@@ -207,13 +207,101 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {(view === "tuan" || view === "ngay") && (
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <p className="text-on-surface-variant text-center py-12">
-            Chế độ xem {view === "tuan" ? "Tuần" : "Ngày"} - Đang phát triển
-          </p>
+      {view === "tuan" && (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="grid grid-cols-8 border-b border-surface-container-high">
+            <div className="px-2 py-3 text-xs font-semibold text-on-surface-variant" />
+            {Array.from({ length: 7 }, (_, i) => {
+              const d = new Date(2024, 9, 21 + i);
+              const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+              const isToday = d.getDate() === 24;
+              return (
+                <div key={i} className={`px-2 py-3 text-center ${isToday ? "bg-primary/5" : ""}`}>
+                  <p className={`text-xs font-semibold ${i >= 5 ? "text-error" : "text-on-surface-variant"}`}>{dayNames[i]}</p>
+                  <p className={`text-lg font-bold mt-0.5 ${isToday ? "text-primary" : "text-on-surface"}`}>{d.getDate()}</p>
+                </div>
+              );
+            })}
+          </div>
+          <div className="max-h-[500px] overflow-y-auto">
+            {Array.from({ length: 12 }, (_, i) => i + 7).map((hour) => (
+              <div key={hour} className="grid grid-cols-8 border-b border-surface-container-high min-h-[60px]">
+                <div className="px-2 py-1 text-xs text-on-surface-variant text-right pr-3 pt-2">
+                  {String(hour).padStart(2, "0")}:00
+                </div>
+                {Array.from({ length: 7 }, (_, dayIdx) => {
+                  const dateStr = `2024-10-${String(21 + dayIdx).padStart(2, "0")}`;
+                  const events = mockSchedules.filter((s) => {
+                    if (!s.start.startsWith(dateStr)) return false;
+                    const h = new Date(s.start).getHours();
+                    return h === hour;
+                  });
+                  return (
+                    <div key={dayIdx} className={`border-l border-surface-container-high p-0.5 ${dayIdx + 21 === 24 ? "bg-primary/5" : ""}`}>
+                      {events.map((ev) => (
+                        <Link
+                          key={ev.id}
+                          href={`/lich/${ev.id}`}
+                          className="block px-1.5 py-1 rounded text-xs text-white truncate mb-0.5 hover:opacity-80"
+                          style={{ backgroundColor: typeColors[ev.type] || "#6750A4" }}
+                        >
+                          {ev.title}
+                        </Link>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       )}
+
+      {view === "ngay" && (() => {
+        const dayEvents = mockSchedules.filter((s) => s.start.startsWith("2024-10-24"));
+        return (
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                </button>
+                <h2 className="text-lg font-bold text-on-surface">Thứ Năm, 24 Tháng 10, 2024</h2>
+                <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                </button>
+              </div>
+              <span className="text-sm text-primary font-medium">{dayEvents.length} sự kiện</span>
+            </div>
+            <div className="space-y-0">
+              {Array.from({ length: 14 }, (_, i) => i + 6).map((hour) => {
+                const event = dayEvents.find((e) => new Date(e.start).getHours() === hour);
+                const timeStr = `${String(hour).padStart(2, "0")}:00`;
+                return (
+                  <div key={hour} className="flex gap-4 border-t border-surface-container-high">
+                    <span className="text-xs text-on-surface-variant w-14 pt-3 text-right shrink-0">{timeStr}</span>
+                    <div className="flex-1 py-2 min-h-[50px]">
+                      {event && (
+                        <Link
+                          href={`/lich/${event.id}`}
+                          className="block px-3 py-2 rounded-lg text-white text-sm hover:opacity-90"
+                          style={{ backgroundColor: typeColors[event.type] || "#6750A4" }}
+                        >
+                          <p className="font-medium">{event.title}</p>
+                          <p className="text-xs opacity-80 mt-0.5">
+                            {new Date(event.start).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - {new Date(event.end).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                            {event.location && <> &bull; {event.location}</>}
+                          </p>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Bottom Stats */}
       <div className="grid grid-cols-2 gap-6">
