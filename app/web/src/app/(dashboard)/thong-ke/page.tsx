@@ -1,5 +1,7 @@
 "use client";
 
+import { useStatistics, useStreak } from "@/lib/hooks";
+
 const weekDays = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"];
 
 const barData = [
@@ -20,6 +22,12 @@ const historyLog = [
 ];
 
 export default function StatisticsPage() {
+  const { data: stats } = useStatistics();
+  const { data: streak } = useStreak();
+  const totalTasks = stats?.total ?? 0;
+  const completedTasks = stats?.byStatus?.completed ?? 0;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const currentStreak = streak?.currentStreak ?? 0;
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -94,8 +102,8 @@ export default function StatisticsPage() {
                 <circle cx="18" cy="18" r="14" fill="none" stroke="#27AE60" strokeWidth="4" strokeDasharray="0 81 7 0" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold text-on-surface">75%</span>
-                <span className="text-xs text-on-surface-variant">Làm việc</span>
+                <span className="text-2xl font-bold text-on-surface">{completionRate}%</span>
+                <span className="text-xs text-on-surface-variant">{currentStreak > 0 ? `${currentStreak} ngày streak` : "Làm việc"}</span>
               </div>
             </div>
           </div>

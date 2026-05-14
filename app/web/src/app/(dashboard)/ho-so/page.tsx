@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useUserProfile } from "@/lib/hooks";
 
 export default function ProfilePage() {
+  const { data: profileData } = useUserProfile();
   const [form, setForm] = useState({
     fullName: "John Doe",
     email: "johndoe@company.com",
@@ -10,6 +12,15 @@ export default function ProfilePage() {
     role: "Product Designer",
     bio: "Chuyên gia thiết kế sản phẩm với hơn 5 năm kinh nghiệm trong lĩnh vực UX/UI.",
   });
+
+  useEffect(() => {
+    if (profileData?.user) {
+      setForm((prev) => ({
+        ...prev,
+        fullName: profileData.user.display_name ?? profileData.user.username ?? prev.fullName,
+      }));
+    }
+  }, [profileData]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useUserProfile } from "@/lib/hooks";
+import { updateUserSettings } from "@/lib/api";
 
 const workDays = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"];
 
@@ -12,6 +14,7 @@ const settingsTabs = [
 ];
 
 export default function SettingsPage() {
+  const { data: profileData, refetch } = useUserProfile();
   const [activeTab, setActiveTab] = useState("general");
   const [language, setLanguage] = useState("vi");
   const [theme, setTheme] = useState("light");
@@ -21,6 +24,35 @@ export default function SettingsPage() {
   const [selectedDays, setSelectedDays] = useState([0, 1, 2, 3, 4]);
   const [workStart, setWorkStart] = useState("08:00");
   const [workEnd, setWorkEnd] = useState("17:00");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (profileData?.settings) {
+      const s = profileData.settings;
+      setReminderMinutes(String(s.default_remind_minutes));
+      setNotifMode(s.notify_via_dm ? "dm" : "channel");
+      setWorkStart(`${String(s.work_start_hour).padStart(2, "0")}:00`);
+      setWorkEnd(`${String(s.work_end_hour).padStart(2, "0")}:00`);
+    }
+  }, [profileData]);
+
+  const handleSaveSettings = useCallback(async () => {
+    setSaving(true);
+    try {
+      await updateUserSettings({
+        default_remind_minutes: parseInt(reminderMinutes, 10) || 15,
+        notify_via_dm: notifMode === "dm",
+        notify_via_channel: notifMode === "channel",
+        work_start_hour: parseInt(workStart, 10) || 8,
+        work_end_hour: parseInt(workEnd, 10) || 17,
+      });
+      refetch();
+    } catch {
+      // silent fallback
+    } finally {
+      setSaving(false);
+    }
+  }, [reminderMinutes, notifMode, workStart, workEnd, refetch]);
 
   return (
     <div className="space-y-6">
@@ -36,8 +68,12 @@ export default function SettingsPage() {
           <button className="px-5 py-2.5 border border-outline-variant rounded-xl text-on-surface font-medium text-sm hover:bg-surface-container transition-colors">
             Hủy
           </button>
-          <button className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors">
-            Lưu thay đổi
+          <button
+            onClick={handleSaveSettings}
+            disabled={saving}
+            className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
         </div>
       </div>

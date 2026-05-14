@@ -1,34 +1,79 @@
 "use client";
 
-import { mockSchedules, typeColors } from "@/lib/mock-data";
-
-const todayEvents = mockSchedules.filter((s) => s.start.startsWith("2024-10-24"));
-const overdueCount = mockSchedules.filter((s) => s.status === "qua-han").length;
-const upcomingWeek = mockSchedules.filter((s) => s.start >= "2024-10-24" && s.start <= "2024-10-31");
-const completionRate = Math.round(
-  (mockSchedules.filter((s) => s.status === "hoan-thanh").length / mockSchedules.length) * 100
-);
-const activeReminders = mockSchedules.filter((s) => s.reminder && s.status !== "hoan-thanh").length;
-
-const priorityTasks = mockSchedules
-  .filter((s) => s.priority === "cao" && s.status !== "hoan-thanh")
-  .slice(0, 4);
-
-const deadlineSoon = mockSchedules
-  .filter((s) => s.status !== "hoan-thanh" && s.start >= "2024-10-24")
-  .sort((a, b) => a.start.localeCompare(b.start))
-  .slice(0, 3);
+import { useMemo } from "react";
+import { useSchedules, useStatistics, useUserProfile, useStreak } from "@/lib/hooks";
+import type { Schedule } from "@/lib/api";
 
 const calendarDays = Array.from({ length: 31 }, (_, i) => i + 1);
 const october2024StartDay = 1;
 
+const typeColors: Record<string, string> = {
+  task: "#6750A4",
+  meeting: "#F2994A",
+  event: "#27AE60",
+  reminder: "#2F80ED",
+};
+
 export default function DashboardPage() {
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const weekEnd = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().split("T")[0];
+  }, []);
+
+  const { data: profile } = useUserProfile();
+  const { data: scheduleData } = useSchedules({ limit: 50 });
+  const { data: stats } = useStatistics();
+  const { data: streak } = useStreak();
+
+  const allItems = useMemo(() => scheduleData?.items ?? [], [scheduleData]);
+
+  const todayEvents = useMemo(
+    () => allItems.filter((s: Schedule) => s.start_time.startsWith(today)),
+    [allItems, today],
+  );
+
+  const overdueCount = stats?.byStatus?.pending ?? 0;
+  const upcomingWeek = useMemo(
+    () => allItems.filter((s: Schedule) => s.start_time >= today && s.start_time <= weekEnd),
+    [allItems, today, weekEnd],
+  );
+  const completionRate = stats
+    ? stats.total > 0
+      ? Math.round(((stats.byStatus.completed ?? 0) / stats.total) * 100)
+      : 0
+    : 0;
+  const activeReminders = useMemo(
+    () => allItems.filter((s: Schedule) => s.remind_at && s.status === "pending").length,
+    [allItems],
+  );
+
+  const priorityTasks = useMemo(
+    () => allItems.filter((s: Schedule) => s.priority === "high" && s.status === "pending").slice(0, 4),
+    [allItems],
+  );
+
+  const deadlineSoon = useMemo(
+    () =>
+      allItems
+        .filter((s: Schedule) => s.status === "pending" && s.start_time >= today)
+        .sort((a: Schedule, b: Schedule) => a.start_time.localeCompare(b.start_time))
+        .slice(0, 3),
+    [allItems, today],
+  );
+
+  const displayName = profile?.user?.display_name ?? profile?.user?.username ?? "Bạn";
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-on-surface">Chào buổi sáng, John!</h1>
+        <h1 className="text-2xl font-bold text-on-surface">Chào buổi sáng, {displayName}!</h1>
         <p className="text-on-surface-variant text-sm mt-1">
           Hôm nay bạn có {todayEvents.length} sự kiện và {overdueCount} nhiệm vụ quan trọng cần chú ý.
+          {streak && streak.currentStreak > 0 && (
+            <span className="ml-2">🔥 Streak: {streak.currentStreak} ngày liên tiếp</span>
+          )}
         </p>
       </div>
 
@@ -52,8 +97,8 @@ export default function DashboardPage() {
             <div className="space-y-0">
               {["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"].map(
                 (time) => {
-                  const event = todayEvents.find((e) => {
-                    const h = new Date(e.start).getHours();
+                  const event = todayEvents.find((e: Schedule) => {
+                    const h = new Date(e.start_time).getHours();
                     return h === parseInt(time);
                   });
                   return (
@@ -63,11 +108,11 @@ export default function DashboardPage() {
                         {event && (
                           <div
                             className="px-3 py-2 rounded-lg text-white text-sm"
-                            style={{ backgroundColor: typeColors[event.type] || "#6750A4" }}
+                            style={{ backgroundColor: typeColors[event.item_type] || "#6750A4" }}
                           >
                             <p className="font-medium">{event.title}</p>
                             <p className="text-xs opacity-80">
-                              {event.location || "Online"} &bull; {time} - {new Date(event.end).getHours()}:{String(new Date(event.end).getMinutes()).padStart(2, "0")}
+                              {event.description || "Online"} &bull; {time} - {event.end_time ? `${new Date(event.end_time).getHours()}:${String(new Date(event.end_time).getMinutes()).padStart(2, "0")}` : ""}
                             </p>
                           </div>
                         )}
@@ -159,13 +204,13 @@ export default function DashboardPage() {
               <h3 className="font-bold text-on-surface">Ưu tiên cao</h3>
             </div>
             <div className="space-y-3">
-              {priorityTasks.map((task) => (
+              {priorityTasks.map((task: Schedule) => (
                 <label key={task.id} className="flex items-start gap-3 cursor-pointer group">
                   <input type="checkbox" className="mt-1 w-4 h-4 rounded border-outline accent-primary" />
                   <div>
                     <p className="text-sm font-medium text-on-surface group-hover:text-primary">{task.title}</p>
                     <p className="text-xs text-on-surface-variant">
-                      {task.start.startsWith("2024-10-24") ? "Hôm nay" : `Deadline: ${new Date(task.start).toLocaleDateString("vi-VN")}`}
+                      {task.start_time.startsWith(today) ? "Hôm nay" : `Deadline: ${new Date(task.start_time).toLocaleDateString("vi-VN")}`}
                     </p>
                   </div>
                 </label>
@@ -185,16 +230,16 @@ export default function DashboardPage() {
               <h3 className="font-bold text-on-surface">Sắp đến hạn</h3>
             </div>
             <div className="space-y-3">
-              {deadlineSoon.map((item) => (
+              {deadlineSoon.map((item: Schedule) => (
                 <div key={item.id} className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-on-surface">{item.title}</p>
                     <p className="text-xs text-on-surface-variant">
-                      Còn {Math.max(1, Math.ceil((new Date(item.start).getTime() - new Date("2024-10-24").getTime()) / 86400000))} ngày
+                      Còn {Math.max(1, Math.ceil((new Date(item.start_time).getTime() - new Date().getTime()) / 86400000))} ngày
                     </p>
                   </div>
                   <span className="text-xs px-2 py-1 rounded-full bg-primary-fixed text-primary font-medium">
-                    {item.tags[0] || "Công việc"}
+                    {item.tags?.[0]?.name || item.item_type || "Công việc"}
                   </span>
                 </div>
               ))}
