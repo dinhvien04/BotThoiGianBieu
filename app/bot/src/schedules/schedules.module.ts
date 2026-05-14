@@ -14,6 +14,12 @@ import { TemplatesService } from './templates.service';
 import { AuditService } from './audit.service';
 import { BackupService } from './backup.service';
 import { StreakService } from './streak.service';
+import { SchedulesController } from './schedules.controller';
+import { TagsController } from './tags.controller';
+import { TemplatesController } from './templates.controller';
+import { SharesController } from './shares.controller';
+import { AuditController } from './audit.controller';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -25,6 +31,14 @@ import { StreakService } from './streak.service';
       User,
       UserSettings,
     ]),
+    AuthModule,
+  ],
+  controllers: [
+    SchedulesController,
+    TagsController,
+    TemplatesController,
+    SharesController,
+    AuditController,
   ],
   providers: [
     SchedulesService,
