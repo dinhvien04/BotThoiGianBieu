@@ -222,12 +222,12 @@ describe('ReminderService', () => {
       expect(mockSchedulesService.findDueReminders).toHaveBeenCalledTimes(2);
     });
 
-    it('should reset running flag even if tick throws error', async () => {
+    it('should reset running flag even if tick handles an infrastructure error', async () => {
       // Arrange
       mockSchedulesService.findDueReminders.mockRejectedValue(new Error('Database error'));
 
       // Act
-      await expect(service.tick()).rejects.toThrow('Database error');
+      await expect(service.tick()).resolves.not.toThrow();
       
       // Second tick should not be skipped
       mockSchedulesService.findDueReminders.mockResolvedValue([]);

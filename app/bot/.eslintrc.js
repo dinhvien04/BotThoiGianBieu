@@ -9,7 +9,7 @@ module.exports = {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js', 'dist/**/*', 'node_modules/**/*', 'web/**/*'],
+  ignorePatterns: ['.eslintrc.js', 'dist/**/*', 'node_modules/**/*'],
   rules: {
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-console': 'warn',

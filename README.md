@@ -40,8 +40,8 @@ Chỉnh `.env`:
 Chạy lần lượt từng file trong `migrations/` theo thứ tự số:
 
 ```bash
-psql "$DATABASE_URL" -f migrations/007-add-recurrence.sql
-psql "$DATABASE_URL" -f migrations/008-add-priority.sql
+psql "$DATABASE_URL" -f app/bot/migrations/007-add-recurrence.sql
+psql "$DATABASE_URL" -f app/bot/migrations/008-add-priority.sql
 ```
 
 > Tất cả migration đều **idempotent** — chạy lại nhiều lần vẫn an toàn.
@@ -51,6 +51,7 @@ psql "$DATABASE_URL" -f migrations/008-add-priority.sql
 ```bash
 npm run start:dev                       # dev với watch mode
 npm run build && npm run start:prod     # production
+npm run web:dev                         # Next.js web app
 ```
 
 Nếu mọi thứ OK, bạn sẽ thấy:
@@ -78,7 +79,7 @@ docker compose logs -f bot
 ### Build manual
 
 ```bash
-docker build -t bot-thoi-gian-bieu .
+docker build -f app/bot/Dockerfile -t bot-thoi-gian-bieu .
 docker run --rm --env-file .env bot-thoi-gian-bieu
 ```
 
@@ -142,26 +143,21 @@ Reminder button có multi-preset snooze: ✅ Đã nhận / ⏰ default / ⏰ 10p
 ## 🗂️ Cấu trúc source
 
 ```
-src/
-├── main.ts                          # Bootstrap NestJS
-├── app.module.ts                    # Root module
-├── config/                          # database.config.ts
-├── bot/                             # Mezon bot core
-│   ├── bot.service.ts               # MezonClient wrapper
-│   ├── bot.gateway.ts               # Event listener / message router
-│   ├── commands/                    # Command handlers (catalog ở command-catalog.ts)
-│   └── interactions/                # Button/form interactions
-├── users/                           # User & UserSettings
-├── schedules/                       # Schedule entity + service
-├── reminder/                        # Cron jobs gửi nhắc tự động
-└── shared/utils/                    # date-parser, duration-parser, message-formatter,
-                                     # priority, priority-flag, recurrence
-
-test/                                # Jest test suite (>550 tests)
-
-migrations/                          # SQL migrations (idempotent)
-├── 007-add-recurrence.sql           # cột recurrence_*
-└── 008-add-priority.sql             # cột priority + index
+app/
+├── bot/                             # NestJS + Mezon bot workspace
+│   ├── src/
+│   │   ├── main.ts                  # Bootstrap NestJS
+│   │   ├── app.module.ts            # Root module
+│   │   ├── bot/                     # Mezon bot core
+│   │   ├── schedules/               # Schedule entity + service
+│   │   ├── users/                   # User & UserSettings
+│   │   ├── reminder/                # Cron jobs gửi nhắc tự động
+│   │   └── shared/utils/            # Shared parsers/formatters/helpers
+│   ├── test/                        # Jest test suite
+│   ├── migrations/                  # SQL migrations (idempotent)
+│   └── assets/                      # Excel template and bot assets
+└── web/                             # Next.js web workspace
+    └── src/app/                     # App Router entrypoint
 ```
 
 ---
@@ -201,7 +197,7 @@ npm test -- --watch        # Watch mode
 npm test -- priority       # Filter theo path
 ```
 
-CI tự chạy `npm run lint && npm run build && npm test` trên mỗi PR và push vào `main`.
+CI tự chạy lint, build bot + web, và test bot trên mỗi PR và push vào `main`.
 
 ---
 
@@ -213,6 +209,8 @@ CI tự chạy `npm run lint && npm run build && npm test` trên mỗi PR và pu
 npm run start:dev          # Watch mode
 npm run build              # Compile TypeScript
 npm run start:prod         # Run production build (cần build trước)
+npm run web:dev            # Start Next.js dev server
+npm run build:all          # Build bot + web
 
 npm run lint               # ESLint --fix
 npm run format             # Prettier
@@ -221,10 +219,10 @@ npm test                   # Jest
 
 ### Quy ước thêm command mới
 
-1. Tạo file `src/bot/commands/<ten>.command.ts` (kebab-case).
+1. Tạo file `app/bot/src/bot/commands/<ten>.command.ts` (kebab-case).
 2. Đăng ký trong `bot.module.ts` (provider + `CommandRegistry`).
 3. Bổ sung entry trong `command-catalog.ts` để `*help` tự hiển thị.
-4. Viết spec ở `test/bot/<ten>.command.spec.ts`.
+4. Viết spec ở `app/bot/test/bot/<ten>.command.spec.ts`.
 5. Chạy `npm test && npm run lint && npm run build` trước khi mở PR.
 
 > 🔧 **Troubleshooting**: Gặp vấn đề? Xem [`doc/troubleshooting.md`](./doc/troubleshooting.md) để có solutions cho các lỗi thường gặp.
@@ -258,7 +256,7 @@ npm test                   # Jest
 ### 🛠️ Maintenance & Support
 - [`doc/troubleshooting.md`](./doc/troubleshooting.md) — **Xử lý sự cố** thường gặp
 - [`doc/CHANGELOG.md`](./doc/CHANGELOG.md) — Lịch sử thay đổi và versions
-- [`migrations/`](./migrations/) — SQL migrations
+- [`app/bot/migrations/`](./app/bot/migrations/) — SQL migrations
 
 > 💡 **Tip**: Bắt đầu với [`doc/README.md`](./doc/README.md) để có overview đầy đủ về tài liệu!
 

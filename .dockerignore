@@ -1,11 +1,17 @@
 node_modules
+app/*/node_modules
 dist
+build
+app/*/dist
+app/web/.next
+app/web/out
 .git
 .github
 .vscode
 .idea
-test
 coverage
+app/*/coverage
+app/bot/test
 *.log
 .env
 .env.*
@@ -13,4 +19,4 @@ coverage
 .DS_Store
 KIRO.md
 README.md
-assets
+doc
