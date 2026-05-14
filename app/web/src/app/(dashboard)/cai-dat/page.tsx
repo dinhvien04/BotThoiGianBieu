@@ -4,7 +4,15 @@ import { useState } from "react";
 
 const workDays = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"];
 
+const settingsTabs = [
+  { id: "general", label: "Chung", icon: "⚙️" },
+  { id: "notification", label: "Thông báo", icon: "🔔" },
+  { id: "integration", label: "Tích hợp", icon: "🔗" },
+  { id: "template", label: "Mẫu", icon: "📋" },
+];
+
 export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState("general");
   const [language, setLanguage] = useState("vi");
   const [theme, setTheme] = useState("light");
   const [notifChannel, setNotifChannel] = useState("browser");
@@ -34,9 +42,27 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      {/* Tabs */}
+      <div className="flex gap-1 bg-surface-container rounded-xl p-1">
+        {settingsTabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab.id ? "bg-white text-on-surface shadow-sm" : "text-on-surface-variant"
+            }`}
+          >
+            <span className="text-base">{tab.icon}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: General + Notification (existing content) */}
+      {(activeTab === "general" || activeTab === "notification") && (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Settings */}
-        <div className="col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           {/* General */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
@@ -284,6 +310,65 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Tab: Integration */}
+      {activeTab === "integration" && (
+        <div className="max-w-2xl space-y-4">
+          {[
+            { name: "Mezon", desc: "Đồng bộ lịch trình, nhận nhắc nhở qua chat", status: "connected", icon: "M" },
+            { name: "Google Calendar", desc: "Đồng bộ hai chiều với Google Calendar", status: "disconnected", icon: "G" },
+            { name: "Outlook", desc: "Kết nối với Microsoft Outlook Calendar", status: "disconnected", icon: "O" },
+            { name: "Slack", desc: "Nhận thông báo lịch trình qua Slack", status: "disconnected", icon: "S" },
+            { name: "Notion", desc: "Đồng bộ tasks từ Notion databases", status: "disconnected", icon: "N" },
+          ].map((app) => (
+            <div key={app.name} className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold ${app.status === "connected" ? "bg-primary" : "bg-on-surface-variant/20"}`}>
+                  {app.icon}
+                </div>
+                <div>
+                  <p className="font-medium text-on-surface">{app.name}</p>
+                  <p className="text-sm text-on-surface-variant">{app.desc}</p>
+                </div>
+              </div>
+              {app.status === "connected" ? (
+                <span className="px-3 py-1.5 bg-[#27AE60]/10 text-[#27AE60] text-xs font-medium rounded-lg">Đã kết nối</span>
+              ) : (
+                <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors">
+                  Kết nối
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tab: Template */}
+      {activeTab === "template" && (
+        <div className="max-w-2xl space-y-4">
+          <p className="text-sm text-on-surface-variant">Quản lý các mẫu mặc định cho sự kiện mới.</p>
+          {[
+            { name: "Cuộc họp mặc định", duration: "30 phút", reminder: "15 phút trước", type: "meeting" },
+            { name: "Deadline công việc", duration: "1 giờ", reminder: "1 ngày trước", type: "work" },
+            { name: "Sự kiện cá nhân", duration: "2 giờ", reminder: "30 phút trước", type: "personal" },
+          ].map((tpl) => (
+            <div key={tpl.name} className="bg-white rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-on-surface">{tpl.name}</h3>
+                <button className="text-sm text-primary font-medium hover:underline">Chỉnh sửa</button>
+              </div>
+              <div className="flex gap-4 text-sm text-on-surface-variant">
+                <span>⏱ {tpl.duration}</span>
+                <span>🔔 {tpl.reminder}</span>
+              </div>
+            </div>
+          ))}
+          <button className="w-full py-3 border-2 border-dashed border-outline-variant rounded-2xl text-sm font-medium text-on-surface-variant hover:border-primary/40 hover:text-primary transition-colors">
+            + Thêm mẫu mới
+          </button>
+        </div>
+      )}
     </div>
   );
 }
