@@ -12,7 +12,7 @@
     "start:debug": "nest start --debug --watch",
     "start:local": "node dist/main",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,../../test/bot}/**/*.ts\" --fix",
     "test": "jest"
   },
   "dependencies": {

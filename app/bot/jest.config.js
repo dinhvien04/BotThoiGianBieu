@@ -1,23 +1,26 @@
 module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
-  rootDir: '.',
+  rootDir: '../..',
   testRegex: '.*\\.spec\\.ts$',
   transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
+    '^.+\\.(t|j)s$': [
+      'ts-jest',
+      { tsconfig: '<rootDir>/app/bot/tsconfig.json' },
+    ],
   },
   collectCoverageFrom: [
-    'src/**/*.(t|j)s',
-    '!src/main.ts',
-    '!src/**/*.module.ts',
-    '!src/**/*.entity.ts',
-    '!src/**/*.types.ts',
-    '!src/**/*.interface.ts',
+    'app/bot/src/**/*.(t|j)s',
+    '!app/bot/src/main.ts',
+    '!app/bot/src/**/*.module.ts',
+    '!app/bot/src/**/*.entity.ts',
+    '!app/bot/src/**/*.types.ts',
+    '!app/bot/src/**/*.interface.ts',
   ],
-  coverageDirectory: './coverage',
+  coverageDirectory: '<rootDir>/app/bot/coverage',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src/', '<rootDir>/test/'],
+  roots: ['<rootDir>/app/bot/src/', '<rootDir>/test/bot/'],
   moduleNameMapper: {
-    '^src/(.*)$': '<rootDir>/src/$1',
+    '^src/(.*)$': '<rootDir>/app/bot/src/$1',
   },
   coverageThreshold: {
     global: {

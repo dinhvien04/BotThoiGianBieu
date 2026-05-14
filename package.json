@@ -13,7 +13,8 @@
     "build:all": "npm run bot:build && npm run web:build",
     "format": "npm run bot:format",
     "lint": "npm run bot:lint",
-    "test": "npm run bot:test",
+    "test": "npm run test:bot && npm run test:web",
+    "test:smoke": "node scripts/mezon-login-smoke.cjs",
     "start": "npm run bot:start",
     "start:dev": "npm run bot:dev",
     "start:debug": "npm run bot:debug",
@@ -23,6 +24,7 @@
     "bot:format": "npm run format -w app/bot",
     "bot:lint": "npm run lint -w app/bot",
     "bot:test": "npm run test -w app/bot",
+    "test:bot": "npm run bot:test",
     "bot:start": "npm run start -w app/bot",
     "bot:dev": "npm run start:dev -w app/bot",
     "bot:debug": "npm run start:debug -w app/bot",
@@ -31,7 +33,9 @@
     "web:dev": "npm run dev -w app/web",
     "web:build": "npm run build -w app/web",
     "web:start": "npm run start -w app/web",
-    "web:lint": "npm run lint -w app/web"
+    "web:lint": "npm run lint -w app/web",
+    "web:test": "npm run test:ci -w app/web",
+    "test:web": "npm run web:test"
   },
   "overrides": {
     "better-sqlite3": "^12.9.0"
