@@ -33,7 +33,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard label="HÔM NAY" value={String(todayEvents.length).padStart(2, "0")} sub="sự kiện" color="text-primary" />
         <StatCard label="QUÁ HẠN" value={String(overdueCount).padStart(2, "0")} sub="nhiệm vụ" color="text-error" icon="warning" />
         <StatCard label="7 NGÀY TỚI" value={String(upcomingWeek.length).padStart(2, "0")} sub="sự kiện" color="text-primary" />
@@ -41,9 +41,9 @@ export default function DashboardPage() {
         <StatCard label="NHẮC VIỆC" value={String(activeReminders).padStart(2, "0")} sub="đang bật" color="text-primary" />
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Timeline */}
-        <div className="col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-on-surface">Lịch trình hôm nay</h2>
