@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 const navItems = [
   { href: "/dashboard", label: "Tổng quan", icon: "home" },
   { href: "/lich", label: "Lịch của tôi", icon: "calendar" },
@@ -65,68 +70,82 @@ const icons: Record<string, React.ReactNode> = {
   ),
 };
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-sidebar-width bg-[#1C1B1F] text-white flex flex-col min-h-screen fixed left-0 top-0 z-30">
-      <div className="p-6 pb-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />
+      )}
+
+      <aside className={`w-sidebar-width bg-[#1C1B1F] text-white flex flex-col min-h-screen fixed left-0 top-0 z-50 transition-transform duration-300 ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+        <div className="p-6 pb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold leading-tight">FocusFlow Pro</h1>
+              <p className="text-xs text-gray-400">Hệ thống quản lý</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="lg:hidden p-1 hover:bg-white/10 rounded-lg">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </div>
-          <div>
-            <h1 className="text-lg font-bold leading-tight">FocusFlow Pro</h1>
-            <p className="text-xs text-gray-400">Hệ thống quản lý</p>
-          </div>
+          </button>
         </div>
-      </div>
 
-      <div className="px-4 mb-4">
-        <Link
-          href="/lich/tao-moi"
-          className="flex items-center justify-center gap-2 w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Tạo mới
-        </Link>
-      </div>
-
-      <nav className="flex-1 px-3 space-y-1">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-primary text-white"
-                  : "text-gray-300 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {icons[item.icon]}
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="p-4 mt-auto border-t border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-sm font-bold">
-            JD
-          </div>
-          <div>
-            <p className="text-sm font-medium">John Doe</p>
-            <p className="text-xs text-gray-400">Premium Plan</p>
-          </div>
+        <div className="px-4 mb-4">
+          <Link
+            href="/lich/tao-moi"
+            onClick={onClose}
+            className="flex items-center justify-center gap-2 w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Tạo mới
+          </Link>
         </div>
-      </div>
-    </aside>
+
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-primary text-white"
+                    : "text-gray-300 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                {icons[item.icon]}
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 mt-auto border-t border-white/10">
+          <Link href="/ho-so" onClick={onClose} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-sm font-bold">
+              JD
+            </div>
+            <div>
+              <p className="text-sm font-medium">John Doe</p>
+              <p className="text-xs text-gray-400">Premium Plan</p>
+            </div>
+          </Link>
+        </div>
+      </aside>
+    </>
   );
 }
