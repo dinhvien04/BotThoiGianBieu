@@ -20,6 +20,7 @@ import { TemplatesController } from './templates.controller';
 import { SharesController } from './shares.controller';
 import { AuditController } from './audit.controller';
 import { AuthModule } from '../auth/auth.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AuthModule } from '../auth/auth.module';
       UserSettings,
     ]),
     AuthModule,
+    UsersModule,
   ],
   controllers: [
     SchedulesController,
