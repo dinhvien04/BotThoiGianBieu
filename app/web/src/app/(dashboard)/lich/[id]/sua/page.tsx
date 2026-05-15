@@ -2,27 +2,59 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { mockSchedules, typeLabels, priorityLabels, statusLabels, statusColors } from "@/lib/mock-data";
+import { useParams, useRouter } from "next/navigation";
+import { typeLabels, priorityLabels, statusLabels, statusColors } from "@/lib/mock-data";
+import { updateSchedule } from "@/lib/api";
+import { useScheduleById } from "@/lib/hooks";
+import { useToast } from "@/components/dashboard/Toast";
 
 export default function EditSchedulePage() {
   const params = useParams();
+  const router = useRouter();
+  const { showToast } = useToast();
   const id = Number(params.id);
-  const schedule = mockSchedules.find((s) => s.id === id) || mockSchedules[0];
+  const { data: schedule, loading } = useScheduleById(id);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<{
+    type: string;
+    title: string;
+    description: string;
+    startDate: string;
+    startTime: string;
+    endDate: string;
+    endTime: string;
+    priority: string;
+    reminder: string;
+    recurrence: string;
+    tags: string[];
+  } | null>(null);
 
-  const [form, setForm] = useState({
-    type: schedule.type,
-    title: schedule.title,
-    description: schedule.description,
-    startDate: schedule.start.split("T")[0],
-    startTime: schedule.start.split("T")[1]?.slice(0, 5) || "",
-    endDate: schedule.end.split("T")[0],
-    endTime: schedule.end.split("T")[1]?.slice(0, 5) || "",
-    priority: schedule.priority,
-    reminder: String(schedule.reminder || 15),
-    recurrence: schedule.recurrence || "",
-    tags: [...schedule.tags],
-  });
+  // Populate form once schedule loads
+  if (schedule && !form) {
+    const start = schedule.start_time || "";
+    const end = schedule.end_time || "";
+    setForm({
+      type: schedule.item_type || "ca-nhan",
+      title: schedule.title || "",
+      description: schedule.description || "",
+      startDate: start.split("T")[0] || "",
+      startTime: start.split("T")[1]?.slice(0, 5) || "",
+      endDate: end.split("T")[0] || "",
+      endTime: end.split("T")[1]?.slice(0, 5) || "",
+      priority: schedule.priority || "trung-binh",
+      reminder: "15",
+      recurrence: schedule.recurrence_type || "",
+      tags: schedule.tags ? schedule.tags.map((t) => t.name || "") : [],
+    });
+  }
+
+  if (loading || !schedule || !form) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 text-center text-on-surface-variant">
+        Đang tải dữ liệu...
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -39,8 +71,37 @@ export default function EditSchedulePage() {
           >
             Hủy
           </Link>
-          <button className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors">
-            Lưu thay đổi
+          <button
+            disabled={saving || !form.title || !form.startDate || !form.startTime}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                const startIso = `${form.startDate}T${form.startTime}:00`;
+                const endIso = form.endDate && form.endTime ? `${form.endDate}T${form.endTime}:00` : null;
+                const reminderMinutes = Number(form.reminder) || 15;
+                const remindAt = new Date(new Date(startIso).getTime() - reminderMinutes * 60000).toISOString();
+                await updateSchedule(id, {
+                  title: form.title,
+                  description: form.description || null,
+                  item_type: form.type,
+                  start_time: new Date(startIso).toISOString(),
+                  end_time: endIso ? new Date(endIso).toISOString() : null,
+                  priority: form.priority,
+                  remind_at: remindAt,
+                  recurrence_type: form.recurrence || "none",
+                });
+                showToast("Cập nhật thành công!", "success");
+                router.refresh();
+                router.push(`/lich/${id}`);
+              } catch {
+                showToast("Không thể cập nhật. Vui lòng thử lại.", "error");
+              } finally {
+                setSaving(false);
+              }
+            }}
+            className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
         </div>
       </div>
@@ -79,7 +140,7 @@ export default function EditSchedulePage() {
             <div>
               <p className="text-xs text-on-surface-variant uppercase font-semibold">Định kỳ</p>
               <p className="text-sm font-medium text-on-surface">
-                {schedule.recurrence === "weekly" ? "Hàng tuần" : schedule.recurrence === "daily" ? "Hàng ngày" : schedule.recurrence === "monthly" ? "Hàng tháng" : "Không"}
+                {schedule.recurrence_type === "weekly" ? "Hàng tuần" : schedule.recurrence_type === "daily" ? "Hàng ngày" : schedule.recurrence_type === "monthly" ? "Hàng tháng" : "Không"}
               </p>
             </div>
           </div>
@@ -91,7 +152,7 @@ export default function EditSchedulePage() {
             </div>
             <div>
               <p className="text-xs text-on-surface-variant uppercase font-semibold">Chia sẻ</p>
-              <p className="text-sm font-medium text-on-surface">{schedule.participants?.length || 0} người</p>
+              <p className="text-sm font-medium text-on-surface">0 người</p>
             </div>
           </div>
         </div>
@@ -142,7 +203,7 @@ export default function EditSchedulePage() {
             <label className="block text-sm font-medium text-on-surface mb-2">Bắt đầu</label>
             <input
               type="datetime-local"
-              value={`${form.startDate}T${form.startTime}`}
+              value={form.startDate && form.startTime ? `${form.startDate}T${form.startTime}` : ""}
               onChange={(e) => {
                 const [d, t] = e.target.value.split("T");
                 setForm({ ...form, startDate: d, startTime: t });
@@ -154,7 +215,7 @@ export default function EditSchedulePage() {
             <label className="block text-sm font-medium text-on-surface mb-2">Kết thúc</label>
             <input
               type="datetime-local"
-              value={`${form.endDate}T${form.endTime}`}
+              value={form.endDate && form.endTime ? `${form.endDate}T${form.endTime}` : ""}
               onChange={(e) => {
                 const [d, t] = e.target.value.split("T");
                 setForm({ ...form, endDate: d, endTime: t });
@@ -174,11 +235,10 @@ export default function EditSchedulePage() {
                 <button
                   key={k}
                   onClick={() => setForm({ ...form, priority: k as typeof form.priority })}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    form.priority === k
-                      ? "bg-primary text-white"
-                      : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                  }`}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${form.priority === k
+                    ? "bg-primary text-white"
+                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                    }`}
                 >
                   {v}
                 </button>
@@ -229,8 +289,36 @@ export default function EditSchedulePage() {
           >
             Hủy
           </Link>
-          <button className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors">
-            Lưu thay đổi
+          <button
+            disabled={saving || !form.title || !form.startDate || !form.startTime}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                const startIso = `${form.startDate}T${form.startTime}:00`;
+                const endIso = form.endDate && form.endTime ? `${form.endDate}T${form.endTime}:00` : null;
+                const reminderMinutes = Number(form.reminder) || 15;
+                const remindAt = new Date(new Date(startIso).getTime() - reminderMinutes * 60000).toISOString();
+                await updateSchedule(id, {
+                  title: form.title,
+                  description: form.description || null,
+                  item_type: form.type,
+                  start_time: new Date(startIso).toISOString(),
+                  end_time: endIso ? new Date(endIso).toISOString() : null,
+                  priority: form.priority,
+                  remind_at: remindAt,
+                  recurrence_type: form.recurrence || "none",
+                });
+                showToast("Cập nhật thành công!", "success");
+                router.push(`/lich/${id}`);
+              } catch {
+                showToast("Không thể cập nhật. Vui lòng thử lại.", "error");
+              } finally {
+                setSaving(false);
+              }
+            }}
+            className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
         </div>
       </div>

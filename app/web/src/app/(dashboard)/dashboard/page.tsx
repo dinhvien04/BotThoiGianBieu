@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { useSchedules, useStatistics, useUserProfile, useStreak } from "@/lib/hooks";
 import type { Schedule } from "@/lib/api";
 
-const calendarDays = Array.from({ length: 31 }, (_, i) => i + 1);
-const october2024StartDay = 1;
+const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
 const typeColors: Record<string, string> = {
   task: "#6750A4",
@@ -26,6 +26,18 @@ export default function DashboardPage() {
   const { data: scheduleData } = useSchedules({ limit: 50 });
   const { data: stats } = useStatistics();
   const { data: streak } = useStreak();
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+  const startDayOffset = firstDay === 0 ? 6 : firstDay - 1; // Mon = 0, Sun = 6
+  const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const todayDate = now.getDate();
+  const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+  const formattedDate = now.toLocaleDateString('vi-VN', dateOptions);
+  const monthYearString = `Tháng ${month + 1}, ${year}`;
 
   const allItems = useMemo(() => scheduleData?.items ?? [], [scheduleData]);
 
@@ -94,7 +106,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
               <h2 className="text-base sm:text-lg font-bold text-on-surface">Lịch trình hôm nay</h2>
-              <span className="text-xs sm:text-sm text-primary font-medium">Thứ Năm, 24 Tháng 10</span>
+              <span className="text-xs sm:text-sm text-primary font-medium capitalize">{formattedDate}</span>
             </div>
             <div className="space-y-0">
               {["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"].map(
@@ -132,7 +144,7 @@ export default function DashboardPage() {
           {/* Mini Calendar */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-on-surface">Tháng 10, 2024</h3>
+              <h3 className="font-bold text-on-surface">{monthYearString}</h3>
               <div className="flex gap-1">
                 <button className="p-1 rounded hover:bg-surface-container-high text-on-surface-variant">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
@@ -143,18 +155,16 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-xs">
-              {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map((d) => (
+              {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
                 <div key={d} className="py-1 text-on-surface-variant font-medium">{d}</div>
               ))}
-              {Array.from({ length: october2024StartDay }, (_, i) => (
-                <div key={`empty-${i}`} className="py-1.5 text-gray-300">
-                  {30 - october2024StartDay + i + 1}
-                </div>
+              {Array.from({ length: startDayOffset }, (_, i) => (
+                <div key={`empty-${i}`} className="py-1.5 text-gray-300"></div>
               ))}
               {calendarDays.map((day) => (
                 <div
                   key={day}
-                  className={`py-1.5 rounded-full text-sm cursor-pointer transition-colors ${day === 24
+                  className={`py-1.5 rounded-full text-sm cursor-pointer transition-colors ${day === todayDate
                     ? "bg-primary text-white font-bold"
                     : "hover:bg-surface-container-high text-on-surface"
                     }`}

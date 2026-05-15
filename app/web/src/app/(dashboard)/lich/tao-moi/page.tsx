@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { typeLabels, priorityLabels } from "@/lib/mock-data";
+import { createSchedule } from "@/lib/api";
+import { useToast } from "@/components/dashboard/Toast";
 
 export default function CreateSchedulePage() {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     type: "ca-nhan",
     title: "",
@@ -88,26 +94,38 @@ export default function CreateSchedulePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-on-surface mb-2">Bắt đầu</label>
+            <label className="block text-sm font-medium text-on-surface mb-2">Ngày bắt đầu</label>
             <input
-              type="datetime-local"
-              value={`${form.startDate}T${form.startTime}`}
-              onChange={(e) => {
-                const [d, t] = e.target.value.split("T");
-                setForm({ ...form, startDate: d, startTime: t });
-              }}
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
               className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-on-surface mb-2">Kết thúc</label>
+            <label className="block text-sm font-medium text-on-surface mb-2">Giờ bắt đầu</label>
             <input
-              type="datetime-local"
-              value={`${form.endDate}T${form.endTime}`}
-              onChange={(e) => {
-                const [d, t] = e.target.value.split("T");
-                setForm({ ...form, endDate: d, endTime: t });
-              }}
+              type="time"
+              value={form.startTime}
+              onChange={(e) => setForm((prev) => ({ ...prev, startTime: e.target.value }))}
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface mb-2">Ngày kết thúc</label>
+            <input
+              type="date"
+              value={form.endDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface mb-2">Giờ kết thúc</label>
+            <input
+              type="time"
+              value={form.endTime}
+              onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
               className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
@@ -120,9 +138,13 @@ export default function CreateSchedulePage() {
               <span className="text-xs font-bold text-white bg-primary px-2 py-0.5 rounded">XEM TRƯỚC</span>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-center">
-                <div className="text-xs text-primary font-bold">T 10</div>
-                <div className="text-2xl font-bold text-on-surface">24</div>
+              <div className="text-center w-12">
+                <div className="text-xs text-primary font-bold uppercase">
+                  T {form.startDate ? new Date(form.startDate).getMonth() + 1 : new Date().getMonth() + 1}
+                </div>
+                <div className="text-2xl font-bold text-on-surface">
+                  {form.startDate ? String(new Date(form.startDate).getDate()).padStart(2, "0") : String(new Date().getDate()).padStart(2, "0")}
+                </div>
               </div>
               <div>
                 <p className="font-semibold text-on-surface">{form.title}</p>
@@ -155,11 +177,10 @@ export default function CreateSchedulePage() {
                 <button
                   key={k}
                   onClick={() => setForm({ ...form, priority: k })}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    form.priority === k
-                      ? "bg-primary text-white"
-                      : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                  }`}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${form.priority === k
+                    ? "bg-primary text-white"
+                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                    }`}
                 >
                   {v}
                 </button>
@@ -209,11 +230,10 @@ export default function CreateSchedulePage() {
                       : [...form.tags, tag];
                     setForm({ ...form, tags });
                   }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    form.tags.includes(tag)
-                      ? "bg-primary text-white"
-                      : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                  }`}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${form.tags.includes(tag)
+                    ? "bg-primary text-white"
+                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                    }`}
                 >
                   #{tag}
                 </button>
@@ -233,8 +253,37 @@ export default function CreateSchedulePage() {
           >
             Hủy bỏ
           </Link>
-          <button className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors">
-            Lưu sự kiện
+          <button
+            disabled={saving || !form.title || !form.startDate || !form.startTime}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                const startIso = `${form.startDate}T${form.startTime}:00`;
+                const endIso = form.endDate && form.endTime ? `${form.endDate}T${form.endTime}:00` : undefined;
+                const reminderMinutes = Number(form.reminder) || 15;
+                const remindAt = new Date(new Date(startIso).getTime() - reminderMinutes * 60000).toISOString();
+                await createSchedule({
+                  title: form.title,
+                  description: form.description || undefined,
+                  item_type: form.type,
+                  start_time: new Date(startIso).toISOString(),
+                  end_time: endIso ? new Date(endIso).toISOString() : undefined,
+                  priority: form.priority,
+                  remind_at: remindAt,
+                  recurrence_type: form.recurrence || undefined,
+                });
+                showToast("Tạo lịch thành công!", "success");
+                router.refresh();
+                router.push("/lich");
+              } catch {
+                showToast("Không thể tạo lịch. Vui lòng thử lại.", "error");
+              } finally {
+                setSaving(false);
+              }
+            }}
+            className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "Đang lưu..." : "Lưu sự kiện"}
           </button>
         </div>
       </div>

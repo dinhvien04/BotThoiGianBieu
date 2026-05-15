@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { mockSchedules, typeColors, typeLabels, statusLabels, statusColors, priorityLabels } from "@/lib/mock-data";
+import { typeColors, typeLabels, statusLabels, statusColors, priorityLabels } from "@/lib/mock-data";
+import { useSchedules, apiToDisplay } from "@/lib/hooks";
 
 type ViewMode = "thang" | "tuan" | "ngay" | "danh-sach";
 
@@ -27,33 +28,36 @@ function getMonthDays(year: number, month: number) {
   return days;
 }
 
-function getEventsForDay(year: number, month: number, day: number) {
+function getEventsForDay(year: number, month: number, day: number, allSchedules: any[]) {
   const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  return mockSchedules.filter((s) => s.start.startsWith(dateStr));
+  return allSchedules.filter((s) => s.start && s.start.startsWith(dateStr));
 }
 
 export default function CalendarPage() {
   const [view, setView] = useState<ViewMode>("thang");
-  const [year] = useState(2024);
-  const [month] = useState(9);
+  const [year] = useState(new Date().getFullYear());
+  const [month] = useState(new Date().getMonth());
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [showOverdue, setShowOverdue] = useState(false);
 
+  const { data: scheduleData, loading } = useSchedules();
+  const schedules = scheduleData ? scheduleData.items.map(apiToDisplay) : [];
+
   const monthDays = getMonthDays(year, month);
   const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 
-  const filteredSchedules = mockSchedules.filter((s) => {
+  const filteredSchedules = schedules.filter((s) => {
     if (filterStatus !== "all" && s.status !== filterStatus) return false;
     if (filterPriority !== "all" && s.priority !== filterPriority) return false;
     if (showOverdue && s.status !== "qua-han") return false;
     return true;
   });
 
-  const overdueCount = mockSchedules.filter((s) => s.status === "qua-han").length;
-  const completedCount = mockSchedules.filter((s) => s.status === "hoan-thanh").length;
-  const totalCount = mockSchedules.length;
-  const weekProgress = Math.round((completedCount / totalCount) * 100);
+  const overdueCount = schedules.filter((s) => s.status === "qua-han").length;
+  const completedCount = schedules.filter((s) => s.status === "hoan-thanh").length;
+  const totalCount = schedules.length;
+  const weekProgress = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
   return (
     <div className="space-y-6">
@@ -146,7 +150,7 @@ export default function CalendarPage() {
           </div>
           <div className="grid grid-cols-7">
             {monthDays.map((d, idx) => {
-              const events = d.current ? getEventsForDay(year, month, d.day) : [];
+              const events = d.current ? getEventsForDay(year, month, d.day, schedules) : [];
               const isToday = d.current && d.day === 24;
               return (
                 <div
@@ -212,9 +216,9 @@ export default function CalendarPage() {
           <div className="grid grid-cols-8 border-b border-surface-container-high">
             <div className="px-2 py-3 text-xs font-semibold text-on-surface-variant" />
             {Array.from({ length: 7 }, (_, i) => {
-              const d = new Date(2024, 9, 21 + i);
+              const d = new Date(year, month, new Date().getDate() - new Date().getDay() + 1 + i);
               const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-              const isToday = d.getDate() === 24;
+              const isToday = d.getDate() === new Date().getDate() && d.getMonth() === new Date().getMonth();
               return (
                 <div key={i} className={`px-2 py-3 text-center ${isToday ? "bg-primary/5" : ""}`}>
                   <p className={`text-xs font-semibold ${i >= 5 ? "text-error" : "text-on-surface-variant"}`}>{dayNames[i]}</p>
@@ -230,14 +234,16 @@ export default function CalendarPage() {
                   {String(hour).padStart(2, "0")}:00
                 </div>
                 {Array.from({ length: 7 }, (_, dayIdx) => {
-                  const dateStr = `2024-10-${String(21 + dayIdx).padStart(2, "0")}`;
-                  const events = mockSchedules.filter((s) => {
-                    if (!s.start.startsWith(dateStr)) return false;
+                  const d = new Date(year, month, new Date().getDate() - new Date().getDay() + 1 + dayIdx);
+                  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                  const events = schedules.filter((s) => {
+                    if (!s.start || !s.start.startsWith(dateStr)) return false;
                     const h = new Date(s.start).getHours();
                     return h === hour;
                   });
+                  const isToday = d.getDate() === new Date().getDate() && d.getMonth() === new Date().getMonth();
                   return (
-                    <div key={dayIdx} className={`border-l border-surface-container-high p-0.5 ${dayIdx + 21 === 24 ? "bg-primary/5" : ""}`}>
+                    <div key={dayIdx} className={`border-l border-surface-container-high p-0.5 ${isToday ? "bg-primary/5" : ""}`}>
                       {events.map((ev) => (
                         <Link
                           key={ev.id}
@@ -258,7 +264,10 @@ export default function CalendarPage() {
       )}
 
       {view === "ngay" && (() => {
-        const dayEvents = mockSchedules.filter((s) => s.start.startsWith("2024-10-24"));
+        const todayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
+        const dayEvents = schedules.filter((s) => s.start && s.start.startsWith(todayStr));
+        const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateDisplay = new Date().toLocaleDateString('vi-VN', dateOptions);
         return (
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
@@ -266,7 +275,7 @@ export default function CalendarPage() {
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                 </button>
-                <h2 className="text-lg font-bold text-on-surface">Thứ Năm, 24 Tháng 10, 2024</h2>
+                <h2 className="text-lg font-bold text-on-surface capitalize">{dateDisplay}</h2>
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>

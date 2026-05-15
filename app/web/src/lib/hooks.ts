@@ -84,6 +84,62 @@ function mapMockToApiTemplate(
   };
 }
 
+/** UI-friendly schedule type matching existing label/color maps */
+export interface DisplaySchedule {
+  id: number;
+  title: string;
+  description: string | null;
+  start: string;
+  end: string;
+  type: string;
+  status: string;
+  priority: string;
+  tags: string[];
+  location?: string;
+  reminder?: number;
+  recurrence?: string;
+  participants?: string[];
+}
+
+/** Convert api.Schedule → DisplaySchedule for UI rendering */
+export function apiToDisplay(s: api.Schedule): DisplaySchedule {
+  const priorityReverse: Record<string, string> = {
+    high: "cao",
+    normal: "trung-binh",
+    low: "thap",
+  };
+  const statusReverse: Record<string, string> = {
+    pending: "dang-cho",
+    in_progress: "dang-thuc-hien",
+    completed: "hoan-thanh",
+    overdue: "qua-han",
+  };
+
+  // If the key already exists in Vietnamese (from real API), keep as-is; otherwise reverse-map
+  const status = statusReverse[s.status] || s.status;
+  const priority = priorityReverse[s.priority] || s.priority;
+
+  let reminderMinutes: number | undefined;
+  if (s.remind_at && s.start_time) {
+    const diff = new Date(s.start_time).getTime() - new Date(s.remind_at).getTime();
+    if (diff > 0) reminderMinutes = Math.round(diff / 60000);
+  }
+
+  return {
+    id: s.id,
+    title: s.title,
+    description: s.description,
+    start: s.start_time,
+    end: s.end_time || s.start_time,
+    type: s.item_type || "ca-nhan",
+    status,
+    priority,
+    tags: s.tags?.map((t) => t.name) || [],
+    reminder: reminderMinutes,
+    recurrence: s.recurrence_type && s.recurrence_type !== "none" ? s.recurrence_type : undefined,
+  };
+}
+
 export function useSchedules(params?: Parameters<typeof api.getSchedules>[0]): FetchState<{
   items: api.Schedule[];
   total: number;
@@ -102,10 +158,10 @@ export function useSchedules(params?: Parameters<typeof api.getSchedules>[0]): F
       } else {
         throw new Error("API error");
       }
-    } catch {
-      const items = mockSchedules.map(mapMockToApiSchedule);
-      setData({ items, total: items.length });
-      setError(null);
+    } catch (err) {
+      console.error("useSchedules error:", err);
+      setData({ items: [], total: 0 });
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -132,13 +188,9 @@ export function useScheduleById(id: number): FetchState<api.Schedule> {
       } else {
         throw new Error(result.error ?? "Not found");
       }
-    } catch {
-      const mock = mockSchedules.find((s) => s.id === id);
-      if (mock) {
-        setData(mapMockToApiSchedule(mock));
-      } else {
-        setError("Schedule not found");
-      }
+    } catch (err) {
+      console.error("useScheduleById error:", err);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -164,9 +216,10 @@ export function useTags(): FetchState<api.Tag[]> {
       } else {
         throw new Error("API error");
       }
-    } catch {
-      setData(mockTags.map(mapMockToApiTag));
-      setError(null);
+    } catch (err) {
+      console.error("useTags error:", err);
+      setData([]);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -192,9 +245,10 @@ export function useTemplates(): FetchState<api.Template[]> {
       } else {
         throw new Error("API error");
       }
-    } catch {
-      setData(mockTemplates.map(mapMockToApiTemplate));
-      setError(null);
+    } catch (err) {
+      console.error("useTemplates error:", err);
+      setData([]);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -227,20 +281,9 @@ export function useStatistics(start?: string, end?: string): FetchState<api.Sche
       } else {
         throw new Error("API error");
       }
-    } catch {
-      setData({
-        total: mockSchedules.length,
-        byStatus: { pending: 10, completed: 5, cancelled: 0 },
-        byItemType: { task: 8, meeting: 4, event: 2, reminder: 1 },
-        byPriority: { high: 5, normal: 7, low: 3 },
-        topHours: [
-          { hour: 9, count: 5 },
-          { hour: 14, count: 3 },
-          { hour: 10, count: 2 },
-        ],
-        recurringActiveCount: 2,
-      });
-      setError(null);
+    } catch (err) {
+      console.error("useStatistics error:", err);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -272,24 +315,9 @@ export function useUserProfile(): FetchState<{
       } else {
         throw new Error("API error");
       }
-    } catch {
-      setData({
-        user: {
-          user_id: "mock-user",
-          username: "demo_user",
-          display_name: "Người dùng Demo",
-        },
-        settings: {
-          user_id: "mock-user",
-          timezone: "Asia/Ho_Chi_Minh",
-          default_remind_minutes: 30,
-          notify_via_dm: false,
-          notify_via_channel: true,
-          work_start_hour: 8,
-          work_end_hour: 17,
-        },
-      });
-      setError(null);
+    } catch (err) {
+      console.error("useUserProfile error:", err);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -321,15 +349,9 @@ export function useStreak(): FetchState<api.StreakStats> {
       } else {
         throw new Error("API error");
       }
-    } catch {
-      setData({
-        currentStreak: 5,
-        longestStreak: 14,
-        daysActive: 28,
-        totalCompleted: 45,
-        lastCompletedDate: new Date().toISOString().split("T")[0],
-      });
-      setError(null);
+    } catch (err) {
+      console.error("useStreak error:", err);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }

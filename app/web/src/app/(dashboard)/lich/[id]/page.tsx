@@ -2,15 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { mockSchedules, typeLabels, typeColors, priorityLabels, priorityColors, statusLabels, statusColors } from "@/lib/mock-data";
+import { useParams, useRouter } from "next/navigation";
+import { typeLabels, typeColors, priorityLabels, priorityColors, statusLabels, statusColors } from "@/lib/mock-data";
 import DeleteConfirmDialog from "@/components/dashboard/DeleteConfirmDialog";
+import { deleteSchedule } from "@/lib/api";
+import { useScheduleById, apiToDisplay } from "@/lib/hooks";
+import { useToast } from "@/components/dashboard/Toast";
 
 export default function ScheduleDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const params = useParams();
+  const router = useRouter();
+  const { showToast } = useToast();
   const id = Number(params.id);
-  const schedule = mockSchedules.find((s) => s.id === id) || mockSchedules[16];
+  const { data: apiSchedule, loading } = useScheduleById(id);
+  const schedule = apiSchedule ? apiToDisplay(apiSchedule) : null;
+
+  if (loading || !schedule) {
+    return <div className="p-8 text-center text-on-surface-variant">Đang tải...</div>;
+  }
 
   const startDate = new Date(schedule.start);
   const endDate = new Date(schedule.end);
@@ -267,7 +278,21 @@ export default function ScheduleDetailPage() {
         isOpen={showDelete}
         title={`Bạn có chắc muốn xóa "${schedule.title}"?`}
         description="Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn."
-        onConfirm={() => setShowDelete(false)}
+        onConfirm={async () => {
+          setDeleting(true);
+          try {
+            await deleteSchedule(id);
+            setShowDelete(false);
+            showToast("Xóa lịch thành công!", "success");
+            router.refresh();
+            router.push("/lich");
+          } catch {
+            showToast("Không thể xóa. Vui lòng thử lại.", "error");
+            setShowDelete(false);
+          } finally {
+            setDeleting(false);
+          }
+        }}
         onCancel={() => setShowDelete(false)}
       />
     </div>

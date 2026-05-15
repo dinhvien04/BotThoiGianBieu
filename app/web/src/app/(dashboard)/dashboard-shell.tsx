@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
+import { ToastProvider } from "@/components/dashboard/Toast";
 
 export default function DashboardShell({
   children,
@@ -31,12 +32,14 @@ export default function DashboardShell({
   }, [sidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-surface-container-low">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="lg:ml-sidebar-width">
-        <Topbar onMenuClick={() => setSidebarOpen((v) => !v)} />
-        <main className="p-3 sm:p-4 md:p-6">{children}</main>
+    <ToastProvider>
+      <div className="min-h-screen bg-surface-container-low">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="lg:ml-sidebar-width">
+          <Topbar onMenuClick={() => setSidebarOpen((v) => !v)} />
+          <main className="p-3 sm:p-4 md:p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }

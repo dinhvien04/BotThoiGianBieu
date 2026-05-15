@@ -41,7 +41,8 @@ export class SchedulesController {
       recurrence_until?: string;
     },
   ) {
-    const input: CreateScheduleInput = {
+    try {
+      const input: CreateScheduleInput = {
       user_id: req.session.sub,
       title: body.title,
       description: body.description ?? null,
@@ -59,8 +60,12 @@ export class SchedulesController {
         ? new Date(body.recurrence_until)
         : null,
     };
-    const schedule = await this.schedulesService.create(input);
-    return { success: true, schedule };
+      const schedule = await this.schedulesService.create(input);
+      return { success: true, schedule };
+    } catch (e: any) {
+      require('fs').writeFileSync('backend-error.txt', e.stack || e.message);
+      throw e;
+    }
   }
 
   @Get()
@@ -74,8 +79,9 @@ export class SchedulesController {
     @Query("start") start?: string,
     @Query("end") end?: string,
   ) {
-    const userId = req.session.sub;
-    const pageNum = Math.max(1, parseInt(page ?? "1", 10) || 1);
+    try {
+      const userId = req.session.sub;
+      const pageNum = Math.max(1, parseInt(page ?? "1", 10) || 1);
     const pageSize = Math.min(50, Math.max(1, parseInt(limit ?? "10", 10) || 10));
     const offset = (pageNum - 1) * pageSize;
 
@@ -137,19 +143,23 @@ export class SchedulesController {
       };
     }
 
-    const result = await this.schedulesService.findAllPending(
-      userId,
-      pageSize,
-      offset,
-      priority as SchedulePriority | undefined,
-    );
-    return {
-      success: true,
-      items: result.items,
-      total: result.total,
-      page: pageNum,
-      limit: pageSize,
-    };
+      const result = await this.schedulesService.findAllPending(
+        userId,
+        pageSize,
+        offset,
+        priority as SchedulePriority | undefined,
+      );
+      return {
+        success: true,
+        items: result.items,
+        total: result.total,
+        page: pageNum,
+        limit: pageSize,
+      };
+    } catch (e: any) {
+      require('fs').writeFileSync('backend-error.txt', e.stack || e.message);
+      throw e;
+    }
   }
 
   @Get("upcoming")
