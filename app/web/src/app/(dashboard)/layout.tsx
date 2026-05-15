@@ -1,23 +1,28 @@
-"use client";
+import type { Metadata } from "next";
+import DashboardShell from "./dashboard-shell";
 
-import { useState } from "react";
-import Sidebar from "@/components/dashboard/Sidebar";
-import Topbar from "@/components/dashboard/Topbar";
+export const metadata: Metadata = {
+  title: {
+    default: "Bảng điều khiển",
+    template: "%s | Productivity Flow",
+  },
+  // Khu vực sau đăng nhập — không cho công cụ tìm kiếm index
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  return (
-    <div className="min-h-screen bg-surface-container-low">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="lg:ml-sidebar-width">
-        <Topbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="p-4 md:p-6">{children}</main>
-      </div>
-    </div>
-  );
+  return <DashboardShell>{children}</DashboardShell>;
 }

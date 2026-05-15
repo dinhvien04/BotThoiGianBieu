@@ -52,33 +52,37 @@ const features = [
 
 export default function Features() {
   return (
-    <section className="py-[120px] px-margin-page max-w-7xl mx-auto" id="features">
-      <div className="text-center mb-20">
-        <h2 className="text-headline-md mb-4">Tính năng vượt trội</h2>
+    <section
+      id="features"
+      aria-labelledby="features-heading"
+      className="py-16 sm:py-20 md:py-[120px] px-4 sm:px-6 md:px-margin-page max-w-7xl mx-auto"
+    >
+      <div className="text-center mb-12 sm:mb-16 md:mb-20">
+        <h2 id="features-heading" className="text-2xl sm:text-3xl md:text-headline-md mb-3 sm:mb-4">
+          Tính năng vượt trội
+        </h2>
         <p className="text-body-sm text-white/50">
           Mọi công cụ bạn cần để duy trì nhịp độ công việc ổn định.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6">
         {features.map((feature, index) => (
-          <div
+          <article
             key={index}
-            className={`${feature.colSpan} glass-card rounded-3xl p-10 flex flex-col justify-between ${
-              feature.color === "orange"
-                ? "bg-gradient-to-tr from-brand-orange/5 to-transparent"
-                : index === 1
+            className={`${feature.colSpan} glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 flex flex-col justify-between ${feature.color === "orange"
+              ? "bg-gradient-to-tr from-brand-orange/5 to-transparent"
+              : index === 1
                 ? "bg-gradient-to-br from-brand-teal/10 to-transparent"
                 : ""
-            }`}
+              }`}
           >
             <div>
               <div
-                className={`mb-4 ${
-                  feature.color === "orange"
-                    ? "text-brand-orange"
-                    : "text-brand-teal"
-                }`}
+                className={`mb-4 ${feature.color === "orange"
+                  ? "text-brand-orange"
+                  : "text-brand-teal"
+                  }`}
               >
                 {feature.icon}
               </div>
@@ -87,7 +91,7 @@ export default function Features() {
                 {feature.description}
               </p>
             </div>
-          </div>
+          </article>
         ))}
       </div>
     </section>

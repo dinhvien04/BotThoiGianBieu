@@ -24,51 +24,65 @@ export default function FAQ() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section className="py-[120px] px-margin-page max-w-3xl mx-auto" id="faq">
-      <div className="text-center mb-20">
-        <h2 className="text-headline-md mb-4">Câu hỏi thường gặp</h2>
+    <section
+      id="faq"
+      aria-labelledby="faq-heading"
+      className="py-16 sm:py-20 md:py-[120px] px-4 sm:px-6 md:px-margin-page max-w-3xl mx-auto"
+    >
+      <div className="text-center mb-12 sm:mb-16 md:mb-20">
+        <h2 id="faq-heading" className="text-2xl sm:text-3xl md:text-headline-md mb-3 sm:mb-4">
+          Câu hỏi thường gặp
+        </h2>
         <p className="text-body-sm text-white/50">
           Mọi thứ bạn cần biết trước khi bắt đầu.
         </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4" itemScope itemType="https://schema.org/FAQPage">
         {faqs.map((faq, index) => (
-          <div
+          <article
             key={index}
             className="glass-card rounded-2xl overflow-hidden transition-all"
+            itemProp="mainEntity"
+            itemScope
+            itemType="https://schema.org/Question"
           >
             <button
-              className="w-full px-8 py-6 flex items-center justify-between text-left"
+              type="button"
+              className="w-full px-5 sm:px-8 py-4 sm:py-6 flex items-center justify-between text-left gap-3"
               onClick={() => setOpen(open === index ? null : index)}
+              aria-expanded={open === index}
+              aria-controls={`faq-panel-${index}`}
             >
-              <span className="text-title-sm">{faq.question}</span>
+              <span className="text-base sm:text-title-sm font-semibold" itemProp="name">
+                {faq.question}
+              </span>
               <svg
-                className={`w-5 h-5 text-brand-teal flex-shrink-0 ml-4 transition-transform ${
-                  open === index ? "rotate-180" : ""
-                }`}
+                className={`w-5 h-5 text-brand-teal flex-shrink-0 transition-transform ${open === index ? "rotate-180" : ""
+                  }`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={2}
+                aria-hidden="true"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19 9l-7 7-7-7"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
             <div
-              className={`overflow-hidden transition-all duration-300 ${
-                open === index ? "max-h-40 pb-6" : "max-h-0"
-              }`}
+              id={`faq-panel-${index}`}
+              role="region"
+              itemScope
+              itemProp="acceptedAnswer"
+              itemType="https://schema.org/Answer"
+              className={`overflow-hidden transition-all duration-300 ${open === index ? "max-h-60 pb-4 sm:pb-6" : "max-h-0"
+                }`}
             >
-              <p className="px-8 text-body-sm text-white/50 leading-relaxed">
+              <p className="px-5 sm:px-8 text-sm sm:text-body-sm text-white/60 leading-relaxed" itemProp="text">
                 {faq.answer}
               </p>
             </div>
-          </div>
+          </article>
         ))}
       </div>
     </section>

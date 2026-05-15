@@ -1,22 +1,53 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Đăng nhập",
+    template: "%s | Productivity Flow",
+  },
+  description:
+    "Đăng nhập / Đăng ký Productivity Flow để quản lý sự kiện và nhắc việc tự động trên Mezon.",
+  robots: {
+    index: false,
+    follow: true,
+  },
+};
+
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-surface flex">
-      {/* Left: Brand Panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1C1B1F] text-white flex-col justify-between p-12">
+    <div className="min-h-screen bg-surface flex flex-col lg:flex-row">
+      {/* Mobile brand bar */}
+      <div className="lg:hidden bg-[#1C1B1F] text-white px-4 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2" aria-label="Trang chủ">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <span className="text-base font-bold">FocusFlow Pro</span>
+        </Link>
+        <Link href="/" className="text-xs text-gray-400 hover:text-white">
+          ← Trang chủ
+        </Link>
+      </div>
+
+      {/* Left: Brand Panel (desktop) */}
+      <aside className="hidden lg:flex lg:w-1/2 bg-[#1C1B1F] text-white flex-col justify-between p-12">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <Link href="/" className="flex items-center gap-3 mb-2" aria-label="Trang chủ Productivity Flow">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold">FocusFlow Pro</h1>
-          </div>
-          <p className="text-gray-400 text-sm">Hệ thống quản lý thời gian biểu</p>
+            <span className="text-2xl font-bold">FocusFlow Pro</span>
+          </Link>
+          <p className="text-gray-400 text-sm">Hệ thống quản lý sự kiện & nhắc việc trên Mezon</p>
         </div>
 
         <div className="space-y-8">
@@ -44,13 +75,13 @@ export default function AuthLayout({
           </div>
         </div>
 
-        <p className="text-xs text-gray-500">&copy; 2024 FocusFlow Pro. All rights reserved.</p>
-      </div>
+        <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} Productivity Flow.</p>
+      </aside>
 
       {/* Right: Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
         <div className="w-full max-w-md">{children}</div>
-      </div>
+      </main>
     </div>
   );
 }

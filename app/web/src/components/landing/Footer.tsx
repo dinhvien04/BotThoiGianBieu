@@ -1,7 +1,7 @@
 export default function Footer() {
   return (
-    <footer className="py-12 px-margin-page border-t border-white/5">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+    <footer className="py-10 sm:py-12 px-4 sm:px-6 md:px-margin-page border-t border-white/5">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 text-center md:text-left">
         <div className="flex items-center gap-2">
           <svg
             className="w-6 h-6 text-brand-teal"
@@ -21,7 +21,7 @@ export default function Footer() {
           </span>
         </div>
 
-        <div className="flex gap-8">
+        <nav aria-label="Liên kết chân trang" className="flex flex-wrap justify-center gap-x-6 gap-y-2 sm:gap-8">
           <a
             className="text-body-sm text-white/40 hover:text-brand-ivory transition-colors"
             href="#"
@@ -40,10 +40,11 @@ export default function Footer() {
           >
             Cộng đồng
           </a>
-        </div>
+        </nav>
 
-        <div className="flex gap-4">
+        <div className="flex gap-3 sm:gap-4">
           <a
+            aria-label="Chia sẻ"
             className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-teal/20 transition-all"
             href="#"
           >
@@ -53,6 +54,7 @@ export default function Footer() {
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={1.5}
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -62,8 +64,9 @@ export default function Footer() {
             </svg>
           </a>
           <a
+            aria-label="Liên hệ qua email"
             className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-teal/20 transition-all"
-            href="#"
+            href="mailto:contact@example.com"
           >
             <svg
               className="w-5 h-5 text-white/60"
@@ -71,6 +74,7 @@ export default function Footer() {
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={1.5}
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -81,8 +85,8 @@ export default function Footer() {
           </a>
         </div>
       </div>
-      <div className="mt-8 text-center text-[12px] text-white/20 uppercase tracking-widest">
-        © 2024 Productivity Flow. All rights reserved.
+      <div className="mt-6 sm:mt-8 text-center text-[11px] sm:text-[12px] text-white/20 uppercase tracking-widest px-4">
+        © {new Date().getFullYear()} Productivity Flow — Đề tài thực tập tốt nghiệp · ĐH Quy Nhơn.
       </div>
     </footer>
   );

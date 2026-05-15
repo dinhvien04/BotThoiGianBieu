@@ -2,25 +2,32 @@ import Link from "next/link";
 
 export default function Hero() {
   return (
-    <section className="relative pt-[160px] pb-[100px] px-margin-page hero-gradient min-h-[870px] flex flex-col items-center justify-center text-center">
+    <section
+      id="hero"
+      aria-labelledby="hero-heading"
+      className="relative pt-28 pb-16 sm:pt-32 sm:pb-20 md:pt-[140px] md:pb-[100px] px-4 sm:px-6 md:px-margin-page hero-gradient min-h-[600px] md:min-h-[780px] flex flex-col items-center justify-center text-center"
+    >
       <div className="max-w-4xl mx-auto">
-        <span className="inline-block py-1 px-3 mb-6 bg-brand-teal/10 text-brand-teal text-label-bold rounded-full border border-brand-teal/20">
+        <span className="inline-block py-1 px-3 mb-5 sm:mb-6 bg-brand-teal/10 text-brand-teal text-label-bold rounded-full border border-brand-teal/20">
           Phiên bản 2.0 đã ra mắt
         </span>
 
-        <h1 className="text-display-lg mb-8 bg-clip-text text-transparent bg-gradient-to-r from-brand-ivory to-white/70">
-          Làm chủ thời gian,
-          <br />
-          tối ưu hiệu suất
+        <h1
+          id="hero-heading"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-display-lg mb-6 sm:mb-8 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-ivory to-white/70"
+        >
+          Chatbot quản lý sự kiện
+          <br className="hidden sm:block" />
+          {" "}& nhắc việc tự động trên Mezon
         </h1>
 
-        <p className="text-body-md text-white/60 mb-12 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base sm:text-body-md text-white/70 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-2">
           Giải pháp quản lý lịch trình chuyên nghiệp đồng bộ giữa Web Dashboard
           và Bot Mezon. Giúp bạn tập trung vào công việc quan trọng nhất mà
           không bao giờ bỏ lỡ deadline.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
           <Link
             href="/dang-nhap"
             className="bg-brand-teal text-brand-charcoal px-10 py-4 rounded-xl font-bold text-body-md hover:scale-105 transition-transform inline-flex items-center gap-2 justify-center"

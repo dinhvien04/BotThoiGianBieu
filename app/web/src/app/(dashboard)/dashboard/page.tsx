@@ -66,19 +66,21 @@ export default function DashboardPage() {
   const displayName = profile?.user?.display_name ?? profile?.user?.username ?? "Bạn";
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-on-surface">Chào buổi sáng, {displayName}!</h1>
-        <p className="text-on-surface-variant text-sm mt-1">
+    <div className="space-y-4 sm:space-y-6">
+      <header>
+        <h1 className="text-xl sm:text-2xl font-bold text-on-surface break-words">
+          Chào buổi sáng, {displayName}!
+        </h1>
+        <p className="text-on-surface-variant text-xs sm:text-sm mt-1">
           Hôm nay bạn có {todayEvents.length} sự kiện và {overdueCount} nhiệm vụ quan trọng cần chú ý.
           {streak && streak.currentStreak > 0 && (
             <span className="ml-2">🔥 Streak: {streak.currentStreak} ngày liên tiếp</span>
           )}
         </p>
-      </div>
+      </header>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatCard label="HÔM NAY" value={String(todayEvents.length).padStart(2, "0")} sub="sự kiện" color="text-primary" />
         <StatCard label="QUÁ HẠN" value={String(overdueCount).padStart(2, "0")} sub="nhiệm vụ" color="text-error" icon="warning" />
         <StatCard label="7 NGÀY TỚI" value={String(upcomingWeek.length).padStart(2, "0")} sub="sự kiện" color="text-primary" />
@@ -86,13 +88,13 @@ export default function DashboardPage() {
         <StatCard label="NHẮC VIỆC" value={String(activeReminders).padStart(2, "0")} sub="đang bật" color="text-primary" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Timeline */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-on-surface">Lịch trình hôm nay</h2>
-              <span className="text-sm text-primary font-medium">Thứ Năm, 24 Tháng 10</span>
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-lg font-bold text-on-surface">Lịch trình hôm nay</h2>
+              <span className="text-xs sm:text-sm text-primary font-medium">Thứ Năm, 24 Tháng 10</span>
             </div>
             <div className="space-y-0">
               {["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"].map(
@@ -152,11 +154,10 @@ export default function DashboardPage() {
               {calendarDays.map((day) => (
                 <div
                   key={day}
-                  className={`py-1.5 rounded-full text-sm cursor-pointer transition-colors ${
-                    day === 24
-                      ? "bg-primary text-white font-bold"
-                      : "hover:bg-surface-container-high text-on-surface"
-                  }`}
+                  className={`py-1.5 rounded-full text-sm cursor-pointer transition-colors ${day === 24
+                    ? "bg-primary text-white font-bold"
+                    : "hover:bg-surface-container-high text-on-surface"
+                    }`}
                 >
                   {day}
                 </div>
@@ -265,17 +266,17 @@ function StatCard({
   icon?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
         {icon === "warning" && (
-          <svg className="w-4 h-4 text-error" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-error flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
           </svg>
         )}
-        <p className="text-xs text-on-surface-variant font-medium tracking-wider uppercase">{label}</p>
+        <p className="text-[10px] sm:text-xs text-on-surface-variant font-medium tracking-wider uppercase truncate">{label}</p>
       </div>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-on-surface-variant mt-1">{sub}</p>}
+      <p className={`text-2xl sm:text-3xl font-bold ${color}`}>{value}</p>
+      {sub && <p className="text-[10px] sm:text-xs text-on-surface-variant mt-0.5 sm:mt-1">{sub}</p>}
     </div>
   );
 }

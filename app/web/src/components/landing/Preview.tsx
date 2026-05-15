@@ -6,14 +6,18 @@ const checkItems = [
 
 export default function Preview() {
   return (
-    <section className="py-[120px] px-margin-page overflow-hidden" id="preview">
+    <section
+      id="preview"
+      aria-labelledby="preview-heading"
+      className="py-16 sm:py-20 md:py-[120px] px-4 sm:px-6 md:px-margin-page overflow-hidden"
+    >
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-12 lg:gap-20 items-center">
           <div>
-            <h2 className="text-headline-md mb-6">
+            <h2 id="preview-heading" className="text-2xl sm:text-3xl md:text-headline-md mb-4 sm:mb-6">
               Giao diện Dashboard chuyên nghiệp
             </h2>
-            <p className="text-body-md text-white/60 mb-8 leading-relaxed">
+            <p className="text-base sm:text-body-md text-white/60 mb-6 sm:mb-8 leading-relaxed">
               Được thiết kế tối giản để loại bỏ mọi sự xao nhãng. Chúng tôi ưu
               tiên không gian hiển thị cho các sự kiện quan trọng và danh sách
               công việc của bạn.
@@ -74,15 +78,14 @@ export default function Preview() {
                     {Array.from({ length: 35 }).map((_, i) => (
                       <div
                         key={`cell-${i}`}
-                        className={`h-8 rounded ${
-                          i === 10
+                        className={`h-8 rounded ${i === 10
                             ? "bg-brand-teal/30 border border-brand-teal/50"
                             : i === 15
-                            ? "bg-brand-orange/20 border border-brand-orange/40"
-                            : i === 22
-                            ? "bg-primary/20 border border-primary/40"
-                            : "bg-white/5"
-                        }`}
+                              ? "bg-brand-orange/20 border border-brand-orange/40"
+                              : i === 22
+                                ? "bg-primary/20 border border-primary/40"
+                                : "bg-white/5"
+                          }`}
                       />
                     ))}
                   </div>

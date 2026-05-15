@@ -33,16 +33,22 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section className="py-[120px] bg-white/[0.02]" id="workflow">
-      <div className="px-margin-page max-w-7xl mx-auto">
-        <div className="text-center mb-20">
-          <h2 className="text-headline-md mb-4">Quy trình đơn giản</h2>
+    <section
+      id="workflow"
+      aria-labelledby="workflow-heading"
+      className="py-16 sm:py-20 md:py-[120px] bg-white/[0.02]"
+    >
+      <div className="px-4 sm:px-6 md:px-margin-page max-w-7xl mx-auto">
+        <div className="text-center mb-12 sm:mb-16 md:mb-20">
+          <h2 id="workflow-heading" className="text-2xl sm:text-3xl md:text-headline-md mb-3 sm:mb-4">
+            Quy trình đơn giản
+          </h2>
           <p className="text-body-sm text-white/50">
             Bắt đầu tối ưu hiệu suất chỉ trong vài phút.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 md:gap-12 relative">
           {/* Connector line */}
           <div className="hidden md:block absolute top-24 left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
