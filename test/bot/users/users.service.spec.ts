@@ -51,7 +51,7 @@ describe('UsersService', () => {
         display_name: 'Test User',
         created_at: new Date(),
         updated_at: new Date(),
-      } as User;
+      } as unknown as User;
 
       mockUserRepository.findOne.mockResolvedValue(mockUser);
 
@@ -88,7 +88,7 @@ describe('UsersService', () => {
         display_name: 'Test User',
         created_at: new Date(),
         updated_at: new Date(),
-      } as User;
+      } as unknown as User;
 
       const mockSettings: UserSettings = {
         user_id: '123',
@@ -145,7 +145,7 @@ describe('UsersService', () => {
           created_at: new Date(),
           updated_at: new Date(),
         } as UserSettings,
-      } as User;
+      } as unknown as User;
 
       mockUserRepository.findOne.mockResolvedValue(mockUser);
 
@@ -166,7 +166,7 @@ describe('UsersService', () => {
         display_name: 'Test User',
         created_at: new Date(),
         updated_at: new Date(),
-      } as User;
+      } as unknown as User;
 
       const mockSettings: UserSettings = {
         user_id: '123',
@@ -203,7 +203,7 @@ describe('UsersService', () => {
         display_name: null,
         created_at: new Date(),
         updated_at: new Date(),
-      } as User;
+      } as unknown as User;
 
       const mockSettings: UserSettings = {
         user_id: '123',

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository, In } from "typeorm";
+import { Repository } from "typeorm";
 import { TagsService } from "../../../app/bot/src/schedules/tags.service";
 import { Tag } from "../../../app/bot/src/schedules/entities/tag.entity";
 import { Schedule } from "../../../app/bot/src/schedules/entities/schedule.entity";

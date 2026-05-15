@@ -26,6 +26,8 @@ export class UsersController {
         user_id: user.user_id,
         username: user.username,
         display_name: user.display_name,
+        role: user.role,
+        is_locked: user.is_locked,
       },
       settings: user.settings,
     };

@@ -2031,6 +2031,8 @@ CREATE TABLE users (
   user_id VARCHAR(50) PRIMARY KEY,
   username VARCHAR(100),
   display_name VARCHAR(150),
+  role VARCHAR(20) NOT NULL DEFAULT 'user',
+  is_locked BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -2040,8 +2042,16 @@ CREATE TABLE users (
 - `user_id`: ID người dùng từ Mezon (Primary Key)
 - `username`: Tên đăng nhập
 - `display_name`: Tên hiển thị
+- `role`: `'user'` hoặc `'admin'` — admin được seed qua biến môi trường `ADMIN_USER_IDS`
+- `is_locked`: nếu `true`, `SessionGuard`/`AdminGuard` chặn mọi request của user này
 - `created_at`: Thời gian tạo
 - `updated_at`: Thời gian cập nhật
+
+### Bảng admin/hệ thống (migration 016)
+
+- `system_settings(key TEXT PRIMARY KEY, value JSONB, updated_at, updated_by)` — flag/cấu hình runtime (`bot_enabled`, `signup_enabled`, `site_banner`, …)
+- `broadcasts(id UUID, sender_user_id, message, recipient_filter JSONB, total_recipients, success_count, failed_count, created_at)` — lịch sử broadcast DM Mezon
+- `schedule_audit_logs` (đã tồn tại) — admin có quyền đọc trên toàn hệ thống thông qua `GET /api/admin/audit`
 
 ---
 
@@ -2324,6 +2334,16 @@ await scheduleRepository.update(
 
 #### 5. **Help**
 - `*help` - Hiển thị hướng dẫn đầy đủ
+
+#### 6. **Admin (yêu cầu role='admin')**
+- `*admin-stats` (alias `*admin-thong-ke`) - KPI tổng quan toàn hệ thống
+- `*admin-broadcast <nội dung>` - Gửi DM Mezon cho tất cả user (bỏ qua user bị khoá)
+- `*set-admin <user_id>` - Promote user lên admin
+- `*remove-admin <user_id>` - Hạ admin về user (không tự hạ chính mình)
+- `*lock-user <user_id>` - Khoá tài khoản
+- `*unlock-user <user_id>` - Mở khoá tài khoản
+
+Tất cả admin command đi qua `requireAdmin()` (chặn nếu chưa khởi tạo / bị khoá / không phải admin). Promote admin đầu tiên qua biến môi trường `ADMIN_USER_IDS` (cách nhau bằng dấu phẩy) — `AdminBootstrapService` đọc khi bot khởi động. Xem chi tiết tại [`doc/admin-guide.md`](./doc/admin-guide.md).
 
 ### Command Flow Diagram
 

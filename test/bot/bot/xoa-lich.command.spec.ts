@@ -120,7 +120,7 @@ describe('XoaLichCommand', () => {
     });
 
     it('should reject if schedule not found', async () => {
-      const mockUser: User = { user_id: '789' } as User;
+      const mockUser: User = { user_id: '789' } as unknown as User;
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
       mockSchedulesService.findById.mockResolvedValue(null);
 
@@ -132,7 +132,7 @@ describe('XoaLichCommand', () => {
     });
 
     it('should send confirmation form for valid schedule', async () => {
-      const mockUser: User = { user_id: '789' } as User;
+      const mockUser: User = { user_id: '789' } as unknown as User;
       const mockSchedule: Schedule = {
         id: 5,
         user_id: '789',

@@ -1,16 +1,33 @@
-import { render, screen, fireEvent } from '../utils/test-utils'
+import { render, screen, fireEvent, waitFor } from '../utils/test-utils'
 import Sidebar from '@/components/dashboard/Sidebar'
 import { usePathname } from 'next/navigation'
+import { getUserProfile } from '@/lib/api'
 
 jest.mock('next/navigation')
+jest.mock('@/lib/api', () => ({
+  getUserProfile: jest.fn(),
+}))
 
 describe('Sidebar Component', () => {
   const mockOnClose = jest.fn()
   const mockUsePathname = usePathname as jest.Mock
 
+  const mockedGetUserProfile = getUserProfile as jest.Mock
+
   beforeEach(() => {
     jest.clearAllMocks()
     mockUsePathname.mockReturnValue('/dashboard')
+    mockedGetUserProfile.mockResolvedValue({
+      success: true,
+      user: {
+        user_id: 'u-1',
+        username: 'johndoe',
+        display_name: 'John Doe',
+        role: 'user',
+        is_locked: false,
+      },
+      settings: {},
+    })
   })
 
   describe('Rendering', () => {
@@ -44,12 +61,41 @@ describe('Sidebar Component', () => {
       expect(createButton).toHaveAttribute('href', '/lich/tao-moi')
     })
 
-    it('should render user profile section', () => {
+    it('should render user profile section', async () => {
       render(<Sidebar isOpen={true} onClose={mockOnClose} />)
-      
-      expect(screen.getByText('John Doe')).toBeInTheDocument()
-      expect(screen.getByText('Premium Plan')).toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(screen.getByText('John Doe')).toBeInTheDocument()
+      })
+      expect(screen.getByText('User')).toBeInTheDocument()
       expect(screen.getByText('JD')).toBeInTheDocument() // Avatar initials
+    })
+
+    it('should show admin link only for admin users', async () => {
+      mockedGetUserProfile.mockResolvedValue({
+        success: true,
+        user: {
+          user_id: 'u-1',
+          username: 'boss',
+          display_name: 'Boss',
+          role: 'admin',
+          is_locked: false,
+        },
+        settings: {},
+      })
+      render(<Sidebar isOpen={true} onClose={mockOnClose} />)
+      await waitFor(() => {
+        expect(screen.getByText('Quản trị')).toBeInTheDocument()
+      })
+      expect(screen.getByText('Admin')).toBeInTheDocument()
+    })
+
+    it('should hide admin link for normal users', async () => {
+      render(<Sidebar isOpen={true} onClose={mockOnClose} />)
+      await waitFor(() => {
+        expect(screen.getByText('John Doe')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('Quản trị')).not.toBeInTheDocument()
     })
   })
 
@@ -172,12 +218,12 @@ describe('Sidebar Component', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when profile link is clicked', () => {
+    it('should call onClose when profile link is clicked', async () => {
       render(<Sidebar isOpen={true} onClose={mockOnClose} />)
-      
-      const profileLink = screen.getByRole('link', { name: /john doe/i })
+
+      const profileLink = await screen.findByRole('link', { name: /john doe/i })
       fireEvent.click(profileLink)
-      
+
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
   })

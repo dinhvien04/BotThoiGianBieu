@@ -436,6 +436,44 @@ export const COMMAND_CATALOG: CatalogEntry[] = [
     description: "Xem hướng dẫn",
     category: "❓ HỖ TRỢ",
   },
+
+  // ===== 🛡️ ADMIN =====
+  {
+    name: "admin-stats",
+    syntax: "admin-stats",
+    description: "[Admin] Xem KPI hệ thống",
+    category: "🛡️ ADMIN",
+  },
+  {
+    name: "admin-broadcast",
+    syntax: "admin-broadcast <nội dung>",
+    description: "[Admin] Gửi DM cho tất cả user",
+    category: "🛡️ ADMIN",
+  },
+  {
+    name: "set-admin",
+    syntax: "set-admin <user_id>",
+    description: "[Admin] Promote user thành admin",
+    category: "🛡️ ADMIN",
+  },
+  {
+    name: "remove-admin",
+    syntax: "remove-admin <user_id>",
+    description: "[Admin] Hạ quyền admin về user",
+    category: "🛡️ ADMIN",
+  },
+  {
+    name: "lock-user",
+    syntax: "lock-user <user_id>",
+    description: "[Admin] Khoá tài khoản user",
+    category: "🛡️ ADMIN",
+  },
+  {
+    name: "unlock-user",
+    syntax: "unlock-user <user_id>",
+    description: "[Admin] Mở khoá tài khoản user",
+    category: "🛡️ ADMIN",
+  },
 ];
 
 /** Thứ tự hiển thị các category trong help. */
@@ -448,5 +486,6 @@ export const CATEGORY_ORDER: string[] = [
   "📋 TEMPLATE",
   "🔔 NHẮC NHỞ",
   "⚙️ CÀI ĐẶT",
+  "🛡️ ADMIN",
   "❓ HỖ TRỢ",
 ];

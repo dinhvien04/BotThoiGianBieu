@@ -1,7 +1,18 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { SharedModule } from '../shared/shared.module';
 import { UsersModule } from '../users/users.module';
 import { SchedulesModule } from '../schedules/schedules.module';
+import { AdminModule } from '../admin/admin.module';
+import { AdminStatsCommand } from './commands/admin/admin-stats.command';
+import { AdminBroadcastCommand } from './commands/admin/admin-broadcast.command';
+import {
+  SetAdminCommand,
+  RemoveAdminCommand,
+} from './commands/admin/set-admin.command';
+import {
+  LockUserCommand,
+  UnlockUserCommand,
+} from './commands/admin/lock-user.command';
 import { BotService } from './bot.service';
 import { BotGateway } from './bot.gateway';
 import { CommandRouter } from './commands/command-router';
@@ -82,7 +93,12 @@ import { InteractionRouter } from './interactions/interaction-router';
 import { LocalConsoleGateway } from './local-console.gateway';
 
 @Module({
-  imports: [SharedModule, UsersModule, SchedulesModule],
+  imports: [
+    SharedModule,
+    UsersModule,
+    SchedulesModule,
+    forwardRef(() => AdminModule),
+  ],
   providers: [
     BotService,
     CommandRegistry,
@@ -151,6 +167,13 @@ import { LocalConsoleGateway } from './local-console.gateway';
     SuaLichCommand,
     XoaLichCommand,
     CaiDatCommand,
+    // Admin commands
+    AdminStatsCommand,
+    AdminBroadcastCommand,
+    SetAdminCommand,
+    RemoveAdminCommand,
+    LockUserCommand,
+    UnlockUserCommand,
   ],
   exports: [BotService, InteractionRegistry],
 })
