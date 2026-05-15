@@ -2,7 +2,7 @@
 
 ## Giới Thiệu
 
-Bot Thời Gian Biểu là một ứng dụng NestJS tích hợp với Mezon platform để quản lý lịch trình, sự kiện và nhắc nhở tự động cho các thành viên trong clan.
+Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon là một ứng dụng NestJS tích hợp với Mezon platform để quản lý lịch trình, sự kiện và nhắc nhở tự động cho các thành viên trong clan. Đây là đề tài thực tập tốt nghiệp của sinh viên Khoa Công Nghệ Thông Tin, Trường Đại Học Quy Nhơn.
 
 ## Kiến Trúc Tổng Thể
 

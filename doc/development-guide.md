@@ -1,6 +1,6 @@
 # 💻 Development Guide
 
-Hướng dẫn phát triển và maintain Bot Thời Gian Biểu cho developers.
+Hướng dẫn phát triển và maintain Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon cho developers.
 
 ## 🏗️ Kiến Trúc Code
 

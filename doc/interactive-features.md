@@ -1,6 +1,6 @@
 # 🎮 Interactive Features
 
-Hướng dẫn chi tiết về các tính năng tương tác trong Bot Thời Gian Biểu.
+Hướng dẫn chi tiết về các tính năng tương tác trong Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon.
 
 ## 📋 Tổng Quan
 

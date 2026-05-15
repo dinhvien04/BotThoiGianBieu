@@ -1,6 +1,12 @@
-# 🤖 Bot Thời Gian Biểu Mezon
+# 🤖 Xây Dựng Hệ Thống Chatbot Hỗ Trợ Quản Lý Sự Kiện Và Nhắc Việc Tự Động Trên Nền Tảng Mezon
 
-Hệ thống quản lý lịch trình, sự kiện và nhắc nhở tự động — gồm **Mezon Bot** (NestJS) và **Web Dashboard** (Next.js 14).
+> **Đề tài thực tập tốt nghiệp** — Khoa Công Nghệ Thông Tin, Trường Đại Học Quy Nhơn.
+
+Hệ thống chatbot hỗ trợ quản lý sự kiện, lịch trình cá nhân và nhắc việc tự động hoạt động trực tiếp trên nền tảng **Mezon**, đi kèm **Web Dashboard** trực quan để theo dõi và quản lý.
+
+- **Mezon Bot**: NestJS + `mezon-sdk` (WebSocket) — nhận lệnh, xử lý nghiệp vụ, nhắc nhở qua cron.
+- **Web Dashboard**: Next.js 14 + Tailwind CSS — đăng nhập bằng Mezon OAuth, quản lý lịch và thống kê.
+- **Cơ sở dữ liệu**: PostgreSQL (TypeORM) — lưu người dùng, lịch, cấu hình, nhắc việc.
 
 [![CI](https://github.com/dinhvien04/BotThoiGianBieu/actions/workflows/ci.yml/badge.svg)](https://github.com/dinhvien04/BotThoiGianBieu/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)

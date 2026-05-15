@@ -1,6 +1,6 @@
 # 🏷️ Priority & Tags System
 
-Hướng dẫn chi tiết về hệ thống ưu tiên và nhãn trong Bot Thời Gian Biểu.
+Hướng dẫn chi tiết về hệ thống ưu tiên và nhãn trong Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon.
 
 ## 📋 Tổng Quan
 

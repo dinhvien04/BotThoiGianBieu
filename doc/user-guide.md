@@ -1,4 +1,4 @@
-# 👥 Hướng Dẫn Sử Dụng Bot Thời Gian Biểu
+# 👥 Hướng Dẫn Sử Dụng Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon
 
 ## 🚀 Bắt Đầu
 

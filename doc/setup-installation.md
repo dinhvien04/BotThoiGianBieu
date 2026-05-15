@@ -1,6 +1,6 @@
 # 🛠️ Setup & Installation
 
-Hướng dẫn chi tiết cài đặt và cấu hình Bot Thời Gian Biểu từ đầu.
+Hướng dẫn chi tiết cài đặt và cấu hình Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon từ đầu.
 
 ## 📋 Yêu Cầu Hệ Thống
 

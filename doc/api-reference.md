@@ -1,6 +1,6 @@
 # 📡 API Reference
 
-Tài liệu chi tiết về các API endpoints và services trong Bot Thời Gian Biểu.
+Tài liệu chi tiết về các API endpoints và services trong Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon.
 
 ## 🏗️ Kiến Trúc API
 

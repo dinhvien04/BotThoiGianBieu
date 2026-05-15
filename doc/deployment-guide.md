@@ -1,6 +1,6 @@
 # 🚀 Deployment Guide
 
-Hướng dẫn deploy Bot Thời Gian Biểu lên production environment.
+Hướng dẫn deploy Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon lên production environment.
 
 ## 🎯 Production Requirements
 

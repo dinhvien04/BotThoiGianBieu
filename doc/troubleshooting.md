@@ -1,6 +1,6 @@
 # 🛠️ Troubleshooting Guide
 
-Hướng dẫn xử lý các sự cố thường gặp khi sử dụng và maintain Bot Thời Gian Biểu.
+Hướng dẫn xử lý các sự cố thường gặp khi sử dụng và maintain Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon.
 
 ## 🚨 Sự Cố Thường Gặp
 

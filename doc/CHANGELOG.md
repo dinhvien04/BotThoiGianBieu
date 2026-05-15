@@ -1,6 +1,6 @@
 # 📝 Changelog
 
-Tất cả các thay đổi quan trọng của Bot Thời Gian Biểu sẽ được ghi lại trong file này.
+Tất cả các thay đổi quan trọng của Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon sẽ được ghi lại trong file này.
 
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 và project tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -21,7 +21,7 @@ và project tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ## [0.1.0] - 2026-04-27
 
 ### Added
-- 🎉 **Initial Release** - Bot Thời Gian Biểu v0.1.0
+- 🎉 **Initial Release** - Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon v0.1.0
 - 👤 **User Management**
   - User registration với `*bat-dau`
   - User settings management với `*cai-dat`

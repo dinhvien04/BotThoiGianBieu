@@ -1,6 +1,6 @@
 # 🔔 Reminder System
 
-Hướng dẫn chi tiết về hệ thống nhắc nhở tự động trong Bot Thời Gian Biểu.
+Hướng dẫn chi tiết về hệ thống nhắc nhở tự động trong Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon.
 
 ## 📋 Tổng Quan
 

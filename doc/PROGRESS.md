@@ -1,4 +1,4 @@
-# Tiến độ Bot Thời Gian Biểu — Design vs. Implementation
+# Tiến độ Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon — Design vs. Implementation
 
 > Đối chiếu giữa bộ design Stitch (54 màn hình + `DESIGN.md`) và mã nguồn backend hiện tại trong repo `BotThoiGianBieu`. Tick vào ô khi một mục được hoàn thành.
 >

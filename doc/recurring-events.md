@@ -1,6 +1,6 @@
 # 🔄 Recurring Events
 
-Hướng dẫn chi tiết về hệ thống lịch lặp lại trong Bot Thời Gian Biểu.
+Hướng dẫn chi tiết về hệ thống lịch lặp lại trong Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon.
 
 ## 📋 Tổng Quan
 

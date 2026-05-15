@@ -1,6 +1,6 @@
-# 📚 Tài Liệu Dự Án Bot Thời Gian Biểu
+# 📚 Tài Liệu Dự Án — Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon
 
-Chào mừng bạn đến với tài liệu đầy đủ của **Bot Thời Gian Biểu Mezon**! 
+Chào mừng bạn đến với tài liệu đầy đủ của hệ thống **Chatbot hỗ trợ quản lý sự kiện và nhắc việc tự động trên nền tảng Mezon** (đề tài thực tập tốt nghiệp — Khoa CNTT, Trường ĐH Quy Nhơn).
 
 ## 📋 Mục Lục Tài Liệu
 
@@ -17,24 +17,17 @@ Chào mừng bạn đến với tài liệu đầy đủ của **Bot Thời Gian
 ### 💻 Development
 - [**Setup & Installation**](./setup-installation.md) - Hướng dẫn cài đặt và cấu hình
 - [**Development Guide**](./development-guide.md) - Quy trình phát triển và coding standards
-- [**Testing Guide**](./testing-guide.md) - Hướng dẫn viết và chạy tests
 - [**Deployment Guide**](./deployment-guide.md) - Hướng dẫn deploy production
 
 ### 🔧 Tính Năng Nâng Cao
 - [**Recurring Events**](./recurring-events.md) - Hệ thống lịch lặp lại
 - [**Reminder System**](./reminder-system.md) - Hệ thống nhắc nhở tự động
 - [**Priority & Tags**](./priority-tags.md) - Quản lý ưu tiên và nhãn
-- [**Statistics & Analytics**](./statistics.md) - Thống kê và báo cáo
 
-### 🛠️ Maintenance
+### 🛠️ Maintenance & Tiến Độ
 - [**Troubleshooting**](./troubleshooting.md) - Xử lý sự cố thường gặp
-- [**Performance Optimization**](./performance.md) - Tối ưu hiệu suất
-- [**Security Guidelines**](./security.md) - Bảo mật và best practices
-- [**Migration Guide**](./migration-guide.md) - Hướng dẫn migration database
-
-### 📊 Monitoring & Logging
-- [**Monitoring Setup**](./monitoring.md) - Thiết lập giám sát hệ thống
-- [**Logging Guidelines**](./logging.md) - Quy chuẩn logging và debugging
+- [**Changelog**](./CHANGELOG.md) - Lịch sử thay đổi và phiên bản
+- [**Progress**](./PROGRESS.md) - Tiến độ implementation (design vs code)
 
 ---
 
@@ -44,7 +37,7 @@ Nếu bạn là người mới, hãy bắt đầu với:
 
 1. **Người dùng cuối**: Đọc [Hướng Dẫn Sử Dụng](./user-guide.md)
 2. **Developer**: Đọc [Setup & Installation](./setup-installation.md) → [Development Guide](./development-guide.md)
-3. **DevOps**: Đọc [Deployment Guide](./deployment-guide.md) → [Monitoring Setup](./monitoring.md)
+3. **DevOps**: Đọc [Deployment Guide](./deployment-guide.md) → [Troubleshooting](./troubleshooting.md)
 
 ---
 
