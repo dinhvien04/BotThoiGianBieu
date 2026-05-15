@@ -6,6 +6,78 @@ Hệ Thống Chatbot Quản Lý Sự Kiện & Nhắc Việc Trên Mezon là mộ
 
 ## Kiến Trúc Tổng Thể
 
+```mermaid
+flowchart LR
+    USER["Người dùng"]
+    ADMIN["Quản trị viên"]
+
+    subgraph CLIENT["Client Layer"]
+        WEB["Web Dashboard<br/>Next.js + TypeScript"]
+        CHAT["Chatbot UI<br/>trên Mezon"]
+    end
+
+    MEZON["Nền tảng Mezon"]
+
+    subgraph BACKEND["Back-end Server<br/>NestJS + TypeScript"]
+        API["REST API Controllers"]
+
+        AUTH["Auth Module<br/>Đăng nhập / Session"]
+        USERS["Users Module<br/>Người dùng & cài đặt"]
+        SCHEDULES["Schedules Module<br/>Quản lý sự kiện"]
+        REMINDER["Reminder Module<br/>Cron Job nhắc việc"]
+        BOT["Bot Module<br/>BotGateway + CommandRouter"]
+        EXTRA["Tags / Templates<br/>Shares / Audit"]
+        ADMINMOD["Admin Module<br/>Quản trị hệ thống"]
+
+        ORM["TypeORM<br/>Repository Layer"]
+    end
+
+    DB[("PostgreSQL Database")]
+
+    USER -->|"Sử dụng dashboard"| WEB
+    USER -->|"Gửi lệnh chatbot"| CHAT
+    ADMIN -->|"Quản trị hệ thống"| WEB
+
+    WEB -->|"Gọi REST API"| API
+    API --> AUTH
+    API --> USERS
+    API --> SCHEDULES
+    API --> EXTRA
+    API --> ADMINMOD
+
+    CHAT --> MEZON
+    MEZON -->|"Tin nhắn / tương tác"| BOT
+    BOT -->|"Phản hồi / thông báo"| MEZON
+
+    BOT --> USERS
+    BOT --> SCHEDULES
+    BOT --> EXTRA
+    BOT --> REMINDER
+
+    REMINDER -->|"Kiểm tra sự kiện đến hạn"| SCHEDULES
+    REMINDER -->|"Gửi nhắc việc"| MEZON
+
+    AUTH --> ORM
+    USERS --> ORM
+    SCHEDULES --> ORM
+    EXTRA --> ORM
+    ADMINMOD --> ORM
+    REMINDER --> ORM
+    ORM --> DB
+
+    classDef actor fill:#1f2937,stroke:#94a3b8,color:#fff;
+    classDef client fill:#0f172a,stroke:#60a5fa,color:#fff;
+    classDef backend fill:#111827,stroke:#34d399,color:#fff;
+    classDef external fill:#1e293b,stroke:#f59e0b,color:#fff;
+    classDef db fill:#1e1b4b,stroke:#c084fc,color:#fff;
+
+    class USER,ADMIN actor;
+    class WEB,CHAT client;
+    class API,AUTH,USERS,SCHEDULES,REMINDER,BOT,EXTRA,ADMINMOD,ORM backend;
+    class MEZON external;
+    class DB db;
+```
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                   Mezon Platform                        │
