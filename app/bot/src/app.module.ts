@@ -9,6 +9,7 @@ import { SchedulesModule } from "./schedules/schedules.module";
 import { SharedModule } from "./shared/shared.module";
 import { ReminderModule } from "./reminder/reminder.module";
 import { AuthModule } from "./auth/auth.module";
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AuthModule } from "./auth/auth.module";
     SchedulesModule,
     BotModule,
     ReminderModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

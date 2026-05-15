@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getUserProfile, type UserProfile } from "@/lib/api";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -22,6 +24,8 @@ const navItems = [
   { href: "/cai-dat", label: "Cài đặt", icon: "settings" },
   { href: "/tro-giup", label: "Trợ giúp", icon: "help" },
 ];
+
+const adminItem = { href: "/admin", label: "Quản trị", icon: "admin" };
 
 const icons: Record<string, React.ReactNode> = {
   home: (
@@ -86,10 +90,43 @@ const icons: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
     </svg>
   ),
+  admin: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+    </svg>
+  ),
 };
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getUserProfile()
+      .then((res) => {
+        if (!cancelled) setProfile(res.user);
+      })
+      .catch(() => {
+        if (!cancelled) setProfile(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isAdmin = profile?.role === "admin";
+  const items = isAdmin ? [...navItems, adminItem] : navItems;
+
+  const initials = (profile?.display_name ?? profile?.username ?? "?")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+  const planLabel = isAdmin ? "Admin" : "User";
+  const displayLabel =
+    profile?.display_name ?? profile?.username ?? "Người dùng";
 
   return (
     <>
@@ -132,7 +169,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {items.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
@@ -155,11 +192,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="p-4 mt-auto border-t border-white/10">
           <Link href="/ho-so" onClick={onClose} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-sm font-bold">
-              JD
+              {initials}
             </div>
             <div>
-              <p className="text-sm font-medium">John Doe</p>
-              <p className="text-xs text-gray-400">Premium Plan</p>
+              <p className="text-sm font-medium">{displayLabel}</p>
+              <p className="text-xs text-gray-400">{planLabel}</p>
             </div>
           </Link>
         </div>

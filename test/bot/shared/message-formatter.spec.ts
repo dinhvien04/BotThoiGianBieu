@@ -26,7 +26,7 @@ describe('MessageFormatter', () => {
         display_name: 'Test User',
         created_at: new Date(),
         updated_at: new Date(),
-      } as User;
+      } as unknown as User;
 
       mockSettings = {
         user_id: '123',

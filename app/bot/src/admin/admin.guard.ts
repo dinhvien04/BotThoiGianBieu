@@ -5,16 +5,20 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { AuthService, SessionPayload } from "./auth.service";
+import { AuthService } from "../auth/auth.service";
+import type { AuthenticatedRequest } from "../auth/session.guard";
 import { UsersService } from "../users/users.service";
 
-export interface AuthenticatedRequest {
-  headers: Record<string, string | string[] | undefined>;
-  session: SessionPayload;
-}
-
+/**
+ * Guard cho mọi route `/api/admin/*`. Yêu cầu:
+ *   1. Có session cookie hợp lệ.
+ *   2. User trong DB có `role = 'admin'` và `is_locked = false`.
+ *
+ * Nếu thiếu (1) → 401. Nếu có session nhưng không phải admin (hoặc bị khoá)
+ * → 403 để phân biệt rõ với chưa đăng nhập.
+ */
 @Injectable()
-export class SessionGuard implements CanActivate {
+export class AdminGuard implements CanActivate {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
@@ -33,8 +37,14 @@ export class SessionGuard implements CanActivate {
     }
 
     const user = await this.usersService.findByUserId(session.sub);
-    if (user?.is_locked) {
+    if (!user) {
+      throw new ForbiddenException("User not found");
+    }
+    if (user.is_locked) {
       throw new ForbiddenException("Account locked");
+    }
+    if (user.role !== "admin") {
+      throw new ForbiddenException("Admin access required");
     }
 
     request.session = session;

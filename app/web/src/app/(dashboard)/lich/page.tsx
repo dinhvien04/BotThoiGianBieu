@@ -28,9 +28,19 @@ function getMonthDays(year: number, month: number) {
   return days;
 }
 
-function getEventsForDay(year: number, month: number, day: number, allSchedules: any[]) {
+type CalendarEvent = {
+  id: number;
+  title: string;
+  start: string;
+  end?: string | null;
+  type?: string;
+  status?: string;
+  priority?: string;
+};
+
+function getEventsForDay<T extends CalendarEvent>(year: number, month: number, day: number, allSchedules: T[]): T[] {
   const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  return allSchedules.filter((s) => s.start && s.start.startsWith(dateStr));
+  return allSchedules.filter((s) => typeof s.start === "string" && s.start.startsWith(dateStr));
 }
 
 export default function CalendarPage() {
@@ -41,7 +51,7 @@ export default function CalendarPage() {
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [showOverdue, setShowOverdue] = useState(false);
 
-  const { data: scheduleData, loading } = useSchedules();
+  const { data: scheduleData } = useSchedules();
   const schedules = scheduleData ? scheduleData.items.map(apiToDisplay) : [];
 
   const monthDays = getMonthDays(year, month);

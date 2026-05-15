@@ -16,6 +16,7 @@ const PROTECTED_PREFIXES = [
   "/chia-se",
   "/ho-so",
   "/onboarding",
+  "/admin",
 ];
 
 export function middleware(request: NextRequest) {
@@ -58,6 +59,7 @@ export const config = {
     "/chia-se/:path*",
     "/ho-so/:path*",
     "/onboarding/:path*",
+    "/admin/:path*",
     "/dang-nhap",
   ],
 };

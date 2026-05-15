@@ -11,7 +11,7 @@ import { useToast } from "@/components/dashboard/Toast";
 
 export default function ScheduleDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [, setDeleting] = useState(false);
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();

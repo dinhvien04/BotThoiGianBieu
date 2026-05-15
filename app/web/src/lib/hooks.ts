@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import * as api from "./api";
-import { mockSchedules, mockTags, mockTemplates } from "./mock-data";
 
 type FetchState<T> = {
   data: T | null;
@@ -10,79 +9,6 @@ type FetchState<T> = {
   error: string | null;
   refetch: () => void;
 };
-
-function mapMockToApiSchedule(m: (typeof mockSchedules)[number]): api.Schedule {
-  const priorityMap: Record<string, string> = {
-    cao: "high",
-    "trung-binh": "normal",
-    thap: "low",
-  };
-  const statusMap: Record<string, string> = {
-    "dang-cho": "pending",
-    "dang-thuc-hien": "pending",
-    "hoan-thanh": "completed",
-    "qua-han": "pending",
-  };
-  return {
-    id: m.id,
-    user_id: "mock",
-    item_type: "task",
-    title: m.title,
-    description: m.description,
-    start_time: m.start,
-    end_time: m.end,
-    status: statusMap[m.status] ?? "pending",
-    priority: priorityMap[m.priority] ?? "normal",
-    remind_at: null,
-    recurrence_type: m.recurrence ?? "none",
-    recurrence_interval: 1,
-    recurrence_until: null,
-    is_pinned: false,
-    is_hidden: false,
-    created_at: m.start,
-    updated_at: m.start,
-    tags: m.tags.map((t, i) => ({
-      id: i,
-      user_id: "mock",
-      name: t,
-      color: null,
-      created_at: "",
-    })),
-  };
-}
-
-function mapMockToApiTag(m: (typeof mockTags)[number]): api.Tag {
-  return {
-    id: m.id,
-    user_id: "mock",
-    name: m.name,
-    color: m.color,
-    created_at: "",
-  };
-}
-
-function mapMockToApiTemplate(
-  m: (typeof mockTemplates)[number],
-): api.Template {
-  const priorityMap: Record<string, string> = {
-    cao: "high",
-    "trung-binh": "normal",
-    thap: "low",
-  };
-  return {
-    id: m.id,
-    user_id: "mock",
-    name: m.title.toLowerCase().replace(/\s+/g, "-"),
-    item_type: "task",
-    title: m.title,
-    description: m.description,
-    duration_minutes: m.duration,
-    default_remind_minutes: m.reminder ?? null,
-    priority: priorityMap[m.priority] ?? "normal",
-    created_at: "",
-    updated_at: "",
-  };
-}
 
 /** UI-friendly schedule type matching existing label/color maps */
 export interface DisplaySchedule {

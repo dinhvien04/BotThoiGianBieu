@@ -112,7 +112,7 @@ describe('ThemLichCommand', () => {
     recurrence_until: null,
     priority: "normal",
     recurrence_parent_id: null,
-      } as User;
+      } as unknown as User;
 
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
       mockDateParser.toDateInputVietnam.mockReturnValue('2026-04-25');
@@ -260,7 +260,7 @@ describe('ThemLichCommand', () => {
         settings: {
           default_remind_minutes: 30,
         } as UserSettings,
-      } as User;
+      } as unknown as User;
 
       const mockSchedule: Schedule = {
         id: 1,
@@ -348,7 +348,7 @@ describe('ThemLichCommand', () => {
       const mockUser: User = {
         user_id: '789',
         settings: { default_remind_minutes: 30 } as UserSettings,
-      } as User;
+      } as unknown as User;
       const mockSchedule: Schedule = {
         id: 1,
         user_id: '789',
@@ -397,7 +397,7 @@ describe('ThemLichCommand', () => {
       const mockUser: User = {
         user_id: '789',
         settings: { default_remind_minutes: 30 } as UserSettings,
-      } as User;
+      } as unknown as User;
       const mockSchedule: Schedule = {
         id: 1,
         user_id: '789',
@@ -556,7 +556,7 @@ describe('ThemLichCommand', () => {
       const mockUser: User = {
         user_id: '789',
         settings: { default_remind_minutes: 30 } as UserSettings,
-      } as User;
+      } as unknown as User;
 
       const mockSchedule: Schedule = {
         id: 1,

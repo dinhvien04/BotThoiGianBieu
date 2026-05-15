@@ -263,6 +263,32 @@ Reminder button có multi-preset snooze: ✅ Đã nhận / ⏰ default / ⏰ 10p
 |------|-------|
 | `*cai-dat` | Xem và chỉnh cài đặt cá nhân (form interactive) |
 
+### 🛡️ Admin (yêu cầu `role='admin'`)
+| Lệnh | Mô tả |
+|------|-------|
+| `*admin-stats` / `*admin-thong-ke` | KPI tổng quan toàn hệ thống |
+| `*admin-broadcast <nội dung>` | Gửi DM Mezon cho tất cả user (bỏ qua user bị khoá) |
+| `*set-admin <user_id>` | Promote user thành admin |
+| `*remove-admin <user_id>` | Hạ admin về user |
+| `*lock-user <user_id>` | Khoá tài khoản user |
+| `*unlock-user <user_id>` | Mở khoá tài khoản user |
+
+Tham khảo chi tiết tại [`doc/admin-guide.md`](./doc/admin-guide.md).
+
+---
+
+## 🛡️ Hệ thống quản trị (Admin)
+
+Hệ thống admin gồm phân quyền (`role`, `is_locked`), 7 trang `/admin/*` (dashboard, người dùng, lịch, audit log, broadcast, thống kê, cấu hình), 6 lệnh bot dành riêng cho admin, và các REST endpoint `/api/admin/*` được bảo vệ bởi `AdminGuard`.
+
+- Khởi tạo admin đầu tiên qua biến môi trường:
+  ```bash
+  ADMIN_USER_IDS="123456789,987654321"
+  ```
+  Khi bot khởi động, `AdminBootstrapService` sẽ tự promote những user_id này lên admin (và đảm bảo `is_locked=false`).
+- Migration: [`app/bot/migrations/016-add-admin-and-system-settings.sql`](./app/bot/migrations/016-add-admin-and-system-settings.sql).
+- Đọc hướng dẫn đầy đủ trong [`doc/admin-guide.md`](./doc/admin-guide.md).
+
 ---
 
 ## ✅ Tính năng chính

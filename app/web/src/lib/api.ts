@@ -71,6 +71,8 @@ export interface UserProfile {
   user_id: string;
   username: string | null;
   display_name: string | null;
+  role?: "user" | "admin";
+  is_locked?: boolean;
 }
 
 export interface UserSettings {
@@ -353,4 +355,224 @@ export async function getAuditLog(
     page: number;
     limit: number;
   }>(`/api/audit/${scheduleId}?page=${page}&limit=${limit}`);
+}
+
+// --- Admin ---
+
+export interface AdminDashboardStats {
+  total_users: number;
+  total_admins: number;
+  locked_users: number;
+  total_schedules: number;
+  schedules_pending: number;
+  schedules_completed: number;
+  new_users_today: number;
+  new_schedules_today: number;
+  signups_last_30_days: Array<{ date: string; count: number }>;
+  schedules_last_30_days: Array<{ date: string; count: number }>;
+}
+
+export interface AdminUserListItem {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  role: "user" | "admin";
+  is_locked: boolean;
+  schedule_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminScheduleListItem {
+  id: number;
+  user_id: string;
+  user_display_name: string | null;
+  user_username: string | null;
+  title: string;
+  status: string;
+  priority: string;
+  start_time: string;
+  end_time: string | null;
+  created_at: string;
+}
+
+export interface AdminAuditLogItem {
+  id: string;
+  schedule_id: number;
+  user_id: string;
+  user_display_name: string | null;
+  action: string;
+  changes: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AdminBroadcastItem {
+  id: string;
+  sender_user_id: string;
+  message: string;
+  recipient_filter: Record<string, unknown> | null;
+  total_recipients: number;
+  success_count: number;
+  failed_count: number;
+  created_at: string;
+}
+
+export interface SystemSettingsMap {
+  [key: string]: unknown;
+}
+
+export async function adminMe() {
+  return request<{
+    success: boolean;
+    user: { user_id: string; username: string | null; display_name: string | null };
+  }>(`/api/admin/me`);
+}
+
+export async function adminGetStats() {
+  return request<{ success: boolean; stats: AdminDashboardStats }>(
+    `/api/admin/stats`,
+  );
+}
+
+export async function adminListUsers(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  locked?: boolean;
+}) {
+  const usp = new URLSearchParams();
+  if (params?.page) usp.set("page", String(params.page));
+  if (params?.limit) usp.set("limit", String(params.limit));
+  if (params?.search) usp.set("search", params.search);
+  if (params?.role) usp.set("role", params.role);
+  if (typeof params?.locked === "boolean")
+    usp.set("locked", String(params.locked));
+  const q = usp.toString();
+  return request<{
+    success: boolean;
+    items: AdminUserListItem[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(`/api/admin/users${q ? `?${q}` : ""}`);
+}
+
+export async function adminSetRole(userId: string, role: "user" | "admin") {
+  return request<{ success: boolean; user: AdminUserListItem }>(
+    `/api/admin/users/${encodeURIComponent(userId)}/role`,
+    { method: "PATCH", body: JSON.stringify({ role }) },
+  );
+}
+
+export async function adminSetLocked(userId: string, locked: boolean) {
+  return request<{ success: boolean; user: AdminUserListItem }>(
+    `/api/admin/users/${encodeURIComponent(userId)}/lock`,
+    { method: "PATCH", body: JSON.stringify({ locked }) },
+  );
+}
+
+export async function adminDeleteUser(userId: string) {
+  return request<{ success: boolean }>(
+    `/api/admin/users/${encodeURIComponent(userId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function adminListSchedules(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  user_id?: string;
+}) {
+  const usp = new URLSearchParams();
+  if (params?.page) usp.set("page", String(params.page));
+  if (params?.limit) usp.set("limit", String(params.limit));
+  if (params?.search) usp.set("search", params.search);
+  if (params?.status) usp.set("status", params.status);
+  if (params?.user_id) usp.set("user_id", params.user_id);
+  const q = usp.toString();
+  return request<{
+    success: boolean;
+    items: AdminScheduleListItem[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(`/api/admin/schedules${q ? `?${q}` : ""}`);
+}
+
+export async function adminDeleteSchedule(id: number) {
+  return request<{ success: boolean }>(`/api/admin/schedules/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function adminListAudit(params?: {
+  page?: number;
+  limit?: number;
+  user_id?: string;
+  action?: string;
+  schedule_id?: number;
+}) {
+  const usp = new URLSearchParams();
+  if (params?.page) usp.set("page", String(params.page));
+  if (params?.limit) usp.set("limit", String(params.limit));
+  if (params?.user_id) usp.set("user_id", params.user_id);
+  if (params?.action) usp.set("action", params.action);
+  if (params?.schedule_id) usp.set("schedule_id", String(params.schedule_id));
+  const q = usp.toString();
+  return request<{
+    success: boolean;
+    items: AdminAuditLogItem[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(`/api/admin/audit${q ? `?${q}` : ""}`);
+}
+
+export async function adminSendBroadcast(
+  message: string,
+  filter?: { role?: "user" | "admin"; only_unlocked?: boolean },
+) {
+  return request<{
+    success: boolean;
+    result: { total: number; success: number; failed: number; failed_user_ids: string[] };
+  }>(`/api/admin/broadcasts`, {
+    method: "POST",
+    body: JSON.stringify({ message, filter }),
+  });
+}
+
+export async function adminListBroadcasts(params?: {
+  page?: number;
+  limit?: number;
+}) {
+  const usp = new URLSearchParams();
+  if (params?.page) usp.set("page", String(params.page));
+  if (params?.limit) usp.set("limit", String(params.limit));
+  const q = usp.toString();
+  return request<{
+    success: boolean;
+    items: AdminBroadcastItem[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(`/api/admin/broadcasts${q ? `?${q}` : ""}`);
+}
+
+export async function adminGetSettings() {
+  return request<{ success: boolean; settings: SystemSettingsMap }>(
+    `/api/admin/settings`,
+  );
+}
+
+export async function adminSetSetting(key: string, value: unknown) {
+  return request<{
+    success: boolean;
+    setting: { key: string; value: unknown };
+  }>(`/api/admin/settings/${encodeURIComponent(key)}`, {
+    method: "PUT",
+    body: JSON.stringify({ value }),
+  });
 }
