@@ -51,7 +51,7 @@ export default function SearchPage() {
       <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setTypeFilter("all")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${typeFilter === "all" ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${typeFilter === "all" ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"}`}
         >
           Tất cả
         </button>
@@ -59,7 +59,7 @@ export default function SearchPage() {
           <button
             key={type}
             onClick={() => setTypeFilter(type)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${typeFilter === type ? "text-white" : "text-on-surface-variant bg-surface-container"}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${typeFilter === type ? "text-on-primary" : "text-on-surface-variant bg-surface-container"}`}
             style={typeFilter === type ? { backgroundColor: typeColors[type] } : undefined}
           >
             {typeLabels[type]}
@@ -75,7 +75,7 @@ export default function SearchPage() {
       )}
 
       {results.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm divide-y divide-surface-container-high">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm divide-y divide-surface-container-high">
           {results.map((s) => (
             <Link
               key={s.id}
@@ -97,7 +97,7 @@ export default function SearchPage() {
                 </p>
               </div>
               <span
-                className="px-2.5 py-1 rounded-lg text-xs font-medium text-white shrink-0"
+                className="px-2.5 py-1 rounded-lg text-xs font-medium text-on-primary shrink-0"
                 style={{ backgroundColor: typeColors[s.type] || "#6750A4" }}
               >
                 {typeLabels[s.type]}
@@ -108,7 +108,7 @@ export default function SearchPage() {
       )}
 
       {query.trim() && results.length === 0 && (
-        <div className="bg-white rounded-2xl p-12 shadow-sm text-center">
+        <div className="bg-surface-container-lowest rounded-2xl p-12 shadow-sm text-center">
           <svg className="w-16 h-16 text-on-surface-variant/20 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
@@ -118,7 +118,7 @@ export default function SearchPage() {
       )}
 
       {!query.trim() && (
-        <div className="bg-white rounded-2xl p-12 shadow-sm text-center">
+        <div className="bg-surface-container-lowest rounded-2xl p-12 shadow-sm text-center">
           <svg className="w-16 h-16 text-on-surface-variant/20 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>

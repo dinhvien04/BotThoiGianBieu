@@ -55,7 +55,7 @@ export default function HelpPage() {
         <div className="lg:col-span-2 space-y-3">
           <h2 className="font-bold text-on-surface">Câu hỏi thường gặp</h2>
           {filtered.map((item, i) => (
-            <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div key={i} className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
               <button
                 onClick={() => setOpenIdx(openIdx === i ? null : i)}
                 className="w-full flex items-center justify-between p-4 text-left"
@@ -76,7 +76,7 @@ export default function HelpPage() {
 
         {/* Quick Links + Bot Commands */}
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <h3 className="font-bold text-on-surface mb-4">Liên kết nhanh</h3>
             <div className="space-y-2">
               {[
@@ -93,7 +93,7 @@ export default function HelpPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <h3 className="font-bold text-on-surface mb-4">Lệnh Mezon Bot</h3>
             <div className="space-y-2">
               {shortcutItems.map((cmd) => (

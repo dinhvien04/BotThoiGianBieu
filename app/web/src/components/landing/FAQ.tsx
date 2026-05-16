@@ -27,13 +27,13 @@ export default function FAQ() {
     <section
       id="faq"
       aria-labelledby="faq-heading"
-      className="py-16 sm:py-20 md:py-[120px] px-4 sm:px-6 md:px-margin-page max-w-3xl mx-auto"
+      className="py-20 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-16 max-w-3xl mx-auto"
     >
       <div className="text-center mb-12 sm:mb-16 md:mb-20">
-        <h2 id="faq-heading" className="text-2xl sm:text-3xl md:text-headline-md mb-3 sm:mb-4">
+        <h2 id="faq-heading" className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-lp-on-surface">
           Câu hỏi thường gặp
         </h2>
-        <p className="text-body-sm text-white/50">
+        <p className="text-lp-on-surface-variant text-sm">
           Mọi thứ bạn cần biết trước khi bắt đầu.
         </p>
       </div>
@@ -54,11 +54,11 @@ export default function FAQ() {
               aria-expanded={open === index}
               aria-controls={`faq-panel-${index}`}
             >
-              <span className="text-base sm:text-title-sm font-semibold" itemProp="name">
+              <span className="text-base sm:text-lg font-semibold text-lp-on-surface" itemProp="name">
                 {faq.question}
               </span>
               <svg
-                className={`w-5 h-5 text-brand-teal flex-shrink-0 transition-transform ${open === index ? "rotate-180" : ""
+                className={`w-5 h-5 text-lp-primary flex-shrink-0 transition-transform ${open === index ? "rotate-180" : ""
                   }`}
                 fill="none"
                 viewBox="0 0 24 24"
@@ -78,7 +78,7 @@ export default function FAQ() {
               className={`overflow-hidden transition-all duration-300 ${open === index ? "max-h-60 pb-4 sm:pb-6" : "max-h-0"
                 }`}
             >
-              <p className="px-5 sm:px-8 text-sm sm:text-body-sm text-white/60 leading-relaxed" itemProp="text">
+              <p className="px-5 sm:px-8 text-sm text-lp-on-surface-variant leading-relaxed" itemProp="text">
                 {faq.answer}
               </p>
             </div>

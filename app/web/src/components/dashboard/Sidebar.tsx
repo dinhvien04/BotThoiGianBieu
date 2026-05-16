@@ -10,22 +10,48 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const navItems = [
-  { href: "/dashboard", label: "Tổng quan", icon: "home" },
-  { href: "/lich", label: "Lịch của tôi", icon: "calendar" },
-  { href: "/nhac-viec", label: "Nhắc việc", icon: "bell" },
-  { href: "/the", label: "Tags", icon: "tag" },
-  { href: "/mau-lich", label: "Templates", icon: "template" },
-  { href: "/chia-se", label: "Chia sẻ", icon: "share" },
-  { href: "/thong-ke", label: "Thống kê", icon: "chart" },
-  { href: "/lich-su", label: "Lịch sử", icon: "history" },
-  { href: "/nhap-xuat", label: "Nhập & Xuất", icon: "importexport" },
-  { href: "/thong-bao", label: "Thông báo", icon: "notification" },
-  { href: "/cai-dat", label: "Cài đặt", icon: "settings" },
-  { href: "/tro-giup", label: "Trợ giúp", icon: "help" },
+type NavItem = { href: string; label: string; icon: string };
+type NavGroup = { title: string; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
+  {
+    title: "Chính",
+    items: [
+      { href: "/dashboard", label: "Tổng quan", icon: "home" },
+      { href: "/lich", label: "Lịch của tôi", icon: "calendar" },
+      { href: "/nhac-viec", label: "Nhắc việc", icon: "bell" },
+    ],
+  },
+  {
+    title: "Tổ chức",
+    items: [
+      { href: "/the", label: "Tags", icon: "tag" },
+      { href: "/mau-lich", label: "Templates", icon: "template" },
+      { href: "/chia-se", label: "Chia sẻ", icon: "share" },
+    ],
+  },
+  {
+    title: "Phân tích",
+    items: [
+      { href: "/thong-ke", label: "Thống kê", icon: "chart" },
+      { href: "/lich-su", label: "Lịch sử", icon: "history" },
+    ],
+  },
+  {
+    title: "Hệ thống",
+    items: [
+      { href: "/nhap-xuat", label: "Nhập & Xuất", icon: "importexport" },
+      { href: "/thong-bao", label: "Thông báo", icon: "notification" },
+      { href: "/cai-dat", label: "Cài đặt", icon: "settings" },
+      { href: "/tro-giup", label: "Trợ giúp", icon: "help" },
+    ],
+  },
 ];
 
-const adminItem = { href: "/admin", label: "Quản trị", icon: "admin" };
+const adminGroup: NavGroup = {
+  title: "Quản trị viên",
+  items: [{ href: "/admin", label: "Quản trị", icon: "admin" }],
+};
 
 const icons: Record<string, React.ReactNode> = {
   home: (
@@ -116,7 +142,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, []);
 
   const isAdmin = profile?.role === "admin";
-  const items = isAdmin ? [...navItems, adminItem] : navItems;
+  const groups: NavGroup[] = isAdmin ? [...navGroups, adminGroup] : navGroups;
 
   const initials = (profile?.display_name ?? profile?.username ?? "?")
     .split(" ")
@@ -135,20 +161,20 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />
       )}
 
-      <aside className={`w-sidebar-width bg-[#1C1B1F] text-white flex flex-col min-h-screen fixed left-0 top-0 z-50 transition-transform duration-300 ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+      <aside className={`w-sidebar-width bg-surface-container-highest text-on-surface border-r border-outline-variant flex flex-col h-screen fixed left-0 top-0 z-50 transition-transform duration-300 ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         <div className="p-6 pb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-5 h-5 text-on-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold leading-tight">FocusFlow Pro</h1>
-              <p className="text-xs text-gray-400">Hệ thống quản lý</p>
+              <h1 className="text-lg font-bold leading-tight text-on-surface">FocusFlow Pro</h1>
+              <p className="text-xs text-on-surface-variant">Hệ thống quản lý</p>
             </div>
           </div>
-          <button onClick={onClose} className="lg:hidden p-1 hover:bg-white/10 rounded-lg">
+          <button onClick={onClose} className="lg:hidden p-1 hover:bg-surface-container-high rounded-lg text-on-surface-variant">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -159,7 +185,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <Link
             href="/lich/tao-moi"
             onClick={onClose}
-            className="flex items-center justify-center gap-2 w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold transition-colors"
+            className="btn-press flex items-center justify-center gap-2 w-full py-3 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-semibold transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -168,35 +194,45 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </Link>
         </div>
 
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          {items.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary text-white"
-                    : "text-gray-300 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                {icons[item.icon]}
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-3 pb-3 overflow-y-auto">
+          {groups.map((group) => (
+            <div key={group.title} className="mb-4">
+              <h3 className="px-4 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">
+                {group.title}
+              </h3>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    pathname.startsWith(item.href + "/");
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onClose}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
+                          ? "bg-primary text-on-primary"
+                          : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                        }`}
+                    >
+                      {icons[item.icon]}
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        <div className="p-4 mt-auto border-t border-white/10">
+        <div className="p-4 mt-auto border-t border-outline-variant">
           <Link href="/ho-so" onClick={onClose} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center text-sm font-bold">
+            <div className="w-10 h-10 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center text-sm font-bold">
               {initials}
             </div>
             <div>
-              <p className="text-sm font-medium">{displayLabel}</p>
-              <p className="text-xs text-gray-400">{planLabel}</p>
+              <p className="text-sm font-medium text-on-surface">{displayLabel}</p>
+              <p className="text-xs text-on-surface-variant">{planLabel}</p>
             </div>
           </Link>
         </div>

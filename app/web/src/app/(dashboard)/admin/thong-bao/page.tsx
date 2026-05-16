@@ -20,8 +20,9 @@ export default function AdminBroadcastPage() {
   const loadHistory = useCallback(async () => {
     try {
       const res = await adminListBroadcasts({ page: 1, limit: 20 });
-      setItems(res.items);
-      setTotal(res.total);
+      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      setItems(res.items || []);
+      setTotal(res.total || 0);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -62,7 +63,7 @@ export default function AdminBroadcastPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold">Broadcast</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-on-surface-variant">
           Soạn nội dung và gửi DM Mezon cho người dùng phù hợp với filter.
         </p>
       </header>
@@ -72,7 +73,7 @@ export default function AdminBroadcastPage() {
         className="space-y-3 bg-surface p-4 rounded-2xl border border-outline-variant"
       >
         <label className="block text-sm">
-          <span className="block text-xs text-gray-500 mb-1">Nội dung</span>
+          <span className="block text-xs text-on-surface-variant mb-1">Nội dung</span>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -84,7 +85,7 @@ export default function AdminBroadcastPage() {
 
         <div className="flex flex-wrap gap-4 items-end">
           <label className="text-sm">
-            <span className="block text-xs text-gray-500 mb-1">Lọc role</span>
+            <span className="block text-xs text-on-surface-variant mb-1">Lọc role</span>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
@@ -106,7 +107,7 @@ export default function AdminBroadcastPage() {
         </div>
 
         {error ? (
-          <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700 text-sm">
+          <div className="rounded-xl border border-error/40 bg-error-container/30 p-3 text-on-error-container text-sm">
             {error}
           </div>
         ) : null}
@@ -120,7 +121,7 @@ export default function AdminBroadcastPage() {
           <button
             type="submit"
             disabled={sending}
-            className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium disabled:opacity-50"
           >
             {sending ? "Đang gửi…" : "Gửi broadcast"}
           </button>
@@ -131,7 +132,7 @@ export default function AdminBroadcastPage() {
         <h2 className="font-semibold">Lịch sử broadcast ({total})</h2>
         <div className="overflow-x-auto rounded-2xl border border-outline-variant bg-surface">
           <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase text-gray-500 bg-surface-container">
+            <thead className="text-left text-xs uppercase text-on-surface-variant bg-surface-container">
               <tr>
                 <th className="px-3 py-2">Thời gian</th>
                 <th className="px-3 py-2">Người gửi</th>
@@ -144,7 +145,7 @@ export default function AdminBroadcastPage() {
             <tbody>
               {items.map((b) => (
                 <tr key={b.id} className="border-t border-outline-variant align-top">
-                  <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">
+                  <td className="px-3 py-2 text-xs text-on-surface-variant whitespace-nowrap">
                     {new Date(b.created_at).toLocaleString("vi-VN")}
                   </td>
                   <td className="px-3 py-2 text-xs">{b.sender_user_id}</td>
@@ -157,14 +158,14 @@ export default function AdminBroadcastPage() {
                   <td className="px-3 py-2 text-right text-green-700">
                     {b.success_count}
                   </td>
-                  <td className="px-3 py-2 text-right text-red-600">
+                  <td className="px-3 py-2 text-right text-error">
                     {b.failed_count}
                   </td>
                 </tr>
               ))}
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-gray-500">
+                  <td colSpan={6} className="px-3 py-6 text-center text-on-surface-variant">
                     Chưa có broadcast nào.
                   </td>
                 </tr>

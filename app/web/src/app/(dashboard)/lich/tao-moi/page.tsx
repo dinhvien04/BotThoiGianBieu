@@ -38,7 +38,7 @@ export default function CreateSchedulePage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm p-8">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-8">
         {/* Thông tin cơ bản */}
         <div className="flex items-center gap-2 text-primary mb-6">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -53,7 +53,7 @@ export default function CreateSchedulePage() {
             <select
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
-              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {Object.entries(typeLabels).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
@@ -135,7 +135,7 @@ export default function CreateSchedulePage() {
         {form.title && (
           <div className="mt-6 p-4 bg-surface-container-low rounded-xl border border-outline-variant">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-white bg-primary px-2 py-0.5 rounded">XEM TRƯỚC</span>
+              <span className="text-xs font-bold text-on-primary bg-primary px-2 py-0.5 rounded">XEM TRƯỚC</span>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-center w-12">
@@ -178,7 +178,7 @@ export default function CreateSchedulePage() {
                   key={k}
                   onClick={() => setForm({ ...form, priority: k })}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${form.priority === k
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-on-primary"
                     : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
                     }`}
                 >
@@ -193,7 +193,7 @@ export default function CreateSchedulePage() {
             <select
               value={form.reminder}
               onChange={(e) => setForm({ ...form, reminder: e.target.value })}
-              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="5">5 phút trước khi bắt đầu</option>
               <option value="10">10 phút trước khi bắt đầu</option>
@@ -209,7 +209,7 @@ export default function CreateSchedulePage() {
             <select
               value={form.recurrence}
               onChange={(e) => setForm({ ...form, recurrence: e.target.value })}
-              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="">Không lặp lại</option>
               <option value="daily">Hàng ngày</option>
@@ -231,7 +231,7 @@ export default function CreateSchedulePage() {
                     setForm({ ...form, tags });
                   }}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${form.tags.includes(tag)
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-on-primary"
                     : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
                     }`}
                 >
@@ -281,7 +281,7 @@ export default function CreateSchedulePage() {
                 setSaving(false);
               }
             }}
-            className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Đang lưu..." : "Lưu sự kiện"}
           </button>

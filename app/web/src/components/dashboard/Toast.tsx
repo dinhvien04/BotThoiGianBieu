@@ -62,7 +62,7 @@ function ToastNotification({ toast, onRemove }: { toast: ToastItem; onRemove: (i
   }, [toast.id, onRemove]);
 
   return (
-    <div className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl text-white shadow-lg min-w-[280px] max-w-sm animate-in slide-in-from-right ${config.bg}`}>
+    <div className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl text-on-primary shadow-lg min-w-[280px] max-w-sm animate-in slide-in-from-right ${config.bg}`}>
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d={config.icon} />
       </svg>

@@ -14,7 +14,10 @@ export default function AdminDashboardPage() {
     setLoading(true);
     adminGetStats()
       .then((res) => {
-        if (!cancelled) setStats(res.stats);
+        if (!cancelled) {
+          if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+          setStats(res.stats);
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -34,20 +37,20 @@ export default function AdminDashboardPage() {
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">Bảng điều khiển quản trị</h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-on-surface-variant">
             Tổng quan KPI và xu hướng 30 ngày gần nhất
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
             href="/admin/nguoi-dung"
-            className="px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium"
+            className="btn-press px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium"
           >
             Quản lý user
           </Link>
           <Link
             href="/admin/thong-bao"
-            className="px-3 py-2 rounded-lg bg-secondary-container text-on-secondary-container text-sm font-medium"
+            className="btn-press px-3 py-2 rounded-lg bg-secondary-container text-on-secondary-container text-sm font-medium"
           >
             Broadcast
           </Link>
@@ -55,13 +58,13 @@ export default function AdminDashboardPage() {
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700 text-sm">
+        <div className="rounded-xl border border-error/40 bg-error-container text-on-error-container p-4 text-sm">
           {error}
         </div>
       ) : null}
 
       {loading || !stats ? (
-        <div className="text-sm text-gray-500">Đang tải số liệu…</div>
+        <div className="text-sm text-on-surface-variant">Đang tải số liệu…</div>
       ) : (
         <>
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -85,9 +88,9 @@ export default function AdminDashboardPage() {
               value={
                 stats.total_schedules > 0
                   ? `${Math.round(
-                      (stats.schedules_completed / stats.total_schedules) *
-                        100,
-                    )}%`
+                    (stats.schedules_completed / stats.total_schedules) *
+                    100,
+                  )}%`
                   : "—"
               }
             />
@@ -122,15 +125,14 @@ function KpiCard({
 }) {
   return (
     <div
-      className={`rounded-2xl p-4 border ${
-        tone === "warn"
-          ? "border-amber-300 bg-amber-50"
-          : "border-outline-variant bg-surface"
-      }`}
+      className={`card-lift rounded-2xl p-4 border ${tone === "warn"
+          ? "border-tertiary/40 bg-tertiary-container text-on-tertiary-container"
+          : "border-outline-variant bg-surface-container-lowest"
+        }`}
     >
-      <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+      <p className="text-xs text-on-surface-variant uppercase tracking-wide">{label}</p>
       <p className="text-2xl font-bold mt-1">{value}</p>
-      {hint ? <p className="text-xs text-gray-500 mt-1">{hint}</p> : null}
+      {hint ? <p className="text-xs text-on-surface-variant mt-1">{hint}</p> : null}
     </div>
   );
 }
@@ -150,7 +152,7 @@ function BarChart({
     <div className="rounded-2xl border border-outline-variant bg-surface p-4">
       <h2 className="text-sm font-semibold mb-3">{title}</h2>
       {data.length === 0 ? (
-        <p className="text-xs text-gray-500">Chưa có dữ liệu.</p>
+        <p className="text-xs text-on-surface-variant">Chưa có dữ liệu.</p>
       ) : (
         <div className="flex items-end gap-1 h-32">
           {data.map((d) => (
@@ -165,7 +167,7 @@ function BarChart({
           ))}
         </div>
       )}
-      <div className="flex justify-between text-[10px] text-gray-500 mt-2">
+      <div className="flex justify-between text-[10px] text-on-surface-variant mt-2">
         <span>{data[0]?.date ?? ""}</span>
         <span>{data[data.length - 1]?.date ?? ""}</span>
       </div>

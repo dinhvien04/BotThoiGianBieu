@@ -301,6 +301,10 @@ export async function deleteTemplate(name: string) {
 
 // --- User ---
 
+export async function logout() {
+  return request<{ success: boolean }>("/auth/logout", { method: "POST" });
+}
+
 export async function getUserProfile() {
   return request<{
     success: boolean;

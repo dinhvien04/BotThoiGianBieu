@@ -51,7 +51,7 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl p-8 shadow-sm">
+        <div className="bg-surface-container-lowest rounded-2xl p-8 shadow-sm">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-on-surface">{current.title}</h1>
             <p className="text-sm text-on-surface-variant mt-2">{current.subtitle}</p>
@@ -95,7 +95,7 @@ export default function OnboardingPage() {
                       }}
                       className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                         selectedDays.includes(idx)
-                          ? "bg-primary text-white"
+                          ? "bg-primary text-on-primary"
                           : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
                       }`}
                     >
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
               <p className="text-sm text-on-surface-variant max-w-md mx-auto">
                 Kết nối tài khoản Mezon để nhận thông báo nhắc nhở, tạo lịch bằng lệnh chat, và đồng bộ danh bạ.
               </p>
-              <button className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+              <button className="px-6 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
                 </svg>
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
               <div className="flex gap-3 justify-center">
                 <Link
                   href="/lich/tao-moi"
-                  className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors"
+                  className="px-6 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors"
                 >
                   Tạo lịch đầu tiên
                 </Link>
@@ -196,7 +196,7 @@ export default function OnboardingPage() {
               </span>
               <button
                 onClick={() => setStep(Math.min(steps.length - 1, step + 1))}
-                className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
+                className="px-5 py-2.5 bg-primary text-on-primary rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
               >
                 {step === steps.length - 2 ? "Hoàn tất" : "Tiếp tục"}
               </button>

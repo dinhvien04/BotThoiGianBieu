@@ -37,10 +37,11 @@ export default function Header() {
             <a
               key={item.href}
               href={item.href}
-              className={`text-sm font-medium transition-colors ${idx === 0
+              className={`text-sm font-medium transition-colors ${
+                idx === 0
                   ? "text-lp-primary border-b-2 border-lp-primary pb-1"
                   : "text-lp-on-surface-variant hover:text-lp-on-surface"
-                }`}
+              }`}
             >
               {item.label}
             </a>
@@ -69,17 +70,19 @@ export default function Header() {
             aria-expanded={open}
             aria-controls="mobile-nav"
           >
-            <span className="material-symbols-outlined text-[24px]" aria-hidden="true">
+            <span className="material-symbols-outlined text-[24px]">
               {open ? "close" : "menu"}
             </span>
           </button>
         </div>
       </div>
 
+      {/* Mobile drawer */}
       <div
         id="mobile-nav"
-        className={`md:hidden absolute left-0 right-0 top-full bg-lp-surface/95 backdrop-blur-xl border-b border-lp-outline-variant/50 transition-all duration-200 origin-top ${open ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0 pointer-events-none"
-          }`}
+        className={`md:hidden absolute left-0 right-0 top-full bg-lp-surface/95 backdrop-blur-xl border-b border-lp-outline-variant/50 transition-all duration-200 origin-top ${
+          open ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0 pointer-events-none"
+        }`}
       >
         <nav
           className="flex flex-col px-4 py-4 gap-1"

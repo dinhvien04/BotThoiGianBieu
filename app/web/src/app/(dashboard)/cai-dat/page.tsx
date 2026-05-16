@@ -71,7 +71,7 @@ export default function SettingsPage() {
           <button
             onClick={handleSaveSettings}
             disabled={saving}
-            className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="px-5 py-2.5 bg-primary text-on-primary rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
@@ -85,7 +85,7 @@ export default function SettingsPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab.id ? "bg-white text-on-surface shadow-sm" : "text-on-surface-variant"
+              activeTab === tab.id ? "bg-surface-container-lowest text-on-surface shadow-sm" : "text-on-surface-variant"
             }`}
           >
             <span className="text-base">{tab.icon}</span>
@@ -100,7 +100,7 @@ export default function SettingsPage() {
         {/* Main Settings */}
         <div className="lg:col-span-2 space-y-6">
           {/* General */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
               <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
@@ -110,7 +110,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-5">
               <div>
                 <label className="block text-sm font-medium text-on-surface mb-2">Múi giờ</label>
-                <select className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm">
+                <select className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm">
                   <option>(GMT+07:00) Bangkok, Hanoi, Jakarta</option>
                   <option>(GMT+08:00) Singapore</option>
                   <option>(GMT+09:00) Tokyo</option>
@@ -122,13 +122,13 @@ export default function SettingsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setLanguage("vi")}
-                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${language === "vi" ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"}`}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${language === "vi" ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"}`}
                   >
                     Tiếng Việt
                   </button>
                   <button
                     onClick={() => setLanguage("en")}
-                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${language === "en" ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"}`}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${language === "en" ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"}`}
                   >
                     English
                   </button>
@@ -138,7 +138,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Work Hours */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
               <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -161,7 +161,7 @@ export default function SettingsPage() {
                   }}
                   className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                     selectedDays.includes(idx)
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-on-primary"
                       : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
                   }`}
                 >
@@ -205,7 +205,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Notifications */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
               <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -223,7 +223,7 @@ export default function SettingsPage() {
                   <select
                     value={notifChannel}
                     onChange={(e) => setNotifChannel(e.target.value)}
-                    className="px-4 py-2 border border-outline-variant rounded-lg text-sm text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="px-4 py-2 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
                     <option value="browser">Trình duyệt</option>
                     <option value="email">Email</option>
@@ -241,13 +241,13 @@ export default function SettingsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setNotifMode("dm")}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${notifMode === "dm" ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${notifMode === "dm" ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"}`}
                     >
                       DM
                     </button>
                     <button
                       onClick={() => setNotifMode("channel")}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${notifMode === "channel" ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${notifMode === "channel" ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"}`}
                     >
                       Channel
                     </button>
@@ -279,7 +279,7 @@ export default function SettingsPage() {
         {/* Right Sidebar */}
         <div className="space-y-6">
           {/* Theme */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
               <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z" />
@@ -291,7 +291,7 @@ export default function SettingsPage() {
                 onClick={() => setTheme("light")}
                 className={`p-3 rounded-xl border-2 transition-colors ${theme === "light" ? "border-primary" : "border-outline-variant"}`}
               >
-                <div className="w-full h-16 bg-white rounded-lg border border-surface-container-high mb-2" />
+                <div className="w-full h-16 bg-surface-container-lowest rounded-lg border border-surface-container-high mb-2" />
                 <div className="flex items-center justify-center gap-1.5">
                   {theme === "light" && <span className="w-2 h-2 rounded-full bg-primary" />}
                   <span className="text-sm font-medium text-on-surface">Sáng</span>
@@ -311,7 +311,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Mezon Integration */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
               <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
@@ -338,7 +338,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Productivity Tip */}
-          <div className="bg-primary rounded-2xl p-6 text-white">
+          <div className="bg-primary rounded-2xl p-6 text-on-primary">
             <p className="font-semibold">Mẹo năng suất</p>
             <p className="text-sm opacity-80 mt-2">
               Thiết lập giờ làm việc giúp bạn tránh bị làm phiền bởi các cuộc họp ngoài khung giờ cá nhân.
@@ -358,9 +358,9 @@ export default function SettingsPage() {
             { name: "Slack", desc: "Nhận thông báo lịch trình qua Slack", status: "disconnected", icon: "S" },
             { name: "Notion", desc: "Đồng bộ tasks từ Notion databases", status: "disconnected", icon: "N" },
           ].map((app) => (
-            <div key={app.name} className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between">
+            <div key={app.name} className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold ${app.status === "connected" ? "bg-primary" : "bg-on-surface-variant/20"}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-on-primary font-bold ${app.status === "connected" ? "bg-primary" : "bg-on-surface-variant/20"}`}>
                   {app.icon}
                 </div>
                 <div>
@@ -371,7 +371,7 @@ export default function SettingsPage() {
               {app.status === "connected" ? (
                 <span className="px-3 py-1.5 bg-[#27AE60]/10 text-[#27AE60] text-xs font-medium rounded-lg">Đã kết nối</span>
               ) : (
-                <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors">
+                <button className="px-4 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors">
                   Kết nối
                 </button>
               )}
@@ -389,7 +389,7 @@ export default function SettingsPage() {
             { name: "Deadline công việc", duration: "1 giờ", reminder: "1 ngày trước", type: "work" },
             { name: "Sự kiện cá nhân", duration: "2 giờ", reminder: "30 phút trước", type: "personal" },
           ].map((tpl) => (
-            <div key={tpl.name} className="bg-white rounded-2xl p-5 shadow-sm">
+            <div key={tpl.name} className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-on-surface">{tpl.name}</h3>
                 <button className="text-sm text-primary font-medium hover:underline">Chỉnh sửa</button>

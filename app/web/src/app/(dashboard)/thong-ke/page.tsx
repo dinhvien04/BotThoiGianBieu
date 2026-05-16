@@ -45,7 +45,7 @@ export default function StatisticsPage() {
             </svg>
             7 ngày qua
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
@@ -57,7 +57,7 @@ export default function StatisticsPage() {
       {/* Charts */}
       <div className="grid grid-cols-3 gap-6">
         {/* Bar Chart */}
-        <div className="col-span-2 bg-white rounded-2xl p-6 shadow-sm">
+        <div className="col-span-2 bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold text-on-surface text-lg">Hiệu suất hoàn thành công việc</h2>
             <div className="flex items-center gap-4 text-xs">
@@ -91,7 +91,7 @@ export default function StatisticsPage() {
         </div>
 
         {/* Donut Chart */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
           <h2 className="font-bold text-on-surface text-lg mb-6">Phân bổ theo Tag</h2>
           <div className="flex items-center justify-center mb-6">
             <div className="relative w-36 h-36">
@@ -134,7 +134,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* History Table */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
         <div className="flex items-center justify-between p-6 pb-4">
           <h2 className="font-bold text-on-surface text-lg">Lịch sử thay đổi hệ thống</h2>
           <button className="text-primary text-sm font-medium hover:underline">Xem tất cả</button>
@@ -156,7 +156,7 @@ export default function StatisticsPage() {
                 <td className="px-6 py-4 text-sm text-on-surface">{item.action}</td>
                 <td className="px-6 py-4 text-sm font-medium text-on-surface">{item.task}</td>
                 <td className="px-6 py-4">
-                  <span className="text-xs px-2.5 py-1 rounded-full font-medium text-white" style={{ backgroundColor: item.statusColor }}>
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium text-on-primary" style={{ backgroundColor: item.statusColor }}>
                     {item.status}
                   </span>
                 </td>
@@ -175,7 +175,7 @@ export default function StatisticsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-6">
-        <div className="bg-primary rounded-2xl p-6 text-white">
+        <div className="bg-primary rounded-2xl p-6 text-on-primary">
           <p className="text-sm opacity-80">Tổng thời gian tập trung</p>
           <p className="text-4xl font-bold mt-1">34.5h</p>
           <div className="flex items-center gap-1 mt-2 text-sm">
@@ -185,7 +185,7 @@ export default function StatisticsPage() {
             +12% so với tuần trước
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
           <p className="text-sm text-on-surface-variant">Nhiệm vụ hoàn thành</p>
           <p className="text-4xl font-bold text-on-surface mt-1">82</p>
           <div className="flex items-center gap-1 mt-2 text-sm text-[#27AE60]">
@@ -195,7 +195,7 @@ export default function StatisticsPage() {
             95% tỷ lệ hoàn thành
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
           <p className="text-sm text-on-surface-variant">Dự án hoạt động</p>
           <p className="text-4xl font-bold text-on-surface mt-1">12</p>
           <div className="flex items-center gap-1 mt-2 text-sm text-primary">

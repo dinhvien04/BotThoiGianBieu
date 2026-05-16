@@ -78,7 +78,7 @@ export default function RecurrenceModal({ isOpen, onClose, eventTitle = "Sự ki
                   key={f.value}
                   onClick={() => setFrequency(f.value)}
                   className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    frequency === f.value ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"
+                    frequency === f.value ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
                   }`}
                 >
                   {f.label}
@@ -112,7 +112,7 @@ export default function RecurrenceModal({ isOpen, onClose, eventTitle = "Sự ki
                     key={day.value}
                     onClick={() => toggleDay(day.value)}
                     className={`w-10 h-10 rounded-xl text-xs font-medium transition-colors ${
-                      selectedDays.includes(day.value) ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"
+                      selectedDays.includes(day.value) ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
                     }`}
                   >
                     {day.label}
@@ -167,7 +167,7 @@ export default function RecurrenceModal({ isOpen, onClose, eventTitle = "Sự ki
           <button onClick={onClose} className="flex-1 py-3 border border-outline-variant rounded-xl font-medium text-on-surface hover:bg-surface-container transition-colors">
             Hủy
           </button>
-          <button onClick={onClose} className="flex-1 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors">
+          <button onClick={onClose} className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors">
             Lưu cài đặt lặp
           </button>
         </div>

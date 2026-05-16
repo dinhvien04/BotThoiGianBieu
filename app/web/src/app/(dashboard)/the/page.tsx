@@ -46,7 +46,7 @@ export default function TagsPage() {
             </p>
           </div>
 
-          <button onClick={handleCreateTag} className="w-full py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+          <button onClick={handleCreateTag} className="w-full py-3 bg-primary text-on-primary rounded-xl font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
@@ -60,8 +60,8 @@ export default function TagsPage() {
                 onClick={() => setSelectedTagId(tag.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left ${
                   selectedTag.id === tag.id
-                    ? "bg-primary text-white"
-                    : "bg-white hover:bg-surface-container-high text-on-surface"
+                    ? "bg-primary text-on-primary"
+                    : "bg-surface-container-lowest hover:bg-surface-container-high text-on-surface"
                 }`}
               >
                 <span
@@ -70,7 +70,7 @@ export default function TagsPage() {
                 />
                 <div className="flex-1">
                   <p className="font-medium">{tag.name}</p>
-                  <p className={`text-xs ${selectedTag.id === tag.id ? "text-white/70" : "text-on-surface-variant"}`}>
+                  <p className={`text-xs ${selectedTag.id === tag.id ? "text-on-primary/70" : "text-on-surface-variant"}`}>
                     {tag.count} sự kiện
                   </p>
                 </div>
@@ -105,7 +105,7 @@ export default function TagsPage() {
           <div className="space-y-6">
             <div className="space-y-3">
               {tagSchedules.map((schedule) => (
-                <div key={schedule.id} className="bg-white rounded-xl p-4 shadow-sm border-l-4 hover:shadow-md transition-shadow" style={{ borderLeftColor: selectedTag.color }}>
+                <div key={schedule.id} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border-l-4 hover:shadow-md transition-shadow" style={{ borderLeftColor: selectedTag.color }}>
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-on-surface">{schedule.title}</h3>

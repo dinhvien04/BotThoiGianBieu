@@ -99,7 +99,7 @@ export default function EditSchedulePage() {
                 setSaving(false);
               }
             }}
-            className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 bg-primary text-on-primary rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
@@ -107,7 +107,7 @@ export default function EditSchedulePage() {
       </div>
 
       {/* Status Bar */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
+      <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm mb-6">
         <div className="grid grid-cols-4 gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: statusColors[schedule.status] + "20" }}>
@@ -158,7 +158,7 @@ export default function EditSchedulePage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm p-8">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-8">
         {/* Basic Info */}
         <h2 className="text-lg font-semibold text-on-surface mb-5">Thông tin cơ bản</h2>
         <div className="space-y-5">
@@ -167,7 +167,7 @@ export default function EditSchedulePage() {
             <select
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value as typeof form.type })}
-              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {Object.entries(typeLabels).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
@@ -236,7 +236,7 @@ export default function EditSchedulePage() {
                   key={k}
                   onClick={() => setForm({ ...form, priority: k as typeof form.priority })}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${form.priority === k
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-on-primary"
                     : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
                     }`}
                 >
@@ -251,7 +251,7 @@ export default function EditSchedulePage() {
             <select
               value={form.reminder}
               onChange={(e) => setForm({ ...form, reminder: e.target.value })}
-              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="5">5 phút trước khi bắt đầu</option>
               <option value="10">10 phút trước khi bắt đầu</option>
@@ -316,7 +316,7 @@ export default function EditSchedulePage() {
                 setSaving(false);
               }
             }}
-            className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>

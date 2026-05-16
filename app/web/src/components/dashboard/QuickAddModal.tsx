@@ -87,7 +87,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                   key={t.value}
                   onClick={() => setType(t.value)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    type === t.value ? "text-white" : "bg-surface-container text-on-surface-variant"
+                    type === t.value ? "text-on-primary" : "bg-surface-container text-on-surface-variant"
                   }`}
                   style={type === t.value ? { backgroundColor: t.color } : undefined}
                 >
@@ -103,7 +103,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
           <button onClick={onClose} className="flex-1 py-3 border border-outline-variant rounded-xl font-medium text-on-surface hover:bg-surface-container transition-colors">
             Hủy
           </button>
-          <button onClick={handleSubmit} className="flex-1 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors">
+          <button onClick={handleSubmit} className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors">
             Tạo lịch
           </button>
         </div>

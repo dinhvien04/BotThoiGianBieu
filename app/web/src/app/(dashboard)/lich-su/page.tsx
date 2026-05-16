@@ -59,7 +59,7 @@ export default function HistoryPage() {
             key={type}
             onClick={() => setFilterType(type)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              filterType === type ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+              filterType === type ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
             }`}
           >
             {type === "all" ? "Tất cả" : type === "create" ? "Tạo mới" : type === "update" ? "Cập nhật" : type === "complete" ? "Hoàn thành" : "Xóa"}
@@ -67,7 +67,7 @@ export default function HistoryPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-sm">
         <div className="relative pl-8">
           <div className="absolute left-[18px] top-0 bottom-0 w-px bg-surface-container-high" />
           {filtered.map((entry, idx) => {
@@ -75,7 +75,7 @@ export default function HistoryPage() {
             return (
               <div key={entry.id} className={`relative flex gap-4 py-4 px-4 ${idx < filtered.length - 1 ? "border-b border-surface-container-high" : ""}`}>
                 <div
-                  className="absolute left-0 top-5 w-[18px] h-[18px] rounded-full flex items-center justify-center text-white text-xs font-bold -translate-x-1/2 z-10"
+                  className="absolute left-0 top-5 w-[18px] h-[18px] rounded-full flex items-center justify-center text-on-primary text-xs font-bold -translate-x-1/2 z-10"
                   style={{ backgroundColor: config.bg, left: "18px" }}
                 >
                   {config.icon}
@@ -84,7 +84,7 @@ export default function HistoryPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-on-surface">{entry.target}</span>
                     <span
-                      className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                      className="px-2 py-0.5 rounded-full text-xs font-medium text-on-primary"
                       style={{ backgroundColor: config.color }}
                     >
                       {entry.action}

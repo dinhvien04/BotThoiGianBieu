@@ -33,7 +33,7 @@ export default function DashboardShell({
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-surface-container-low">
+      <div className="min-h-screen bg-surface-container-low text-on-surface">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="lg:ml-sidebar-width">
           <Topbar onMenuClick={() => setSidebarOpen((v) => !v)} />

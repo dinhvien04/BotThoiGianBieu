@@ -54,19 +54,19 @@ export default function NotificationsPage() {
       <div className="flex gap-1 bg-surface-container rounded-xl p-1">
         <button
           onClick={() => setFilter("all")}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${filter === "all" ? "bg-white text-on-surface shadow-sm" : "text-on-surface-variant"}`}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${filter === "all" ? "bg-surface-container-lowest text-on-surface shadow-sm" : "text-on-surface-variant"}`}
         >
           Tất cả ({items.length})
         </button>
         <button
           onClick={() => setFilter("unread")}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${filter === "unread" ? "bg-white text-on-surface shadow-sm" : "text-on-surface-variant"}`}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${filter === "unread" ? "bg-surface-container-lowest text-on-surface shadow-sm" : "text-on-surface-variant"}`}
         >
           Chưa đọc ({unreadCount})
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm divide-y divide-surface-container-high">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-sm divide-y divide-surface-container-high">
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
             <svg className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>

@@ -78,11 +78,11 @@ export default function LandingPage() {
       />
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-brand-teal focus:text-brand-charcoal focus:px-4 focus:py-2 focus:rounded-lg focus:font-bold"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-lp-primary focus:text-lp-on-primary focus:px-4 focus:py-2 focus:rounded-lg focus:font-bold"
       >
         Bỏ qua tới nội dung chính
       </a>
-      <div className="min-h-screen bg-brand-charcoal text-brand-ivory">
+      <div className="min-h-screen bg-lp-bg text-lp-on-surface transition-colors">
         <Header />
         <main id="main-content">
           <Hero />

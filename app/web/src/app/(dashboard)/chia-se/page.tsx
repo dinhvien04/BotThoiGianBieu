@@ -26,7 +26,7 @@ export default function SharePage() {
             Quản lý lịch chia sẻ và danh bạ đồng nghiệp.
           </p>
         </div>
-        <button className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors flex items-center gap-2">
+        <button className="px-5 py-2.5 bg-primary text-on-primary rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
           </svg>
@@ -37,20 +37,20 @@ export default function SharePage() {
       <div className="flex gap-1 bg-surface-container rounded-xl p-1">
         <button
           onClick={() => setTab("shared")}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${tab === "shared" ? "bg-white text-on-surface shadow-sm" : "text-on-surface-variant"}`}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${tab === "shared" ? "bg-surface-container-lowest text-on-surface shadow-sm" : "text-on-surface-variant"}`}
         >
           Lịch đã chia sẻ ({sharedSchedules.length})
         </button>
         <button
           onClick={() => setTab("contacts")}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${tab === "contacts" ? "bg-white text-on-surface shadow-sm" : "text-on-surface-variant"}`}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${tab === "contacts" ? "bg-surface-container-lowest text-on-surface shadow-sm" : "text-on-surface-variant"}`}
         >
           Danh bạ ({contacts.length})
         </button>
       </div>
 
       {tab === "shared" && (
-        <div className="bg-white rounded-2xl shadow-sm divide-y divide-surface-container-high">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm divide-y divide-surface-container-high">
           {sharedSchedules.map((s) => (
             <Link
               key={s.id}
@@ -92,10 +92,10 @@ export default function SharePage() {
       )}
 
       {tab === "contacts" && (
-        <div className="bg-white rounded-2xl shadow-sm divide-y divide-surface-container-high">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm divide-y divide-surface-container-high">
           {contacts.map((c) => (
             <div key={c.id} className="flex items-center gap-4 p-4">
-              <div className="w-10 h-10 rounded-full bg-primary text-white font-bold text-sm flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-primary text-on-primary font-bold text-sm flex items-center justify-center">
                 {c.avatar}
               </div>
               <div className="flex-1 min-w-0">

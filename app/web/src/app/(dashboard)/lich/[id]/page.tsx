@@ -49,7 +49,7 @@ export default function ScheduleDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            className="px-4 py-2 rounded-xl text-white font-medium text-sm flex items-center gap-2"
+            className="px-4 py-2 rounded-xl text-on-primary font-medium text-sm flex items-center gap-2"
             style={{ backgroundColor: statusColors[schedule.status] }}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -82,7 +82,7 @@ export default function ScheduleDetailPage() {
         {/* Left Column - Main Content */}
         <div className="col-span-2 space-y-6">
           {/* Description */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -102,7 +102,7 @@ export default function ScheduleDetailPage() {
           </div>
 
           {/* Change History */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -129,7 +129,7 @@ export default function ScheduleDetailPage() {
         {/* Right Column - Metadata */}
         <div className="space-y-6">
           {/* Time */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <svg className="w-5 h-5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -159,11 +159,11 @@ export default function ScheduleDetailPage() {
           </div>
 
           {/* Priority & Status */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <div className="flex gap-6">
               <div>
                 <p className="text-xs text-on-surface-variant font-semibold uppercase">Mức độ ưu tiên</p>
-                <span className="inline-block mt-1 px-2 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: priorityColors[schedule.priority] }}>
+                <span className="inline-block mt-1 px-2 py-1 rounded-full text-xs font-bold text-on-primary" style={{ backgroundColor: priorityColors[schedule.priority] }}>
                   {priorityLabels[schedule.priority]}
                 </span>
               </div>
@@ -177,7 +177,7 @@ export default function ScheduleDetailPage() {
           </div>
 
           {/* Reminder & Recurrence */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm space-y-4">
             {schedule.reminder && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -209,7 +209,7 @@ export default function ScheduleDetailPage() {
           </div>
 
           {/* Tags */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
             <p className="text-xs text-on-surface-variant font-semibold uppercase mb-3">Gắn thẻ</p>
             <div className="flex flex-wrap gap-2">
               {schedule.tags.map((tag) => (
@@ -225,7 +225,7 @@ export default function ScheduleDetailPage() {
 
           {/* Participants */}
           {schedule.participants && schedule.participants.length > 0 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-on-surface-variant font-semibold uppercase">
                   Người tham gia ({schedule.participants.length})

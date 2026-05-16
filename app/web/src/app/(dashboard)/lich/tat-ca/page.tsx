@@ -20,7 +20,7 @@ const priorityDot: Record<string, string> = { high: "bg-red-500", medium: "bg-ye
 const statusBadge: Record<string, { bg: string; text: string; label: string }> = {
   pending: { bg: "bg-primary/10", text: "text-primary", label: "Đang chờ" },
   completed: { bg: "bg-green-50", text: "text-green-700", label: "Hoàn thành" },
-  overdue: { bg: "bg-red-50", text: "text-red-700", label: "Quá hạn" },
+  overdue: { bg: "bg-error-container/30", text: "text-on-error-container", label: "Quá hạn" },
 };
 
 export default function AllSchedulesPage() {
@@ -51,7 +51,7 @@ export default function AllSchedulesPage() {
         <h1 className="text-2xl font-bold text-on-surface">Tất cả lịch trình</h1>
         <Link
           href="/lich/tao-moi"
-          className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
+          className="px-5 py-2.5 bg-primary text-on-primary rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -67,7 +67,7 @@ export default function AllSchedulesPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-outline-variant rounded-lg text-sm text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="px-3 py-2 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="all">Tất cả</option>
             <option value="pending">Đang chờ</option>
@@ -80,7 +80,7 @@ export default function AllSchedulesPage() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-3 py-2 border border-outline-variant rounded-lg text-sm text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="px-3 py-2 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="all">Tất cả</option>
             <option value="high">Cao</option>
@@ -93,7 +93,7 @@ export default function AllSchedulesPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 border border-outline-variant rounded-lg text-sm text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="px-3 py-2 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="newest">Mới nhất</option>
             <option value="oldest">Cũ nhất</option>
@@ -103,7 +103,7 @@ export default function AllSchedulesPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -226,7 +226,7 @@ export default function AllSchedulesPage() {
               <button
                 key={page}
                 className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors flex items-center justify-center ${
-                  page === 1 ? "bg-primary text-white" : "text-on-surface-variant hover:bg-surface-container"
+                  page === 1 ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container"
                 }`}
               >
                 {page}

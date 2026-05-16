@@ -11,7 +11,10 @@ export default function AdminStatsPage() {
     let cancelled = false;
     adminGetStats()
       .then((res) => {
-        if (!cancelled) setStats(res.stats);
+        if (!cancelled) {
+          if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+          setStats(res.stats);
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -27,19 +30,19 @@ export default function AdminStatsPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold">Thống kê hệ thống</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-on-surface-variant">
           Biểu đồ tăng trưởng và tỷ lệ trạng thái lịch toàn hệ thống.
         </p>
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700 text-sm">
+        <div className="rounded-xl border border-error/40 bg-error-container/30 p-3 text-on-error-container text-sm">
           {error}
         </div>
       ) : null}
 
       {!stats ? (
-        <p className="text-sm text-gray-500">Đang tải…</p>
+        <p className="text-sm text-on-surface-variant">Đang tải…</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Series title="User đăng ký 30 ngày" data={stats.signups_last_30_days} />
@@ -69,9 +72,9 @@ function Series({
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface p-4">
       <h2 className="text-sm font-semibold mb-1">{title}</h2>
-      <p className="text-xs text-gray-500 mb-3">Tổng 30 ngày: {total}</p>
+      <p className="text-xs text-on-surface-variant mb-3">Tổng 30 ngày: {total}</p>
       {data.length === 0 ? (
-        <p className="text-xs text-gray-500">Chưa có dữ liệu.</p>
+        <p className="text-xs text-on-surface-variant">Chưa có dữ liệu.</p>
       ) : (
         <div className="flex items-end gap-1 h-40">
           {data.map((d) => (
@@ -120,7 +123,7 @@ function Bar({
     <div>
       <div className="flex justify-between text-xs mb-1">
         <span>{label}</span>
-        <span className="text-gray-500">{pct}%</span>
+        <span className="text-on-surface-variant">{pct}%</span>
       </div>
       <div className="h-2 bg-surface-container rounded-full overflow-hidden">
         <div

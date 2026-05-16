@@ -32,8 +32,9 @@ export default function AdminSchedulesPage() {
         status: status || undefined,
         user_id: userId || undefined,
       });
-      setItems(res.items);
-      setTotal(res.total);
+      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      setItems(res.items || []);
+      setTotal(res.total || 0);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -66,7 +67,7 @@ export default function AdminSchedulesPage() {
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-bold">Quản lý lịch (toàn hệ thống)</h1>
-        <p className="text-sm text-gray-500">Tổng: {total} lịch</p>
+        <p className="text-sm text-on-surface-variant">Tổng: {total} lịch</p>
       </header>
 
       <form
@@ -78,7 +79,7 @@ export default function AdminSchedulesPage() {
         className="flex flex-wrap gap-2 items-end bg-surface p-3 rounded-xl border border-outline-variant"
       >
         <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">Tiêu đề</span>
+          <span className="block text-xs text-on-surface-variant mb-1">Tiêu đề</span>
           <input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -87,7 +88,7 @@ export default function AdminSchedulesPage() {
           />
         </label>
         <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">User ID</span>
+          <span className="block text-xs text-on-surface-variant mb-1">User ID</span>
           <input
             value={userId}
             onChange={(e) => {
@@ -99,7 +100,7 @@ export default function AdminSchedulesPage() {
           />
         </label>
         <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">Trạng thái</span>
+          <span className="block text-xs text-on-surface-variant mb-1">Trạng thái</span>
           <select
             value={status}
             onChange={(e) => {
@@ -116,21 +117,21 @@ export default function AdminSchedulesPage() {
         </label>
         <button
           type="submit"
-          className="px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium"
+          className="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium"
         >
           Lọc
         </button>
       </form>
 
       {error ? (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700 text-sm">
+        <div className="rounded-xl border border-error/40 bg-error-container/30 p-3 text-on-error-container text-sm">
           {error}
         </div>
       ) : null}
 
       <div className="overflow-x-auto rounded-2xl border border-outline-variant bg-surface">
         <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase text-gray-500 bg-surface-container">
+          <thead className="text-left text-xs uppercase text-on-surface-variant bg-surface-container">
             <tr>
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">Tiêu đề</th>
@@ -144,15 +145,15 @@ export default function AdminSchedulesPage() {
           <tbody>
             {items.map((s) => (
               <tr key={s.id} className="border-t border-outline-variant">
-                <td className="px-3 py-2 text-xs text-gray-500">{s.id}</td>
+                <td className="px-3 py-2 text-xs text-on-surface-variant">{s.id}</td>
                 <td className="px-3 py-2">{s.title}</td>
                 <td className="px-3 py-2 text-xs">
                   <div>{s.user_display_name ?? s.user_username ?? s.user_id}</div>
-                  <div className="text-gray-500">{s.user_id}</div>
+                  <div className="text-on-surface-variant">{s.user_id}</div>
                 </td>
                 <td className="px-3 py-2 text-xs">{s.status}</td>
                 <td className="px-3 py-2 text-xs">{s.priority}</td>
-                <td className="px-3 py-2 text-xs text-gray-500">
+                <td className="px-3 py-2 text-xs text-on-surface-variant">
                   {new Date(s.start_time).toLocaleString("vi-VN")}
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -160,7 +161,7 @@ export default function AdminSchedulesPage() {
                     type="button"
                     disabled={busyId === s.id}
                     onClick={() => onDelete(s)}
-                    className="px-2 py-1 rounded-lg border border-red-300 text-red-600 text-xs hover:bg-red-50"
+                    className="px-2 py-1 rounded-lg border border-error/40 text-error text-xs hover:bg-error-container/30"
                   >
                     Xoá
                   </button>
@@ -169,7 +170,7 @@ export default function AdminSchedulesPage() {
             ))}
             {!loading && items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={7} className="px-3 py-6 text-center text-on-surface-variant">
                   Không có lịch phù hợp.
                 </td>
               </tr>
@@ -179,7 +180,7 @@ export default function AdminSchedulesPage() {
       </div>
 
       <div className="flex items-center justify-between text-sm">
-        <span className="text-gray-500">
+        <span className="text-on-surface-variant">
           Trang {page} / {totalPages}
         </span>
         <div className="flex gap-2">

@@ -48,7 +48,7 @@ export default function DeleteConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            className="px-5 py-2.5 bg-error text-white rounded-xl font-medium text-sm hover:bg-error/90 transition-colors"
+            className="px-5 py-2.5 bg-error text-on-primary rounded-xl font-medium text-sm hover:bg-error/90 transition-colors"
           >
             Xóa
           </button>

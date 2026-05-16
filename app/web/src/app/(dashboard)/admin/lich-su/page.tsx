@@ -26,8 +26,9 @@ export default function AdminAuditPage() {
         action: action || undefined,
         schedule_id: scheduleId ? Number(scheduleId) : undefined,
       });
-      setItems(res.items);
-      setTotal(res.total);
+      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      setItems(res.items || []);
+      setTotal(res.total || 0);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -45,7 +46,7 @@ export default function AdminAuditPage() {
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-bold">Audit log toàn hệ thống</h1>
-        <p className="text-sm text-gray-500">Tổng: {total} bản ghi</p>
+        <p className="text-sm text-on-surface-variant">Tổng: {total} bản ghi</p>
       </header>
 
       <form
@@ -57,7 +58,7 @@ export default function AdminAuditPage() {
         className="flex flex-wrap gap-2 items-end bg-surface p-3 rounded-xl border border-outline-variant"
       >
         <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">User ID</span>
+          <span className="block text-xs text-on-surface-variant mb-1">User ID</span>
           <input
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
@@ -66,7 +67,7 @@ export default function AdminAuditPage() {
           />
         </label>
         <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">Action</span>
+          <span className="block text-xs text-on-surface-variant mb-1">Action</span>
           <select
             value={action}
             onChange={(e) => setAction(e.target.value)}
@@ -80,7 +81,7 @@ export default function AdminAuditPage() {
           </select>
         </label>
         <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">Schedule ID</span>
+          <span className="block text-xs text-on-surface-variant mb-1">Schedule ID</span>
           <input
             value={scheduleId}
             onChange={(e) => setScheduleId(e.target.value)}
@@ -91,21 +92,21 @@ export default function AdminAuditPage() {
         </label>
         <button
           type="submit"
-          className="px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium"
+          className="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium"
         >
           Lọc
         </button>
       </form>
 
       {error ? (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700 text-sm">
+        <div className="rounded-xl border border-error/40 bg-error-container/30 p-3 text-on-error-container text-sm">
           {error}
         </div>
       ) : null}
 
       <div className="overflow-x-auto rounded-2xl border border-outline-variant bg-surface">
         <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase text-gray-500 bg-surface-container">
+          <thead className="text-left text-xs uppercase text-on-surface-variant bg-surface-container">
             <tr>
               <th className="px-3 py-2">Thời gian</th>
               <th className="px-3 py-2">User</th>
@@ -117,12 +118,12 @@ export default function AdminAuditPage() {
           <tbody>
             {items.map((it) => (
               <tr key={it.id} className="border-t border-outline-variant align-top">
-                <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">
+                <td className="px-3 py-2 text-xs text-on-surface-variant whitespace-nowrap">
                   {new Date(it.created_at).toLocaleString("vi-VN")}
                 </td>
                 <td className="px-3 py-2 text-xs">
                   <div>{it.user_display_name ?? it.user_id}</div>
-                  <div className="text-gray-500">{it.user_id}</div>
+                  <div className="text-on-surface-variant">{it.user_id}</div>
                 </td>
                 <td className="px-3 py-2 text-xs font-mono">{it.action}</td>
                 <td className="px-3 py-2 text-xs">#{it.schedule_id}</td>
@@ -135,7 +136,7 @@ export default function AdminAuditPage() {
             ))}
             {!loading && items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={5} className="px-3 py-6 text-center text-on-surface-variant">
                   Không có bản ghi phù hợp.
                 </td>
               </tr>
@@ -145,7 +146,7 @@ export default function AdminAuditPage() {
       </div>
 
       <div className="flex items-center justify-between text-sm">
-        <span className="text-gray-500">
+        <span className="text-on-surface-variant">
           Trang {page} / {totalPages}
         </span>
         <div className="flex gap-2">

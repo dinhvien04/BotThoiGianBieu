@@ -13,7 +13,7 @@ export default function TemplatesPage() {
             Tối ưu hóa quy trình làm việc với các mẫu sự kiện có sẵn.
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
@@ -24,13 +24,13 @@ export default function TemplatesPage() {
       {/* Template Cards */}
       <div className="grid grid-cols-3 gap-6">
         {mockTemplates.map((template) => (
-          <div key={template.id} className="bg-white rounded-2xl p-6 shadow-sm border border-surface-container-high hover:shadow-md transition-shadow">
+          <div key={template.id} className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm border border-surface-container-high hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white bg-primary">
+              <span className="text-xs px-2 py-0.5 rounded-full font-bold text-on-primary bg-primary">
                 {typeLabels[template.type] || template.type}
               </span>
               <span
-                className="text-xs px-2 py-0.5 rounded-full font-bold text-white"
+                className="text-xs px-2 py-0.5 rounded-full font-bold text-on-primary"
                 style={{ backgroundColor: priorityColors[template.priority] }}
               >
                 {priorityLabels[template.priority]}
@@ -57,7 +57,7 @@ export default function TemplatesPage() {
             </div>
 
             <div className="flex items-center gap-2 mt-5">
-              <button className="flex-1 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+              <button className="flex-1 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
                 Dùng ngay
               </button>
               <button className="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
@@ -80,7 +80,7 @@ export default function TemplatesPage() {
         ))}
 
         {/* Add New Template Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-dashed border-outline-variant flex flex-col items-center justify-center min-h-[240px] hover:border-primary/50 transition-colors cursor-pointer group">
+        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm border-2 border-dashed border-outline-variant flex flex-col items-center justify-center min-h-[240px] hover:border-primary/50 transition-colors cursor-pointer group">
           <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center mb-3 group-hover:bg-primary/10">
             <svg className="w-6 h-6 text-on-surface-variant group-hover:text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

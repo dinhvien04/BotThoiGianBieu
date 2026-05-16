@@ -42,8 +42,9 @@ export default function AdminSettingsPage() {
     setError(null);
     try {
       const res = await adminGetSettings();
-      setSettings(res.settings);
-      setDrafts(res.settings);
+      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      setSettings(res.settings || {});
+      setDrafts(res.settings || {});
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -79,13 +80,13 @@ export default function AdminSettingsPage() {
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-bold">Cấu hình hệ thống</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-on-surface-variant">
           Các giá trị key-value lưu ở bảng <code>system_settings</code>.
         </p>
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700 text-sm">
+        <div className="rounded-xl border border-error/40 bg-error-container/30 p-3 text-on-error-container text-sm">
           {error}
         </div>
       ) : null}
@@ -96,7 +97,7 @@ export default function AdminSettingsPage() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Đang tải…</p>
+        <p className="text-sm text-on-surface-variant">Đang tải…</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {KNOWN_KEYS.map((meta) => {
@@ -112,8 +113,8 @@ export default function AdminSettingsPage() {
               >
                 <div>
                   <p className="font-medium">{meta.label}</p>
-                  <p className="text-xs text-gray-500">{meta.description}</p>
-                  <p className="text-[10px] text-gray-400 font-mono">{meta.key}</p>
+                  <p className="text-xs text-on-surface-variant">{meta.description}</p>
+                  <p className="text-[10px] text-on-surface-variant font-mono">{meta.key}</p>
                 </div>
 
                 {meta.type === "boolean" ? (
@@ -140,7 +141,7 @@ export default function AdminSettingsPage() {
                 )}
 
                 <div className="flex items-center justify-end gap-2 text-xs">
-                  <span className="text-gray-500">
+                  <span className="text-on-surface-variant">
                     Hiện tại:{" "}
                     <code>
                       {JSON.stringify(currentRaw ?? null)}
@@ -150,7 +151,7 @@ export default function AdminSettingsPage() {
                     type="button"
                     disabled={!isDirty || savingKey === meta.key}
                     onClick={() => save(meta.key)}
-                    className="px-3 py-1.5 rounded-lg bg-primary text-white disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-lg bg-primary text-on-primary disabled:opacity-50"
                   >
                     {savingKey === meta.key ? "Đang lưu…" : "Lưu"}
                   </button>

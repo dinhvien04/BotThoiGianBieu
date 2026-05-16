@@ -130,7 +130,7 @@ describe("Admin bot commands", () => {
       const ctx = makeCtx([], "");
       await cmd.execute(ctx);
       const msg = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
-      expect(msg).toContain("Tổng user");
+      expect(msg).toContain("Tong user");
       expect(msg).toContain("10");
       expect(msg).toContain("50");
     });

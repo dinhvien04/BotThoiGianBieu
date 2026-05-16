@@ -15,7 +15,7 @@ const mockEvents = [
 ];
 
 const priorityBadge: Record<string, { bg: string; text: string; label: string }> = {
-  high: { bg: "bg-red-100", text: "text-red-700", label: "HIGH" },
+  high: { bg: "bg-error-container/50", text: "text-on-error-container", label: "HIGH" },
   medium: { bg: "bg-yellow-100", text: "text-yellow-700", label: "MEDIUM" },
   low: { bg: "bg-gray-100", text: "text-gray-600", label: "LOW" },
 };
@@ -46,7 +46,7 @@ export default function UpcomingDrawer({ isOpen, onClose }: UpcomingDrawerProps)
               key={f}
               onClick={() => setFilter(f)}
               className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                filter === f ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"
+                filter === f ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
               }`}
             >
               {f === "24h" ? "24 giờ" : "7 ngày"}
@@ -118,7 +118,7 @@ export default function UpcomingDrawer({ isOpen, onClose }: UpcomingDrawerProps)
         <div className="p-4 border-t border-outline-variant/50">
           <Link
             href="/lich/tao-moi"
-            className="w-full py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

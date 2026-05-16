@@ -88,7 +88,7 @@ export default function CalendarPage() {
                 key={v}
                 onClick={() => setView(v)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  view === v ? "bg-white text-on-surface shadow-sm" : "text-on-surface-variant hover:text-on-surface"
+                  view === v ? "bg-surface-container-lowest text-on-surface shadow-sm" : "text-on-surface-variant hover:text-on-surface"
                 }`}
               >
                 {v === "thang" ? "Tháng" : v === "tuan" ? "Tuần" : v === "ngay" ? "Ngày" : "Danh sách"}
@@ -97,7 +97,7 @@ export default function CalendarPage() {
           </div>
           <Link
             href="/lich/tao-moi"
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -113,7 +113,7 @@ export default function CalendarPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white text-on-surface"
+            className="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container-lowest text-on-surface"
           >
             <option value="all">Trạng thái</option>
             {Object.entries(statusLabels).map(([k, v]) => (
@@ -123,17 +123,17 @@ export default function CalendarPage() {
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            className="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white text-on-surface"
+            className="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container-lowest text-on-surface"
           >
             <option value="all">Ưu tiên</option>
             {Object.entries(priorityLabels).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
-          <select className="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white text-on-surface">
+          <select className="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container-lowest text-on-surface">
             <option>Thẻ (Tags)</option>
           </select>
-          <select className="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-white text-on-surface">
+          <select className="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container-lowest text-on-surface">
             <option>Loại lịch</option>
           </select>
         </div>
@@ -143,14 +143,14 @@ export default function CalendarPage() {
             onClick={() => setShowOverdue(!showOverdue)}
             className={`w-10 h-5 rounded-full transition-colors relative ${showOverdue ? "bg-primary" : "bg-surface-container-highest"}`}
           >
-            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${showOverdue ? "translate-x-5" : "translate-x-0.5"}`} />
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-surface-container-lowest shadow transition-transform ${showOverdue ? "translate-x-5" : "translate-x-0.5"}`} />
           </button>
         </label>
       </div>
 
       {/* Calendar View */}
       {view === "thang" && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
           <div className="grid grid-cols-7 border-b border-surface-container-high">
             {daysOfWeek.map((d) => (
               <div key={d} className={`px-4 py-3 text-xs font-semibold text-center tracking-wider ${d === "THỨ 7" || d === "CHỦ NHẬT" ? "text-error" : "text-on-surface-variant"}`}>
@@ -167,7 +167,7 @@ export default function CalendarPage() {
                   key={idx}
                   className={`min-h-[100px] p-2 border-b border-r border-surface-container-high ${!d.current ? "bg-surface-container-low/50" : ""}`}
                 >
-                  <span className={`text-sm inline-flex items-center justify-center w-7 h-7 rounded-full ${isToday ? "bg-primary text-white font-bold" : d.current ? "text-on-surface" : "text-on-surface-variant/40"} ${(idx % 7 >= 5) && d.current ? "text-error" : ""}`}>
+                  <span className={`text-sm inline-flex items-center justify-center w-7 h-7 rounded-full ${isToday ? "bg-primary text-on-primary font-bold" : d.current ? "text-on-surface" : "text-on-surface-variant/40"} ${(idx % 7 >= 5) && d.current ? "text-error" : ""}`}>
                     {d.day}
                   </span>
                   <div className="mt-1 space-y-0.5">
@@ -175,7 +175,7 @@ export default function CalendarPage() {
                       <Link
                         key={ev.id}
                         href={`/lich/${ev.id}`}
-                        className="block px-1.5 py-0.5 rounded text-xs text-white truncate hover:opacity-80"
+                        className="block px-1.5 py-0.5 rounded text-xs text-on-primary truncate hover:opacity-80"
                         style={{ backgroundColor: typeColors[ev.type] || "#6750A4" }}
                       >
                         {ev.title}
@@ -193,7 +193,7 @@ export default function CalendarPage() {
       )}
 
       {view === "danh-sach" && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
           <div className="divide-y divide-surface-container-high">
             {filteredSchedules.map((schedule) => (
               <Link
@@ -222,7 +222,7 @@ export default function CalendarPage() {
       )}
 
       {view === "tuan" && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
           <div className="grid grid-cols-8 border-b border-surface-container-high">
             <div className="px-2 py-3 text-xs font-semibold text-on-surface-variant" />
             {Array.from({ length: 7 }, (_, i) => {
@@ -258,7 +258,7 @@ export default function CalendarPage() {
                         <Link
                           key={ev.id}
                           href={`/lich/${ev.id}`}
-                          className="block px-1.5 py-1 rounded text-xs text-white truncate mb-0.5 hover:opacity-80"
+                          className="block px-1.5 py-1 rounded text-xs text-on-primary truncate mb-0.5 hover:opacity-80"
                           style={{ backgroundColor: typeColors[ev.type] || "#6750A4" }}
                         >
                           {ev.title}
@@ -279,7 +279,7 @@ export default function CalendarPage() {
         const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         const dateDisplay = new Date().toLocaleDateString('vi-VN', dateOptions);
         return (
-          <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
@@ -303,7 +303,7 @@ export default function CalendarPage() {
                       {event && (
                         <Link
                           href={`/lich/${event.id}`}
-                          className="block px-3 py-2 rounded-lg text-white text-sm hover:opacity-90"
+                          className="block px-3 py-2 rounded-lg text-on-primary text-sm hover:opacity-90"
                           style={{ backgroundColor: typeColors[event.type] || "#6750A4" }}
                         >
                           <p className="font-medium">{event.title}</p>
@@ -324,16 +324,16 @@ export default function CalendarPage() {
 
       {/* Bottom Stats */}
       <div className="grid grid-cols-2 gap-6">
-        <div className="bg-primary rounded-2xl p-6 text-white">
+        <div className="bg-primary rounded-2xl p-6 text-on-primary">
           <h3 className="text-lg font-bold">Bạn có {overdueCount} việc quá hạn!</h3>
           <p className="text-sm opacity-80 mt-1">
             Hãy ưu tiên giải quyết các tác vụ này để duy trì tiến độ công việc trong tuần.
           </p>
-          <button className="mt-4 px-4 py-2 bg-white text-primary rounded-lg text-sm font-medium hover:bg-white/90">
+          <button className="mt-4 px-4 py-2 bg-surface-container-lowest text-primary rounded-lg text-sm font-medium hover:bg-white/90">
             Xem chi tiết
           </button>
         </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-on-surface">Tiến độ tuần này</h3>
             <span className="text-2xl font-bold text-primary">{weekProgress}%</span>

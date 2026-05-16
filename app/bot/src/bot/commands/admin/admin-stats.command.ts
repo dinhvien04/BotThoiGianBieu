@@ -27,12 +27,12 @@ export class AdminStatsCommand implements BotCommand, OnModuleInit {
     if (!(await requireAdmin(ctx, this.usersService))) return;
     const s = await this.adminService.getDashboardStats();
     const lines = [
-      "📊 **THỐNG KÊ HỆ THỐNG**",
+      "Thong ke he thong",
       "",
-      `👤 Tổng user: **${s.total_users}** (admin: ${s.total_admins}, khoá: ${s.locked_users})`,
-      `📅 Tổng lịch: **${s.total_schedules}** (pending: ${s.schedules_pending}, hoàn thành: ${s.schedules_completed})`,
+      `Tong user: ${s.total_users} (admin: ${s.total_admins}, khoa: ${s.locked_users})`,
+      `Tong lich: ${s.total_schedules} (pending: ${s.schedules_pending}, hoan thanh: ${s.schedules_completed})`,
       "",
-      `🆕 Hôm nay: ${s.new_users_today} user mới, ${s.new_schedules_today} lịch mới`,
+      `Hom nay: ${s.new_users_today} user moi, ${s.new_schedules_today} lich moi`,
     ];
     await ctx.reply(lines.join("\n"));
   }
