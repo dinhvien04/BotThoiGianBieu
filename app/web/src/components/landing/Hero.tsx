@@ -1,6 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import { useLandingLanguage } from "./LanguageContext";
 
 export default function Hero() {
+  const { t } = useLandingLanguage();
+  const benefits = [
+    t("hero.benefit.reminders"),
+    t("hero.benefit.sync"),
+    t("hero.benefit.progress"),
+  ];
+
   return (
     <section
       id="hero"
@@ -14,45 +24,40 @@ export default function Hero() {
             <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
               release_alert
             </span>
-            Phiên bản 2.0 • Tích hợp Mezon
+            {t("hero.badge")}
           </div>
 
           <h1
             id="hero-heading"
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-[56px] font-extrabold leading-tight tracking-tight text-lp-on-surface"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight text-lp-on-surface"
           >
-            Quản lý sự kiện thông minh & nhắc việc tự động trên{" "}
-            <span className="text-lp-primary">Mezon</span>
+            {t("hero.title")}{" "}
+            <span className="bg-gradient-to-r from-lp-primary to-lp-primary-container bg-clip-text text-transparent">Mezon</span>
           </h1>
 
           <p className="text-base sm:text-lg text-lp-on-surface-variant max-w-xl leading-relaxed">
-            Tạo lịch, theo dõi tiến độ và nhận nhắc việc tự động qua Web
-            Dashboard kết hợp chatbot trên nền tảng Mezon.
+            {t("hero.subtitle")}
           </p>
 
           <div className="flex flex-wrap gap-3 sm:gap-4">
             <Link
               href="/dang-nhap"
-              className="bg-lp-primary-container text-lp-on-primary-container font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl shadow-lg shadow-lp-primary-container/20 hover:scale-[1.02] active:scale-95 transition-transform"
+              className="bg-lp-primary text-lp-on-primary font-bold px-7 sm:px-9 py-3.5 sm:py-4 rounded-full shadow-xl shadow-lp-primary/25 hover:shadow-lp-primary/40 hover:scale-[1.02] active:scale-95 transition-all"
             >
-              Dùng thử ngay
+              {t("hero.try")}
             </Link>
             <button
               type="button"
-              className="border border-lp-outline-variant text-lp-primary font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:bg-lp-surface-container-low transition-all"
+              className="border border-lp-outline-variant/60 text-lp-on-surface font-semibold px-7 sm:px-9 py-3.5 sm:py-4 rounded-full hover:bg-lp-surface-container-high/60 hover:border-lp-outline-variant transition-all"
             >
-              Kết nối Mezon
+              {t("hero.connect")}
             </button>
           </div>
 
           <div className="flex flex-wrap gap-4 pt-2">
-            {[
-              "Nhắc việc tự động",
-              "Web + Bot đồng bộ",
-              "Theo dõi tiến độ",
-            ].map((t) => (
+            {benefits.map((benefit) => (
               <div
-                key={t}
+                key={benefit}
                 className="flex items-center gap-2 text-lp-on-surface-variant text-sm"
               >
                 <span
@@ -62,7 +67,7 @@ export default function Hero() {
                 >
                   check_circle
                 </span>
-                {t}
+                {benefit}
               </div>
             ))}
           </div>
@@ -71,7 +76,7 @@ export default function Hero() {
         {/* Right side: floating mockups (desktop only) */}
         <div className="relative h-[600px] hidden lg:block">
           {/* Main dashboard card */}
-          <div className="absolute top-0 left-0 w-full glass-card rounded-2xl p-6 shadow-2xl z-10 animate-float-slow">
+          <div className="absolute top-0 left-0 w-full glass-card rounded-3xl p-6 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)] z-10 animate-float-slow">
             <div className="flex justify-between items-center mb-6 border-b border-lp-outline-variant/40 pb-3">
               <div className="text-sm font-medium flex items-center gap-2 text-lp-on-surface">
                 <span
@@ -80,7 +85,7 @@ export default function Hero() {
                 >
                   calendar_today
                 </span>
-                Hôm nay
+                {t("hero.today")}
               </div>
               <div className="flex gap-2">
                 <div className="w-3 h-3 rounded-full bg-lp-error" />
@@ -93,7 +98,7 @@ export default function Hero() {
               <div className="bg-lp-surface-container-low p-3 rounded-lg flex items-center justify-between border border-lp-outline-variant/30">
                 <div>
                   <p className="text-sm font-medium text-lp-on-surface">
-                    Họp team Sprint Review
+                    {t("hero.meeting")}
                   </p>
                   <p className="text-xs text-lp-on-surface-variant">
                     09:00 - 10:30 • Google Meet
@@ -110,21 +115,21 @@ export default function Hero() {
               <div className="bg-lp-primary/10 p-3 rounded-lg flex items-center justify-between border border-lp-primary/30">
                 <div>
                   <p className="text-sm font-bold text-lp-primary">
-                    Demo báo cáo thực tập
+                    {t("hero.demo")}
                   </p>
                   <p className="text-xs text-lp-on-surface-variant">
-                    14:00 - 15:30 • Hội trường A
+                    14:00 - 15:30 • {t("hero.auditorium")}
                   </p>
                 </div>
                 <span className="bg-lp-primary text-lp-on-primary px-2 py-0.5 rounded text-[10px] font-bold animate-glow-pulse">
-                  SẮP DIỄN RA
+                  {t("hero.upcoming")}
                 </span>
               </div>
 
               <div className="bg-lp-surface-container-low p-3 rounded-lg flex items-center justify-between border border-lp-outline-variant/30 opacity-60">
                 <div>
                   <p className="text-sm font-medium line-through text-lp-on-surface">
-                    Review CV ứng viên
+                    {t("hero.review")}
                   </p>
                   <p className="text-xs text-lp-on-surface-variant">
                     16:00 - 17:00
@@ -143,26 +148,22 @@ export default function Hero() {
 
           {/* Stats cards */}
           <div className="absolute -bottom-10 left-0 flex gap-4 z-20">
-            <div className="glass-card p-4 rounded-2xl min-w-[120px]">
-              <p className="text-lp-on-surface-variant text-xs mb-1">Sự kiện</p>
+            <div className="glass-card p-4 rounded-3xl min-w-[120px] shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]">
+              <p className="text-lp-on-surface-variant text-xs mb-1">{t("hero.stat.events")}</p>
               <p className="text-2xl font-bold text-lp-primary">12</p>
             </div>
-            <div className="glass-card p-4 rounded-2xl min-w-[120px]">
-              <p className="text-lp-on-surface-variant text-xs mb-1">
-                Sắp đến hạn
-              </p>
+            <div className="glass-card p-4 rounded-3xl min-w-[120px] shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]">
+              <p className="text-lp-on-surface-variant text-xs mb-1">{t("hero.stat.due")}</p>
               <p className="text-2xl font-bold text-lp-tertiary">04</p>
             </div>
-            <div className="glass-card p-4 rounded-2xl min-w-[120px]">
-              <p className="text-lp-on-surface-variant text-xs mb-1">
-                Hoàn thành
-              </p>
+            <div className="glass-card p-4 rounded-3xl min-w-[120px] shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]">
+              <p className="text-lp-on-surface-variant text-xs mb-1">{t("hero.stat.completed")}</p>
               <p className="text-2xl font-bold text-lp-on-surface">86%</p>
             </div>
           </div>
 
           {/* Chatbot bubble */}
-          <div className="absolute top-20 -right-6 xl:-right-12 w-72 xl:w-80 glass-card rounded-2xl p-5 shadow-2xl z-30 border border-lp-primary/20 animate-float-medium">
+          <div className="absolute top-20 -right-6 xl:-right-12 w-72 xl:w-80 glass-card rounded-3xl p-5 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)] z-30 border border-lp-primary/15 animate-float-medium">
             <div className="flex items-center gap-3 mb-4 border-b border-lp-outline-variant/40 pb-2">
               <div className="w-8 h-8 rounded-full bg-lp-primary flex items-center justify-center">
                 <span
@@ -185,12 +186,12 @@ export default function Hero() {
             <div className="space-y-2 overflow-hidden">
               <div className="flex justify-end">
                 <div className="bg-lp-primary/20 text-lp-on-surface p-2.5 rounded-2xl rounded-tr-none text-xs">
-                  *them-lich Họp team 9h sáng mai
+                  {t("hero.command")}
                 </div>
               </div>
               <div className="flex justify-start">
                 <div className="bg-lp-surface-container-low text-lp-on-surface p-2.5 rounded-2xl rounded-tl-none text-xs border border-lp-outline-variant/30 flex items-center gap-1">
-                  <span>Đã tạo sự kiện &lsquo;Họp team&rsquo; vào 09:00 ngày mai.</span>
+                  <span>{t("hero.response")}</span>
                   <span className="inline-block w-0.5 h-3 bg-lp-primary animate-blink ml-0.5" aria-hidden="true" />
                 </div>
               </div>
@@ -203,7 +204,7 @@ export default function Hero() {
           </div>
 
           {/* Reminder popup */}
-          <div className="absolute bottom-20 -right-6 xl:-right-16 w-72 glass-card rounded-2xl p-5 border border-lp-tertiary/40 shadow-2xl z-40 animate-float-fast">
+          <div className="absolute bottom-20 -right-6 xl:-right-16 w-72 glass-card rounded-3xl p-5 border border-lp-tertiary/30 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)] z-40 animate-float-fast">
             <div className="flex items-start gap-3 mb-3">
               <span
                 className="material-symbols-outlined text-lp-tertiary animate-pulse"
@@ -213,10 +214,10 @@ export default function Hero() {
               </span>
               <div>
                 <p className="text-sm font-bold text-lp-on-surface">
-                  Nhắc nhở công việc
+                  {t("hero.reminderTitle")}
                 </p>
                 <p className="text-xs text-lp-on-surface-variant">
-                  Demo báo cáo sẽ bắt đầu sau 15 phút
+                  {t("hero.reminderBody")}
                 </p>
               </div>
             </div>
@@ -225,19 +226,19 @@ export default function Hero() {
                 type="button"
                 className="flex-1 bg-lp-tertiary text-lp-on-tertiary text-[11px] font-bold py-2 rounded-lg"
               >
-                Đã nhận
+                {t("hero.ack")}
               </button>
               <button
                 type="button"
                 className="flex-1 border border-lp-outline-variant text-lp-on-surface-variant text-[11px] py-2 rounded-lg"
               >
-                Hoãn 10p
+                {t("hero.snooze")}
               </button>
               <button
                 type="button"
                 className="flex-1 bg-lp-surface-container-high text-lp-on-surface text-[11px] py-2 rounded-lg"
               >
-                Xong
+                {t("hero.done")}
               </button>
             </div>
           </div>

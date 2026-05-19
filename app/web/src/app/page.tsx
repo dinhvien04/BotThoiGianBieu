@@ -7,6 +7,8 @@ import Preview from "@/components/landing/Preview";
 import FAQ from "@/components/landing/FAQ";
 import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
+import { LandingLanguageProvider } from "@/components/landing/LanguageContext";
+import SkipLink from "@/components/landing/SkipLink";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
@@ -76,24 +78,21 @@ export default function LandingPage() {
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-lp-primary focus:text-lp-on-primary focus:px-4 focus:py-2 focus:rounded-lg focus:font-bold"
-      >
-        Bỏ qua tới nội dung chính
-      </a>
-      <div className="min-h-screen bg-lp-bg text-lp-on-surface transition-colors">
-        <Header />
-        <main id="main-content">
-          <Hero />
-          <Features />
-          <HowItWorks />
-          <Preview />
-          <FAQ />
-          <CTA />
-        </main>
-        <Footer />
-      </div>
+      <LandingLanguageProvider>
+        <SkipLink />
+        <div className="min-h-screen bg-lp-bg text-lp-on-surface transition-colors">
+          <Header />
+          <main id="main-content">
+            <Hero />
+            <Features />
+            <HowItWorks />
+            <Preview />
+            <FAQ />
+            <CTA />
+          </main>
+          <Footer />
+        </div>
+      </LandingLanguageProvider>
     </>
   );
 }

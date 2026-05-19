@@ -1,27 +1,107 @@
 const BASE = "";
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+/**
+ * Flag dedup tránh nhiều request 401 đồng thời cùng trigger window.location.href
+ * → bồi thêm requests và nhấp nháy. Set true khi bắt đầu redirect, reset khi rời page.
+ */
+let isRedirectingToLogin = false;
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export function getApiErrorMsg(res: unknown): string {
+  if (typeof res === 'object' && res !== null) {
+    if ('error' in res && typeof (res as Record<string, unknown>).error === 'string') {
+      return (res as Record<string, unknown>).error as string;
+    }
+    if ('message' in res && typeof (res as Record<string, unknown>).message === 'string') {
+      return (res as Record<string, unknown>).message as string;
+    }
+  }
+  return "API Error";
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const { headers: optionHeaders, ...restOptions } = options;
+  const method = (options.method ?? 'GET').toUpperCase();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(SAFE_METHODS.has(method) ? {} : { 'X-Requested-With': 'XMLHttpRequest' }),
+  };
+  new Headers(optionHeaders).forEach((value, key) => {
+    headers[key] = value;
+  });
+
   const res = await fetch(`${BASE}${path}`, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...((options.headers as Record<string, string>) ?? {}),
-    },
-    ...options,
+    ...restOptions,
+    credentials: 'include',
+    headers,
   });
 
   if (res.status === 401) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/dang-nhap";
+    if (typeof window !== "undefined" && !isRedirectingToLogin) {
+      const onLoginPage = window.location.pathname.startsWith("/dang-nhap");
+      if (!onLoginPage) {
+        isRedirectingToLogin = true;
+        // Clear stale session cookie server-side rồi mới redirect.
+        // Nếu không clear, middleware thấy cookie còn sẽ bounce ngược lại
+        // → vòng lặp /dashboard ⇄ /dang-nhap vô tận.
+        try {
+          await fetch("/auth/logout", {
+            method: "POST",
+            credentials: "include",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+          });
+        } catch {
+          // ignore — vẫn redirect
+        }
+        const next = window.location.pathname + window.location.search;
+        window.location.href = `/dang-nhap?next=${encodeURIComponent(next)}`;
+      }
     }
-    throw new Error("Unauthorized");
+    throw new ApiError("Unauthorized", 401, null);
   }
 
-  const data = (await res.json()) as T;
-  return data;
+  // Parse body theo content-type. Backend có thể trả HTML (proxy/500), text, hoặc JSON.
+  const contentType = res.headers.get('content-type') ?? '';
+  let body: unknown = null;
+  if (contentType.includes('application/json')) {
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+  } else {
+    try {
+      body = await res.text();
+    } catch {
+      body = null;
+    }
+  }
+
+  if (!res.ok) {
+    const msg =
+      (typeof body === 'object' && body && 'error' in body
+        ? String((body as { error: unknown }).error)
+        : null) ||
+      (typeof body === 'object' && body && 'message' in body
+        ? String((body as { message: unknown }).message)
+        : null) ||
+      `HTTP ${res.status} ${res.statusText}`;
+    throw new ApiError(msg, res.status, body);
+  }
+
+  return body as T;
 }
 
 export interface Schedule {
@@ -71,13 +151,18 @@ export interface UserProfile {
   user_id: string;
   username: string | null;
   display_name: string | null;
-  role?: "user" | "admin";
+  email: string | null;
+  phone: string | null;
+  job_title: string | null;
+  bio: string | null;
+  role?: 'user' | 'admin';
   is_locked?: boolean;
 }
 
 export interface UserSettings {
   user_id: string;
   timezone: string;
+  language: 'vi' | 'en';
   default_remind_minutes: number;
   notify_via_dm: boolean;
   notify_via_channel: boolean;
@@ -114,7 +199,7 @@ export interface AuditLogEntry {
 // --- Schedules ---
 
 export async function getSchedules(params?: {
-  status?: string;
+  status?: 'all' | 'pending' | 'completed' | 'cancelled' | 'overdue' | string;
   priority?: string;
   page?: number;
   limit?: number;
@@ -123,13 +208,13 @@ export async function getSchedules(params?: {
   end?: string;
 }) {
   const qs = new URLSearchParams();
-  if (params?.status) qs.set("status", params.status);
-  if (params?.priority) qs.set("priority", params.priority);
-  if (params?.page) qs.set("page", String(params.page));
-  if (params?.limit) qs.set("limit", String(params.limit));
-  if (params?.search) qs.set("search", params.search);
-  if (params?.start) qs.set("start", params.start);
-  if (params?.end) qs.set("end", params.end);
+  if (params?.status) qs.set('status', params.status);
+  if (params?.priority) qs.set('priority', params.priority);
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.limit) qs.set('limit', String(params.limit));
+  if (params?.search) qs.set('search', params.search);
+  if (params?.start) qs.set('start', params.start);
+  if (params?.end) qs.set('end', params.end);
   const query = qs.toString();
   return request<{
     success: boolean;
@@ -137,13 +222,11 @@ export async function getSchedules(params?: {
     total: number;
     page?: number;
     limit?: number;
-  }>(`/api/schedules${query ? `?${query}` : ""}`);
+  }>(`/api/schedules${query ? `?${query}` : ''}`);
 }
 
 export async function getScheduleById(id: number) {
-  return request<{ success: boolean; schedule: Schedule; error?: string }>(
-    `/api/schedules/${id}`,
-  );
+  return request<{ success: boolean; schedule: Schedule; error?: string }>(`/api/schedules/${id}`);
 }
 
 export async function createSchedule(data: {
@@ -158,10 +241,10 @@ export async function createSchedule(data: {
   recurrence_interval?: number;
   recurrence_until?: string;
 }) {
-  return request<{ success: boolean; schedule: Schedule }>(
-    "/api/schedules",
-    { method: "POST", body: JSON.stringify(data) },
-  );
+  return request<{ success: boolean; schedule: Schedule }>('/api/schedules', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function updateSchedule(
@@ -180,101 +263,91 @@ export async function updateSchedule(
     recurrence_until: string | null;
   }>,
 ) {
-  return request<{ success: boolean; schedule: Schedule }>(
-    `/api/schedules/${id}`,
-    { method: "PATCH", body: JSON.stringify(data) },
-  );
+  return request<{ success: boolean; schedule: Schedule }>(`/api/schedules/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function completeSchedule(id: number) {
-  return request<{ success: boolean }>(
-    `/api/schedules/${id}/complete`,
-    { method: "PATCH" },
-  );
+  return request<{ success: boolean }>(`/api/schedules/${id}/complete`, { method: 'PATCH' });
 }
 
 export async function deleteSchedule(id: number) {
-  return request<{ success: boolean }>(
-    `/api/schedules/${id}`,
-    { method: "DELETE" },
-  );
+  return request<{ success: boolean }>(`/api/schedules/${id}`, { method: 'DELETE' });
 }
 
 export async function getUpcomingSchedules(limit = 5, priority?: string) {
   const qs = new URLSearchParams({ limit: String(limit) });
-  if (priority) qs.set("priority", priority);
-  return request<{ success: boolean; items: Schedule[] }>(
-    `/api/schedules/upcoming?${qs}`,
-  );
+  if (priority) qs.set('priority', priority);
+  return request<{ success: boolean; items: Schedule[] }>(`/api/schedules/upcoming?${qs}`);
 }
 
 export async function getScheduleStatistics(start?: string, end?: string) {
   const qs = new URLSearchParams();
-  if (start) qs.set("start", start);
-  if (end) qs.set("end", end);
+  if (start) qs.set('start', start);
+  if (end) qs.set('end', end);
   const query = qs.toString();
   return request<{ success: boolean } & ScheduleStats>(
-    `/api/schedules/statistics${query ? `?${query}` : ""}`,
+    `/api/schedules/statistics${query ? `?${query}` : ''}`,
   );
 }
 
 export async function bulkCompleteSchedules(ids: number[]) {
-  return request<{ success: boolean; count: number }>(
-    "/api/schedules/bulk/complete",
-    { method: "POST", body: JSON.stringify({ ids }) },
-  );
+  return request<{ success: boolean; count: number }>('/api/schedules/bulk/complete', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
 }
 
 export async function bulkDeleteSchedules(ids: number[]) {
-  return request<{ success: boolean; count: number }>(
-    "/api/schedules/bulk/delete",
-    { method: "POST", body: JSON.stringify({ ids }) },
-  );
+  return request<{ success: boolean; count: number }>('/api/schedules/bulk/delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
 }
 
 export async function getStreak() {
-  return request<{ success: boolean } & StreakStats>(
-    "/api/schedules/streak/current",
-  );
+  return request<{ success: boolean } & StreakStats>('/api/schedules/streak/current');
 }
 
 // --- Tags ---
 
 export async function getTags() {
-  return request<{ success: boolean; tags: Tag[] }>("/api/tags");
+  return request<{ success: boolean; tags: Tag[] }>('/api/tags');
 }
 
 export async function createTag(name: string) {
-  return request<{ success: boolean; tag: Tag; created: boolean; error?: string }>(
-    "/api/tags",
-    { method: "POST", body: JSON.stringify({ name }) },
-  );
+  return request<{ success: boolean; tag: Tag; created: boolean; error?: string }>('/api/tags', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
 }
 
 export async function deleteTag(name: string) {
   return request<{ success: boolean }>(`/api/tags/${encodeURIComponent(name)}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
 }
 
 export async function attachTags(scheduleId: number, tags: string[]) {
   return request<{ success: boolean; tags: Tag[]; invalid: string[] }>(
     `/api/tags/${scheduleId}/attach`,
-    { method: "POST", body: JSON.stringify({ tags }) },
+    { method: 'POST', body: JSON.stringify({ tags }) },
   );
 }
 
 export async function detachTag(scheduleId: number, tag: string) {
-  return request<{ success: boolean; removed: boolean }>(
-    `/api/tags/${scheduleId}/detach`,
-    { method: "POST", body: JSON.stringify({ tag }) },
-  );
+  return request<{ success: boolean; removed: boolean }>(`/api/tags/${scheduleId}/detach`, {
+    method: 'POST',
+    body: JSON.stringify({ tag }),
+  });
 }
 
 // --- Templates ---
 
 export async function getTemplates() {
-  return request<{ success: boolean; templates: Template[] }>("/api/templates");
+  return request<{ success: boolean; templates: Template[] }>('/api/templates');
 }
 
 export async function createTemplate(data: {
@@ -286,23 +359,49 @@ export async function createTemplate(data: {
   default_remind_minutes?: number;
   priority?: string;
 }) {
+  return request<{ success: boolean; template: Template; error?: string }>('/api/templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getTemplateByName(name: string) {
   return request<{ success: boolean; template: Template; error?: string }>(
-    "/api/templates",
-    { method: "POST", body: JSON.stringify(data) },
+    `/api/templates/${encodeURIComponent(name)}`,
+  );
+}
+
+export async function updateTemplate(
+  name: string,
+  data: Partial<{
+    name: string;
+    title: string;
+    description: string | null;
+    item_type: string;
+    duration_minutes: number | null;
+    default_remind_minutes: number | null;
+    priority: string;
+  }>,
+) {
+  return request<{ success: boolean; template: Template; error?: string }>(
+    `/api/templates/${encodeURIComponent(name)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    },
   );
 }
 
 export async function deleteTemplate(name: string) {
-  return request<{ success: boolean }>(
-    `/api/templates/${encodeURIComponent(name)}`,
-    { method: "DELETE" },
-  );
+  return request<{ success: boolean }>(`/api/templates/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  });
 }
 
 // --- User ---
 
 export async function logout() {
-  return request<{ success: boolean }>("/auth/logout", { method: "POST" });
+  return request<{ success: boolean }>('/auth/logout', { method: 'POST' });
 }
 
 export async function getUserProfile() {
@@ -310,48 +409,46 @@ export async function getUserProfile() {
     success: boolean;
     user: UserProfile;
     settings: UserSettings;
-  }>("/api/user/profile");
+  }>('/api/user/profile');
+}
+
+export async function updateUserProfile(data: Partial<UserProfile>) {
+  return request<{ success: boolean; user: UserProfile; error?: string }>('/api/user/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function updateUserSettings(data: Partial<UserSettings>) {
-  return request<{ success: boolean; settings: UserSettings }>(
-    "/api/user/settings",
-    { method: "PATCH", body: JSON.stringify(data) },
-  );
+  return request<{ success: boolean; settings: UserSettings }>('/api/user/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }
 
 // --- Shares ---
 
 export async function getSharedWithMe() {
-  return request<{ success: boolean; schedules: Schedule[] }>(
-    "/api/shares/shared-with-me",
-  );
+  return request<{ success: boolean; schedules: Schedule[] }>('/api/shares/shared-with-me');
 }
 
 export async function shareSchedule(scheduleId: number, targetUserId: string) {
-  return request<{ success: boolean; added: boolean }>(
-    `/api/shares/${scheduleId}/share`,
-    { method: "POST", body: JSON.stringify({ target_user_id: targetUserId }) },
-  );
+  return request<{ success: boolean; added: boolean }>(`/api/shares/${scheduleId}/share`, {
+    method: 'POST',
+    body: JSON.stringify({ target_user_id: targetUserId }),
+  });
 }
 
-export async function unshareSchedule(
-  scheduleId: number,
-  targetUserId: string,
-) {
+export async function unshareSchedule(scheduleId: number, targetUserId: string) {
   return request<{ success: boolean; removed: boolean }>(
     `/api/shares/${scheduleId}/unshare/${encodeURIComponent(targetUserId)}`,
-    { method: "DELETE" },
+    { method: 'DELETE' },
   );
 }
 
 // --- Audit ---
 
-export async function getAuditLog(
-  scheduleId: number,
-  page = 1,
-  limit = 10,
-) {
+export async function getAuditLog(scheduleId: number, page = 1, limit = 10) {
   return request<{
     success: boolean;
     items: AuditLogEntry[];
@@ -380,7 +477,7 @@ export interface AdminUserListItem {
   user_id: string;
   username: string | null;
   display_name: string | null;
-  role: "user" | "admin";
+  role: 'user' | 'admin';
   is_locked: boolean;
   schedule_count: number;
   created_at: string;
@@ -433,9 +530,7 @@ export async function adminMe() {
 }
 
 export async function adminGetStats() {
-  return request<{ success: boolean; stats: AdminDashboardStats }>(
-    `/api/admin/stats`,
-  );
+  return request<{ success: boolean; stats: AdminDashboardStats }>(`/api/admin/stats`);
 }
 
 export async function adminListUsers(params?: {
@@ -446,12 +541,11 @@ export async function adminListUsers(params?: {
   locked?: boolean;
 }) {
   const usp = new URLSearchParams();
-  if (params?.page) usp.set("page", String(params.page));
-  if (params?.limit) usp.set("limit", String(params.limit));
-  if (params?.search) usp.set("search", params.search);
-  if (params?.role) usp.set("role", params.role);
-  if (typeof params?.locked === "boolean")
-    usp.set("locked", String(params.locked));
+  if (params?.page) usp.set('page', String(params.page));
+  if (params?.limit) usp.set('limit', String(params.limit));
+  if (params?.search) usp.set('search', params.search);
+  if (params?.role) usp.set('role', params.role);
+  if (typeof params?.locked === 'boolean') usp.set('locked', String(params.locked));
   const q = usp.toString();
   return request<{
     success: boolean;
@@ -459,28 +553,27 @@ export async function adminListUsers(params?: {
     total: number;
     page: number;
     limit: number;
-  }>(`/api/admin/users${q ? `?${q}` : ""}`);
+  }>(`/api/admin/users${q ? `?${q}` : ''}`);
 }
 
-export async function adminSetRole(userId: string, role: "user" | "admin") {
+export async function adminSetRole(userId: string, role: 'user' | 'admin') {
   return request<{ success: boolean; user: AdminUserListItem }>(
     `/api/admin/users/${encodeURIComponent(userId)}/role`,
-    { method: "PATCH", body: JSON.stringify({ role }) },
+    { method: 'PATCH', body: JSON.stringify({ role }) },
   );
 }
 
 export async function adminSetLocked(userId: string, locked: boolean) {
   return request<{ success: boolean; user: AdminUserListItem }>(
     `/api/admin/users/${encodeURIComponent(userId)}/lock`,
-    { method: "PATCH", body: JSON.stringify({ locked }) },
+    { method: 'PATCH', body: JSON.stringify({ locked }) },
   );
 }
 
 export async function adminDeleteUser(userId: string) {
-  return request<{ success: boolean }>(
-    `/api/admin/users/${encodeURIComponent(userId)}`,
-    { method: "DELETE" },
-  );
+  return request<{ success: boolean }>(`/api/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function adminListSchedules(params?: {
@@ -491,11 +584,11 @@ export async function adminListSchedules(params?: {
   user_id?: string;
 }) {
   const usp = new URLSearchParams();
-  if (params?.page) usp.set("page", String(params.page));
-  if (params?.limit) usp.set("limit", String(params.limit));
-  if (params?.search) usp.set("search", params.search);
-  if (params?.status) usp.set("status", params.status);
-  if (params?.user_id) usp.set("user_id", params.user_id);
+  if (params?.page) usp.set('page', String(params.page));
+  if (params?.limit) usp.set('limit', String(params.limit));
+  if (params?.search) usp.set('search', params.search);
+  if (params?.status) usp.set('status', params.status);
+  if (params?.user_id) usp.set('user_id', params.user_id);
   const q = usp.toString();
   return request<{
     success: boolean;
@@ -503,12 +596,12 @@ export async function adminListSchedules(params?: {
     total: number;
     page: number;
     limit: number;
-  }>(`/api/admin/schedules${q ? `?${q}` : ""}`);
+  }>(`/api/admin/schedules${q ? `?${q}` : ''}`);
 }
 
 export async function adminDeleteSchedule(id: number) {
   return request<{ success: boolean }>(`/api/admin/schedules/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
 }
 
@@ -520,11 +613,11 @@ export async function adminListAudit(params?: {
   schedule_id?: number;
 }) {
   const usp = new URLSearchParams();
-  if (params?.page) usp.set("page", String(params.page));
-  if (params?.limit) usp.set("limit", String(params.limit));
-  if (params?.user_id) usp.set("user_id", params.user_id);
-  if (params?.action) usp.set("action", params.action);
-  if (params?.schedule_id) usp.set("schedule_id", String(params.schedule_id));
+  if (params?.page) usp.set('page', String(params.page));
+  if (params?.limit) usp.set('limit', String(params.limit));
+  if (params?.user_id) usp.set('user_id', params.user_id);
+  if (params?.action) usp.set('action', params.action);
+  if (params?.schedule_id) usp.set('schedule_id', String(params.schedule_id));
   const q = usp.toString();
   return request<{
     success: boolean;
@@ -532,29 +625,26 @@ export async function adminListAudit(params?: {
     total: number;
     page: number;
     limit: number;
-  }>(`/api/admin/audit${q ? `?${q}` : ""}`);
+  }>(`/api/admin/audit${q ? `?${q}` : ''}`);
 }
 
 export async function adminSendBroadcast(
   message: string,
-  filter?: { role?: "user" | "admin"; only_unlocked?: boolean },
+  filter?: { role?: 'user' | 'admin'; only_unlocked?: boolean },
 ) {
   return request<{
     success: boolean;
     result: { total: number; success: number; failed: number; failed_user_ids: string[] };
   }>(`/api/admin/broadcasts`, {
-    method: "POST",
+    method: 'POST',
     body: JSON.stringify({ message, filter }),
   });
 }
 
-export async function adminListBroadcasts(params?: {
-  page?: number;
-  limit?: number;
-}) {
+export async function adminListBroadcasts(params?: { page?: number; limit?: number }) {
   const usp = new URLSearchParams();
-  if (params?.page) usp.set("page", String(params.page));
-  if (params?.limit) usp.set("limit", String(params.limit));
+  if (params?.page) usp.set('page', String(params.page));
+  if (params?.limit) usp.set('limit', String(params.limit));
   const q = usp.toString();
   return request<{
     success: boolean;
@@ -562,13 +652,11 @@ export async function adminListBroadcasts(params?: {
     total: number;
     page: number;
     limit: number;
-  }>(`/api/admin/broadcasts${q ? `?${q}` : ""}`);
+  }>(`/api/admin/broadcasts${q ? `?${q}` : ''}`);
 }
 
 export async function adminGetSettings() {
-  return request<{ success: boolean; settings: SystemSettingsMap }>(
-    `/api/admin/settings`,
-  );
+  return request<{ success: boolean; settings: SystemSettingsMap }>(`/api/admin/settings`);
 }
 
 export async function adminSetSetting(key: string, value: unknown) {
@@ -576,7 +664,7 @@ export async function adminSetSetting(key: string, value: unknown) {
     success: boolean;
     setting: { key: string; value: unknown };
   }>(`/api/admin/settings/${encodeURIComponent(key)}`, {
-    method: "PUT",
+    method: 'PUT',
     body: JSON.stringify({ value }),
   });
 }

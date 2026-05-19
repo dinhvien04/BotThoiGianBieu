@@ -4,12 +4,17 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import { SessionGuard, AuthenticatedRequest } from "../auth/session.guard";
-import { TemplatesService, CreateTemplateInput } from "./templates.service";
+import {
+  TemplatesService,
+  CreateTemplateInput,
+  UpdateTemplatePatch,
+} from "./templates.service";
 
 @Controller("api/templates")
 @UseGuards(SessionGuard)
@@ -96,5 +101,47 @@ export class TemplatesController {
       name,
     );
     return { success: deleted };
+  }
+
+  @Patch(":name")
+  async update(
+    @Req() req: AuthenticatedRequest,
+    @Param("name") name: string,
+    @Body()
+    body: {
+      name?: string;
+      title?: string;
+      description?: string | null;
+      item_type?: string;
+      duration_minutes?: number | null;
+      default_remind_minutes?: number | null;
+      priority?: string;
+    },
+  ) {
+    const patch: UpdateTemplatePatch = {};
+
+    if (body.name !== undefined) {
+      const nextName = TemplatesService.normalizeName(body.name);
+      if (!TemplatesService.isValidName(nextName)) {
+        return { success: false, error: "Invalid template name" };
+      }
+      if (nextName !== TemplatesService.normalizeName(name)) {
+        const exists = await this.templatesService.existsByName(req.session.sub, nextName);
+        if (exists) return { success: false, error: "Template already exists" };
+      }
+      patch.name = nextName;
+    }
+    if (body.title !== undefined) patch.title = body.title;
+    if (body.description !== undefined) patch.description = body.description;
+    if (body.item_type !== undefined) patch.item_type = body.item_type as CreateTemplateInput["item_type"];
+    if (body.duration_minutes !== undefined) patch.duration_minutes = body.duration_minutes;
+    if (body.default_remind_minutes !== undefined) {
+      patch.default_remind_minutes = body.default_remind_minutes;
+    }
+    if (body.priority !== undefined) patch.priority = body.priority as CreateTemplateInput["priority"];
+
+    const template = await this.templatesService.updateByName(req.session.sub, name, patch);
+    if (!template) return { success: false, error: "Template not found" };
+    return { success: true, template };
   }
 }

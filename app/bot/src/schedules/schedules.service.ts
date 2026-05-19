@@ -1,12 +1,25 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, ILike, In, IsNull, LessThan, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Between,
+  ILike,
+  In,
+  IsNull,
+  LessThan,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
+import type { SelectQueryBuilder } from 'typeorm';
 import {
   RecurrenceType,
   Schedule,
   ScheduleItemType,
   SchedulePriority,
   ScheduleStatus,
+  SCHEDULE_ITEM_TYPES,
+  SCHEDULE_PRIORITIES,
+  SCHEDULE_STATUSES,
 } from './entities/schedule.entity';
 import { computeNextOccurrence } from '../shared/utils/recurrence';
 import { AuditService } from './audit.service';
@@ -78,13 +91,7 @@ export class SchedulesService {
   private auditLog(
     scheduleId: number,
     userId: string,
-    action:
-      | 'create'
-      | 'update'
-      | 'complete'
-      | 'cancel'
-      | 'delete'
-      | 'restore',
+    action: 'create' | 'update' | 'complete' | 'cancel' | 'delete' | 'restore',
     changes?: Record<string, { from?: unknown; to?: unknown }> | null,
   ): void {
     if (!this.auditService) return;
@@ -94,6 +101,90 @@ export class SchedulesService {
       action,
       changes: changes ?? null,
     });
+  }
+
+  private emptyStatistics(): Omit<
+    ScheduleStatistics,
+    'total' | 'topHours' | 'recurringActiveCount'
+  > {
+    const byStatus = Object.fromEntries(SCHEDULE_STATUSES.map((status) => [status, 0])) as Record<
+      ScheduleStatus,
+      number
+    >;
+    const byItemType = Object.fromEntries(SCHEDULE_ITEM_TYPES.map((type) => [type, 0])) as Record<
+      ScheduleItemType,
+      number
+    >;
+    const byPriority = Object.fromEntries(
+      SCHEDULE_PRIORITIES.map((priority) => [priority, 0]),
+    ) as Record<SchedulePriority, number>;
+
+    return { byStatus, byItemType, byPriority };
+  }
+
+  private applyStatisticsDateRange(
+    qb: SelectQueryBuilder<Schedule>,
+    start: Date | null,
+    end: Date | null,
+  ): SelectQueryBuilder<Schedule> {
+    if (start && end) {
+      return qb.andWhere('schedule.start_time BETWEEN :start AND :end', {
+        start,
+        end,
+      });
+    }
+    if (start) {
+      return qb.andWhere('schedule.start_time >= :start', { start });
+    }
+    if (end) {
+      return qb.andWhere('schedule.start_time <= :end', { end });
+    }
+    return qb;
+  }
+
+  private createStatisticsQuery(
+    userId: string,
+    start: Date | null,
+    end: Date | null,
+  ): SelectQueryBuilder<Schedule> {
+    return this.applyStatisticsDateRange(
+      this.scheduleRepository
+        .createQueryBuilder('schedule')
+        .where('schedule.user_id = :userId', { userId }),
+      start,
+      end,
+    );
+  }
+
+  private buildStatisticsFromItems(
+    items: Array<Pick<Schedule, 'status' | 'item_type' | 'priority' | 'start_time'>>,
+    recurringActiveCount: number,
+  ): ScheduleStatistics {
+    const { byStatus, byItemType, byPriority } = this.emptyStatistics();
+    const hourCounts = new Map<number, number>();
+
+    for (const item of items) {
+      byStatus[item.status] = (byStatus[item.status] ?? 0) + 1;
+      byItemType[item.item_type] = (byItemType[item.item_type] ?? 0) + 1;
+      const priority = item.priority ?? 'normal';
+      byPriority[priority] = (byPriority[priority] ?? 0) + 1;
+      const hour = item.start_time.getHours();
+      hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
+    }
+
+    const topHours = Array.from(hourCounts.entries())
+      .map(([hour, count]) => ({ hour, count }))
+      .sort((a, b) => b.count - a.count || a.hour - b.hour)
+      .slice(0, 3);
+
+    return {
+      total: items.length,
+      byStatus,
+      byItemType,
+      byPriority,
+      topHours,
+      recurringActiveCount,
+    };
   }
 
   async create(input: CreateScheduleInput): Promise<Schedule> {
@@ -260,6 +351,29 @@ export class SchedulesService {
     return { items, total };
   }
 
+  async findAllForUser(
+    userId: string,
+    limit = 10,
+    offset = 0,
+    status?: ScheduleStatus,
+    priority?: SchedulePriority,
+    options: { includeHidden?: boolean } = {},
+  ): Promise<SearchResult> {
+    const where: Record<string, unknown> = { user_id: userId };
+    if (status) where.status = status;
+    if (priority) where.priority = priority;
+    if (!options.includeHidden) where.is_hidden = false;
+
+    const [items, total] = await this.scheduleRepository.findAndCount({
+      where,
+      order: { is_pinned: 'DESC', start_time: 'DESC', id: 'DESC' },
+      take: limit,
+      skip: offset,
+    });
+
+    return { items, total };
+  }
+
   /**
    * Lấy các lịch tới giờ cần nhắc nhưng chưa được user xác nhận.
    * - `remind_at <= now`
@@ -283,29 +397,35 @@ export class SchedulesService {
    * Tuỳ chọn set `markInProgress` để đánh dấu status riêng sau này.
    */
   async acknowledge(id: number, now: Date = new Date()): Promise<boolean> {
-    const result = await this.scheduleRepository.update({
-      id,
-      acknowledged_at: IsNull(),
-      status: 'pending',
-    }, {
-      acknowledged_at: now,
-      remind_at: null,
-      is_reminded: true,
-    });
+    const result = await this.scheduleRepository.update(
+      {
+        id,
+        acknowledged_at: IsNull(),
+        status: 'pending',
+      },
+      {
+        acknowledged_at: now,
+        remind_at: null,
+        is_reminded: true,
+      },
+    );
     return (result.affected ?? 0) > 0;
   }
 
   /** User bấm "Hoãn X phút" — đẩy `remind_at` về thời điểm sau X phút. */
   async snooze(id: number, minutes: number, now: Date = new Date()): Promise<Date | null> {
     const nextAt = new Date(now.getTime() + minutes * 60 * 1000);
-    const result = await this.scheduleRepository.update({
-      id,
-      acknowledged_at: IsNull(),
-      status: 'pending',
-    }, {
-      remind_at: nextAt,
-      is_reminded: false,
-    });
+    const result = await this.scheduleRepository.update(
+      {
+        id,
+        acknowledged_at: IsNull(),
+        status: 'pending',
+      },
+      {
+        remind_at: nextAt,
+        is_reminded: false,
+      },
+    );
     return (result.affected ?? 0) > 0 ? nextAt : null;
   }
 
@@ -313,10 +433,7 @@ export class SchedulesService {
    * Bật lại reminder cho lịch với thời điểm nhắc mới.
    * Reset `acknowledged_at` để cron tiếp tục xử lý.
    */
-  async setReminder(
-    id: number,
-    remindAt: Date,
-  ): Promise<void> {
+  async setReminder(id: number, remindAt: Date): Promise<void> {
     await this.scheduleRepository.update(id, {
       remind_at: remindAt,
       acknowledged_at: null,
@@ -340,7 +457,11 @@ export class SchedulesService {
    * Sau khi gửi reminder xong — đẩy `remind_at` về future để tránh spam,
    * đồng thời nếu user ignore thì cron sẽ nhắc lại sau `repeatMinutes` phút.
    */
-  async rescheduleAfterPing(id: number, repeatMinutes: number, now: Date = new Date()): Promise<void> {
+  async rescheduleAfterPing(
+    id: number,
+    repeatMinutes: number,
+    now: Date = new Date(),
+  ): Promise<void> {
     const nextAt = new Date(now.getTime() + repeatMinutes * 60 * 1000);
     await this.scheduleRepository.update(id, {
       remind_at: nextAt,
@@ -375,11 +496,7 @@ export class SchedulesService {
    * Liệt kê các lịch `pending` của user khớp keyword (title hoặc description).
    * Dùng cho bulk operations. Sắp `start_time` ASC. Tối đa `limit` rows.
    */
-  async findPendingByKeyword(
-    userId: string,
-    keyword: string,
-    limit = 100,
-  ): Promise<Schedule[]> {
+  async findPendingByKeyword(userId: string, keyword: string, limit = 100): Promise<Schedule[]> {
     const pattern = `%${keyword}%`;
     return this.scheduleRepository.find({
       where: [
@@ -395,11 +512,7 @@ export class SchedulesService {
    * Liệt kê các lịch `completed` có `start_time` < `before` của user.
    * Dùng cho `*xoa-completed-truoc`. Sắp `start_time` ASC.
    */
-  async findCompletedBefore(
-    userId: string,
-    before: Date,
-    limit = 100,
-  ): Promise<Schedule[]> {
+  async findCompletedBefore(userId: string, before: Date, limit = 100): Promise<Schedule[]> {
     return this.scheduleRepository.find({
       where: {
         user_id: userId,
@@ -416,11 +529,7 @@ export class SchedulesService {
    * `userId` và `status='pending'` mới bị thay đổi). Trả số rows thực sự
    * đổi. Có audit log per-row qua `markCompleted`.
    */
-  async bulkComplete(
-    userId: string,
-    ids: number[],
-    now: Date = new Date(),
-  ): Promise<number> {
+  async bulkComplete(userId: string, ids: number[], now: Date = new Date()): Promise<number> {
     if (ids.length === 0) return 0;
     const targets = await this.scheduleRepository.find({
       where: {
@@ -475,11 +584,7 @@ export class SchedulesService {
   }
 
   /** Đặt cờ `is_pinned`. Trả schedule sau update hoặc null nếu không thuộc user. */
-  async setPinned(
-    userId: string,
-    id: number,
-    pinned: boolean,
-  ): Promise<Schedule | null> {
+  async setPinned(userId: string, id: number, pinned: boolean): Promise<Schedule | null> {
     const schedule = await this.scheduleRepository.findOne({
       where: { id, user_id: userId },
     });
@@ -492,11 +597,7 @@ export class SchedulesService {
   }
 
   /** Đặt cờ `is_hidden`. Trả schedule sau update hoặc null nếu không thuộc user. */
-  async setHidden(
-    userId: string,
-    id: number,
-    hidden: boolean,
-  ): Promise<Schedule | null> {
+  async setHidden(userId: string, id: number, hidden: boolean): Promise<Schedule | null> {
     const schedule = await this.scheduleRepository.findOne({
       where: { id, user_id: userId },
     });
@@ -513,11 +614,7 @@ export class SchedulesService {
     await this.scheduleRepository.update(id, { status });
     if (before && before.status !== status) {
       const action =
-        status === 'completed'
-          ? 'complete'
-          : status === 'cancelled'
-            ? 'cancel'
-            : 'update';
+        status === 'completed' ? 'complete' : status === 'cancelled' ? 'cancel' : 'update';
       this.auditLog(id, before.user_id, action, {
         status: { from: before.status, to: status },
       });
@@ -559,9 +656,7 @@ export class SchedulesService {
       ...snapshot,
     });
     await this.scheduleRepository.insert(entity);
-    this.logger.log(
-      `Đã khôi phục schedule #${snapshot.id} cho user ${snapshot.user_id}`,
-    );
+    this.logger.log(`Đã khôi phục schedule #${snapshot.id} cho user ${snapshot.user_id}`);
     this.auditLog(snapshot.id, snapshot.user_id, 'restore');
     return entity;
   }
@@ -577,6 +672,83 @@ export class SchedulesService {
     end: Date | null,
     now: Date = new Date(),
   ): Promise<ScheduleStatistics> {
+    if (typeof this.scheduleRepository.createQueryBuilder === 'function') {
+      const baseQb = this.createStatisticsQuery(userId, start, end);
+      const hourExpression = 'EXTRACT(HOUR FROM schedule.start_time)';
+
+      const [statusRows, itemTypeRows, priorityRows, hourRows, recurringActiveCount] =
+        await Promise.all([
+          baseQb
+            .clone()
+            .select('schedule.status', 'key')
+            .addSelect('COUNT(*)', 'count')
+            .groupBy('schedule.status')
+            .getRawMany<{ key: ScheduleStatus; count: string }>(),
+          baseQb
+            .clone()
+            .select('schedule.item_type', 'key')
+            .addSelect('COUNT(*)', 'count')
+            .groupBy('schedule.item_type')
+            .getRawMany<{ key: ScheduleItemType; count: string }>(),
+          baseQb
+            .clone()
+            .select('schedule.priority', 'key')
+            .addSelect('COUNT(*)', 'count')
+            .groupBy('schedule.priority')
+            .getRawMany<{ key: SchedulePriority | null; count: string }>(),
+          baseQb
+            .clone()
+            .select(hourExpression, 'hour')
+            .addSelect('COUNT(*)', 'count')
+            .groupBy(hourExpression)
+            .orderBy('count', 'DESC')
+            .addOrderBy(hourExpression, 'ASC')
+            .limit(3)
+            .getRawMany<{ hour: string; count: string }>(),
+          this.scheduleRepository
+            .createQueryBuilder('schedule')
+            .where('schedule.user_id = :userId', { userId })
+            .andWhere('schedule.status = :status', { status: 'pending' })
+            .andWhere('schedule.recurrence_type <> :none', { none: 'none' })
+            .andWhere('(schedule.recurrence_until IS NULL OR schedule.recurrence_until >= :now)', {
+              now,
+            })
+            .getCount(),
+        ]);
+
+      const { byStatus, byItemType, byPriority } = this.emptyStatistics();
+      let total = 0;
+
+      for (const row of statusRows) {
+        const count = Number(row.count) || 0;
+        byStatus[row.key] = count;
+        total += count;
+      }
+
+      for (const row of itemTypeRows) {
+        byItemType[row.key] = Number(row.count) || 0;
+      }
+
+      for (const row of priorityRows) {
+        const priority = row.key ?? 'normal';
+        byPriority[priority] = (byPriority[priority] ?? 0) + (Number(row.count) || 0);
+      }
+
+      const topHours = hourRows.map((row) => ({
+        hour: Number(row.hour),
+        count: Number(row.count) || 0,
+      }));
+
+      return {
+        total,
+        byStatus,
+        byItemType,
+        byPriority,
+        topHours,
+        recurringActiveCount,
+      };
+    }
+
     const where: Record<string, unknown> = { user_id: userId };
     if (start && end) {
       where.start_time = Between(start, end);
@@ -588,38 +760,6 @@ export class SchedulesService {
 
     const items = await this.scheduleRepository.find({ where });
 
-    const byStatus: Record<ScheduleStatus, number> = {
-      pending: 0,
-      completed: 0,
-      cancelled: 0,
-    };
-    const byItemType: Record<ScheduleItemType, number> = {
-      task: 0,
-      meeting: 0,
-      event: 0,
-      reminder: 0,
-    };
-    const byPriority: Record<SchedulePriority, number> = {
-      low: 0,
-      normal: 0,
-      high: 0,
-    };
-    const hourCounts = new Map<number, number>();
-
-    for (const item of items) {
-      byStatus[item.status] = (byStatus[item.status] ?? 0) + 1;
-      byItemType[item.item_type] = (byItemType[item.item_type] ?? 0) + 1;
-      const p = item.priority ?? 'normal';
-      byPriority[p] = (byPriority[p] ?? 0) + 1;
-      const hour = item.start_time.getHours();
-      hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
-    }
-
-    const topHours = Array.from(hourCounts.entries())
-      .map(([hour, count]) => ({ hour, count }))
-      .sort((a, b) => b.count - a.count || a.hour - b.hour)
-      .slice(0, 3);
-
     const activeRecurring = await this.scheduleRepository.find({
       where: { user_id: userId, status: 'pending' },
     });
@@ -629,14 +769,7 @@ export class SchedulesService {
         (!s.recurrence_until || s.recurrence_until.getTime() >= now.getTime()),
     ).length;
 
-    return {
-      total: items.length,
-      byStatus,
-      byItemType,
-      byPriority,
-      topHours,
-      recurringActiveCount,
-    };
+    return this.buildStatisticsFromItems(items, recurringActiveCount);
   }
 
   /**
@@ -671,10 +804,7 @@ export class SchedulesService {
    * Trả về lịch mới được tạo, hoặc `null` nếu không cần (type='none', đã
    * hết recurrence_until, hoặc input thiếu dữ liệu).
    */
-  async spawnNextIfRecurring(
-    source: Schedule,
-    now: Date = new Date(),
-  ): Promise<Schedule | null> {
+  async spawnNextIfRecurring(source: Schedule, now: Date = new Date()): Promise<Schedule | null> {
     if (!source || source.recurrence_type === 'none') return null;
 
     const nextStart = computeNextOccurrence(

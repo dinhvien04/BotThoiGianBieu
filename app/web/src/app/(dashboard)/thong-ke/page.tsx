@@ -1,6 +1,12 @@
 "use client";
 
 import { useStatistics, useStreak } from "@/lib/hooks";
+import { useToast } from "@/components/dashboard/Toast";
+import {
+  downloadTextFile,
+  statisticsReportToCsv,
+  statisticsReportToHtml,
+} from "@/lib/export-utils";
 
 const weekDays = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"];
 
@@ -22,30 +28,55 @@ const historyLog = [
 ];
 
 export default function StatisticsPage() {
+  const { showToast } = useToast();
   const { data: stats } = useStatistics();
   const { data: streak } = useStreak();
   const totalTasks = stats?.total ?? 0;
   const completedTasks = stats?.byStatus?.completed ?? 0;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const currentStreak = streak?.currentStreak ?? 0;
+
+  const handleExportReport = () => {
+    if (!stats) {
+      showToast("Chưa có dữ liệu thống kê để xuất.", "warning");
+      return;
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadTextFile(
+      `focusflow-report-${stamp}.csv`,
+      statisticsReportToCsv(stats, streak),
+      "text/csv;charset=utf-8",
+    );
+    downloadTextFile(
+      `focusflow-report-${stamp}.html`,
+      statisticsReportToHtml(stats, streak),
+      "text/html;charset=utf-8",
+    );
+    showToast("Đã xuất báo cáo CSV và HTML.", "success");
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Thống kê hiệu suất</h1>
           <p className="text-sm text-on-surface-variant mt-1">
             Dữ liệu được đồng bộ trực tiếp từ hệ thống NestJS của bạn.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button className="flex items-center gap-2 px-4 py-2.5 border border-outline-variant rounded-xl text-sm font-medium text-on-surface hover:bg-surface-container transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
             </svg>
             7 ngày qua
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors">
+          <button
+            type="button"
+            onClick={handleExportReport}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
@@ -55,9 +86,9 @@ export default function StatisticsPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Bar Chart */}
-        <div className="col-span-2 bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
+        <div className="lg:col-span-2 bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold text-on-surface text-lg">Hiệu suất hoàn thành công việc</h2>
             <div className="flex items-center gap-4 text-xs">
@@ -71,7 +102,7 @@ export default function StatisticsPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-end gap-4 h-48">
+          <div className="flex items-end gap-4 h-48 overflow-x-auto pb-2 custom-scrollbar">
             {weekDays.map((day, idx) => (
               <div key={day} className="flex-1 flex flex-col items-center gap-1">
                 <div className="flex items-end gap-1 w-full justify-center h-40">
@@ -135,11 +166,12 @@ export default function StatisticsPage() {
 
       {/* History Table */}
       <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between p-6 pb-4">
+        <div className="flex items-center justify-between p-4 sm:p-6 sm:pb-4">
           <h2 className="font-bold text-on-surface text-lg">Lịch sử thay đổi hệ thống</h2>
           <button className="text-primary text-sm font-medium hover:underline">Xem tất cả</button>
         </div>
-        <table className="w-full">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full min-w-[600px]">
           <thead>
             <tr className="border-b border-surface-container-high">
               <th className="text-left px-6 py-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Thời gian</th>
@@ -170,11 +202,12 @@ export default function StatisticsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         <div className="bg-primary rounded-2xl p-6 text-on-primary">
           <p className="text-sm opacity-80">Tổng thời gian tập trung</p>
           <p className="text-4xl font-bold mt-1">34.5h</p>

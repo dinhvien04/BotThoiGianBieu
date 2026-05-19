@@ -1,36 +1,112 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { typeLabels, priorityLabels } from "@/lib/mock-data";
-import { createSchedule } from "@/lib/api";
-import { useToast } from "@/components/dashboard/Toast";
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { schedulePriorityOptions, scheduleTypeOptions } from '@/lib/mock-data';
+import { createSchedule, getTemplateByName } from '@/lib/api';
+import { useToast } from '@/components/dashboard/Toast';
 
 export default function CreateSchedulePage() {
   const router = useRouter();
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [templateDuration, setTemplateDuration] = useState<number | null>(null);
   const [form, setForm] = useState({
-    type: "ca-nhan",
-    title: "",
-    description: "",
-    startDate: "",
-    startTime: "",
-    endDate: "",
-    endTime: "",
-    priority: "trung-binh",
-    reminder: "15",
-    recurrence: "",
+    type: 'task',
+    title: '',
+    description: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    priority: 'normal',
+    reminder: '15',
+    recurrence: '',
     tags: [] as string[],
   });
+
+  useEffect(() => {
+    const templateName =
+      typeof window === 'undefined'
+        ? null
+        : new URLSearchParams(window.location.search).get('template');
+    if (!templateName) return;
+
+    let cancelled = false;
+    void getTemplateByName(templateName)
+      .then((res) => {
+        if (cancelled) return;
+        if (!res.success) {
+          showToast('Không tìm thấy template đã chọn.', 'error');
+          return;
+        }
+        const template = res.template;
+        setTemplateDuration(template.duration_minutes ?? null);
+        setForm((prev) => ({
+          ...prev,
+          type: template.item_type || 'task',
+          title: template.title,
+          description: template.description ?? '',
+          priority: template.priority || 'normal',
+          reminder: String(template.default_remind_minutes ?? (Number(prev.reminder) || 15)),
+        }));
+        showToast('Đã nạp template vào form tạo lịch.', 'success');
+      })
+      .catch(() => {
+        if (!cancelled) showToast('Không thể nạp template. Vui lòng thử lại.', 'error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showToast]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving || !form.title || !form.startDate || !form.startTime) return;
+    setSaving(true);
+    try {
+      const startIso = `${form.startDate}T${form.startTime}:00`;
+      let endIso =
+        form.endDate && form.endTime ? `${form.endDate}T${form.endTime}:00` : undefined;
+      if (!endIso && templateDuration && templateDuration > 0) {
+        endIso = new Date(
+          new Date(startIso).getTime() + templateDuration * 60000,
+        ).toISOString();
+      }
+      const reminderMinutes = Number(form.reminder) || 15;
+      const remindAt = new Date(
+        new Date(startIso).getTime() - reminderMinutes * 60000,
+      ).toISOString();
+      await createSchedule({
+        title: form.title,
+        description: form.description || undefined,
+        item_type: form.type,
+        start_time: new Date(startIso).toISOString(),
+        end_time: endIso ? new Date(endIso).toISOString() : undefined,
+        priority: form.priority,
+        remind_at: remindAt,
+        recurrence_type: form.recurrence || undefined,
+      });
+      showToast('Tạo lịch thành công!', 'success');
+      router.refresh();
+      router.push('/lich');
+    } catch {
+      showToast('Không thể tạo lịch. Vui lòng thử lại.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-1">
-            <Link href="/lich" className="hover:text-primary">Lịch biểu</Link>
+            <Link href="/lich" className="hover:text-primary">
+              Lịch biểu
+            </Link>
             <span>&rsaquo;</span>
             <span>Thêm lịch mới</span>
           </div>
@@ -38,11 +114,21 @@ export default function CreateSchedulePage() {
         </div>
       </div>
 
-      <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-8">
+      <form onSubmit={handleSubmit} className="bg-surface-container-lowest rounded-2xl shadow-sm p-8">
         {/* Thông tin cơ bản */}
         <div className="flex items-center gap-2 text-primary mb-6">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+            />
           </svg>
           <h2 className="text-lg font-semibold">Thông tin cơ bản</h2>
         </div>
@@ -55,14 +141,18 @@ export default function CreateSchedulePage() {
               onChange={(e) => setForm({ ...form, type: e.target.value })}
               className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
-              {Object.entries(typeLabels).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
+              {scheduleTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-on-surface mb-2">Tiêu đề sự kiện</label>
+            <label className="block text-sm font-medium text-on-surface mb-2">
+              Tiêu đề sự kiện
+            </label>
             <input
               type="text"
               value={form.title}
@@ -86,8 +176,18 @@ export default function CreateSchedulePage() {
 
         {/* Thời gian */}
         <div className="flex items-center gap-2 text-primary mt-8 mb-6">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <h2 className="text-lg font-semibold">Thời gian</h2>
         </div>
@@ -135,25 +235,37 @@ export default function CreateSchedulePage() {
         {form.title && (
           <div className="mt-6 p-4 bg-surface-container-low rounded-xl border border-outline-variant">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-on-primary bg-primary px-2 py-0.5 rounded">XEM TRƯỚC</span>
+              <span className="text-xs font-bold text-on-primary bg-primary px-2 py-0.5 rounded">
+                XEM TRƯỚC
+              </span>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-center w-12">
                 <div className="text-xs text-primary font-bold uppercase">
-                  T {form.startDate ? new Date(form.startDate).getMonth() + 1 : new Date().getMonth() + 1}
+                  T{' '}
+                  {form.startDate
+                    ? new Date(form.startDate).getMonth() + 1
+                    : new Date().getMonth() + 1}
                 </div>
                 <div className="text-2xl font-bold text-on-surface">
-                  {form.startDate ? String(new Date(form.startDate).getDate()).padStart(2, "0") : String(new Date().getDate()).padStart(2, "0")}
+                  {form.startDate
+                    ? String(new Date(form.startDate).getDate()).padStart(2, '0')
+                    : String(new Date().getDate()).padStart(2, '0')}
                 </div>
               </div>
               <div>
                 <p className="font-semibold text-on-surface">{form.title}</p>
                 <p className="text-xs text-on-surface-variant">
-                  {form.startTime || "--:--"} - {form.endTime || "--:--"}
+                  {form.startTime || '--:--'} - {form.endTime || '--:--'}
                 </p>
                 {form.recurrence && (
                   <p className="text-xs text-primary mt-0.5">
-                    Lặp lại {form.recurrence === "daily" ? "hàng ngày" : form.recurrence === "weekly" ? "hàng tuần" : "hàng tháng"}
+                    Lặp lại{' '}
+                    {form.recurrence === 'daily'
+                      ? 'hàng ngày'
+                      : form.recurrence === 'weekly'
+                        ? 'hàng tuần'
+                        : 'hàng tháng'}
                   </p>
                 )}
               </div>
@@ -163,8 +275,18 @@ export default function CreateSchedulePage() {
 
         {/* Tùy chọn nâng cao */}
         <div className="flex items-center gap-2 text-primary mt-8 mb-6">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"
+            />
           </svg>
           <h2 className="text-lg font-semibold">Tùy chọn nâng cao</h2>
         </div>
@@ -173,23 +295,27 @@ export default function CreateSchedulePage() {
           <div>
             <label className="block text-sm font-medium text-on-surface mb-3">Mức độ ưu tiên</label>
             <div className="flex gap-2">
-              {Object.entries(priorityLabels).map(([k, v]) => (
+              {schedulePriorityOptions.map((option) => (
                 <button
-                  key={k}
-                  onClick={() => setForm({ ...form, priority: k })}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${form.priority === k
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                    }`}
+                  key={option.value}
+                  type="button"
+                  onClick={() => setForm({ ...form, priority: option.value })}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    form.priority === option.value
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
                 >
-                  {v}
+                  {option.label}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-on-surface mb-2">Thời gian nhắc nhở</label>
+            <label className="block text-sm font-medium text-on-surface mb-2">
+              Thời gian nhắc nhở
+            </label>
             <select
               value={form.reminder}
               onChange={(e) => setForm({ ...form, reminder: e.target.value })}
@@ -221,24 +347,26 @@ export default function CreateSchedulePage() {
           <div>
             <label className="block text-sm font-medium text-on-surface mb-2">Tags</label>
             <div className="flex flex-wrap gap-2">
-              {["Công việc", "Cá nhân", "Quan trọng", "Học tập"].map((tag) => (
+              {['Công việc', 'Cá nhân', 'Quan trọng', 'Học tập'].map((tag) => (
                 <button
                   key={tag}
+                  type="button"
                   onClick={() => {
                     const tags = form.tags.includes(tag)
                       ? form.tags.filter((t) => t !== tag)
                       : [...form.tags, tag];
                     setForm({ ...form, tags });
                   }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${form.tags.includes(tag)
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                    }`}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    form.tags.includes(tag)
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
                 >
                   #{tag}
                 </button>
               ))}
-              <button className="px-3 py-1.5 rounded-full text-sm font-medium text-primary border border-primary/30 hover:bg-primary/5">
+              <button type="button" className="px-3 py-1.5 rounded-full text-sm font-medium text-primary border border-primary/30 hover:bg-primary/5">
                 + Thêm
               </button>
             </div>
@@ -254,39 +382,14 @@ export default function CreateSchedulePage() {
             Hủy bỏ
           </Link>
           <button
+            type="submit"
             disabled={saving || !form.title || !form.startDate || !form.startTime}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                const startIso = `${form.startDate}T${form.startTime}:00`;
-                const endIso = form.endDate && form.endTime ? `${form.endDate}T${form.endTime}:00` : undefined;
-                const reminderMinutes = Number(form.reminder) || 15;
-                const remindAt = new Date(new Date(startIso).getTime() - reminderMinutes * 60000).toISOString();
-                await createSchedule({
-                  title: form.title,
-                  description: form.description || undefined,
-                  item_type: form.type,
-                  start_time: new Date(startIso).toISOString(),
-                  end_time: endIso ? new Date(endIso).toISOString() : undefined,
-                  priority: form.priority,
-                  remind_at: remindAt,
-                  recurrence_type: form.recurrence || undefined,
-                });
-                showToast("Tạo lịch thành công!", "success");
-                router.refresh();
-                router.push("/lich");
-              } catch {
-                showToast("Không thể tạo lịch. Vui lòng thử lại.", "error");
-              } finally {
-                setSaving(false);
-              }
-            }}
             className="px-6 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? "Đang lưu..." : "Lưu sự kiện"}
+            {saving ? 'Đang lưu...' : 'Lưu sự kiện'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

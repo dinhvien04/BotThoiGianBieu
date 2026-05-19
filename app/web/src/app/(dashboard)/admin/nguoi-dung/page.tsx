@@ -34,7 +34,7 @@ export default function AdminUsersPage() {
         role: role || undefined,
         locked: locked === "" ? undefined : locked === "true",
       });
-      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      if (res.success === false) throw new Error((res as { error?: string; message?: string }).error || (res as { error?: string; message?: string }).message || "API Error");
       setItems(res.items || []);
       setTotal(res.total || 0);
     } catch (err: unknown) {
@@ -198,11 +198,10 @@ export default function AdminUsersPage() {
                 </td>
                 <td className="px-3 py-2">
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      u.role === "admin"
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${u.role === "admin"
                         ? "bg-primary text-on-primary"
                         : "bg-surface-container-low"
-                    }`}
+                      }`}
                   >
                     {u.role}
                   </span>

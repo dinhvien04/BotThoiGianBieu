@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserSettings } from 'src/users/entities/user-settings.entity';
@@ -17,6 +18,7 @@ describe('UsersService', () => {
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    update: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -93,6 +95,7 @@ describe('UsersService', () => {
       const mockSettings: UserSettings = {
         user_id: '123',
         timezone: 'Asia/Ho_Chi_Minh',
+        language: 'vi',
         default_channel_id: '456',
         default_remind_minutes: 30,
         notify_via_dm: false,
@@ -122,6 +125,7 @@ describe('UsersService', () => {
       expect(mockSettingsRepository.create).toHaveBeenCalledWith({
         user_id: '123',
         timezone: 'Asia/Ho_Chi_Minh',
+        language: 'vi',
         default_channel_id: '456',
         default_remind_minutes: 30,
         notify_via_dm: false,
@@ -157,6 +161,45 @@ describe('UsersService', () => {
 
       expect(mockUserRepository.create).not.toHaveBeenCalled();
       expect(mockUserRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should update existing placeholder user with Mezon profile data', async () => {
+      const mockUser: User = {
+        user_id: '123',
+        username: null,
+        display_name: null,
+        role: 'admin',
+        is_locked: false,
+        token_version: 0,
+        created_at: new Date(),
+        updated_at: new Date(),
+        settings: {
+          user_id: '123',
+          timezone: 'Asia/Ho_Chi_Minh',
+          default_channel_id: '456',
+          default_remind_minutes: 30,
+          notify_via_dm: false,
+          notify_via_channel: true,
+          created_at: new Date(),
+          updated_at: new Date(),
+        } as UserSettings,
+      } as User;
+
+      mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockUserRepository.save.mockImplementation(async (user) => user);
+
+      const result = await service.registerUser(input);
+
+      expect(result.isNew).toBe(false);
+      expect(result.user.username).toBe('testuser');
+      expect(result.user.display_name).toBe('Test User');
+      expect(mockUserRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: '123',
+          username: 'testuser',
+          display_name: 'Test User',
+        }),
+      );
     });
 
     it('should create settings if user exists but settings missing', async () => {
@@ -227,6 +270,92 @@ describe('UsersService', () => {
       expect(result.user.username).toBeNull();
       expect(result.user.display_name).toBeNull();
       expect(result.settings.default_channel_id).toBeNull();
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('should update editable profile fields', async () => {
+      const mockUser: User = {
+        user_id: '123',
+        username: 'testuser',
+        display_name: 'Old Name',
+        email: null,
+        phone: null,
+        job_title: null,
+        bio: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as User;
+
+      mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockUserRepository.save.mockImplementation(async (user) => user);
+
+      const result = await service.updateProfile('123', {
+        display_name: 'New Name',
+        email: 'new@example.com',
+        phone: '0900000000',
+        job_title: 'Designer',
+        bio: 'Hello',
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          display_name: 'New Name',
+          email: 'new@example.com',
+          phone: '0900000000',
+          job_title: 'Designer',
+          bio: 'Hello',
+        }),
+      );
+      expect(mockUserRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ user_id: '123', display_name: 'New Name' }),
+      );
+    });
+
+    it('should reject invalid email', async () => {
+      const mockUser: User = {
+        user_id: '123',
+        username: 'testuser',
+        display_name: 'Test User',
+        email: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as User;
+
+      mockUserRepository.findOne.mockResolvedValue(mockUser);
+
+      await expect(service.updateProfile('123', { email: 'bad-email' })).rejects.toThrow(
+        'Email không hợp lệ',
+      );
+      expect(mockUserRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateSettings', () => {
+    it('should update language when valid', async () => {
+      const mockSettings = {
+        user_id: '123',
+        timezone: 'Asia/Ho_Chi_Minh',
+        language: 'en',
+      } as UserSettings;
+
+      mockSettingsRepository.update.mockResolvedValue({ affected: 1 });
+      mockSettingsRepository.findOne.mockResolvedValue(mockSettings);
+
+      const result = await service.updateSettings('123', { language: 'en' });
+
+      expect(mockSettingsRepository.update).toHaveBeenCalledWith(
+        { user_id: '123' },
+        { language: 'en' },
+      );
+      expect(result).toBe(mockSettings);
+    });
+
+    it('should reject unsupported language', async () => {
+      await expect(
+        service.updateSettings('123', { language: 'fr' as 'vi' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockSettingsRepository.update).not.toHaveBeenCalled();
     });
   });
 });

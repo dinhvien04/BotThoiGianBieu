@@ -1,25 +1,27 @@
-const steps = [
-  {
-    number: "01",
-    title: "Tạo sự kiện",
-    description:
-      "Thêm lịch qua Dashboard hoặc gõ lệnh trực tiếp cho Chatbot Mezon.",
-  },
-  {
-    number: "02",
-    title: "Hệ thống theo dõi",
-    description:
-      "Dữ liệu được đồng bộ hóa và phân tích độ ưu tiên một cách tự động.",
-  },
-  {
-    number: "03",
-    title: "Tự động nhắc việc",
-    description:
-      "Nhận thông báo nhắc nhở 15 phút trước khi sự kiện bắt đầu qua Mezon.",
-  },
-];
+"use client";
+
+import { useLandingLanguage } from "./LanguageContext";
 
 export default function HowItWorks() {
+  const { t } = useLandingLanguage();
+  const steps = [
+    {
+      number: "01",
+      title: t("workflow.create.title"),
+      description: t("workflow.create.desc"),
+    },
+    {
+      number: "02",
+      title: t("workflow.track.title"),
+      description: t("workflow.track.desc"),
+    },
+    {
+      number: "03",
+      title: t("workflow.remind.title"),
+      description: t("workflow.remind.desc"),
+    },
+  ];
+
   return (
     <section
       id="workflow"
@@ -31,7 +33,7 @@ export default function HowItWorks() {
           id="workflow-heading"
           className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-16 sm:mb-20 text-lp-on-surface"
         >
-          Quy trình vận hành tối ưu
+          {t("workflow.heading")}
         </h2>
 
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16">

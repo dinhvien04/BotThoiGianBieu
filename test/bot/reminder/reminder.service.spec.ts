@@ -6,12 +6,14 @@ import { DateParser } from 'src/shared/utils/date-parser';
 import { Schedule } from 'src/schedules/entities/schedule.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserSettings } from 'src/users/entities/user-settings.entity';
+import { UsersService } from 'src/users/users.service';
 
 describe('ReminderService', () => {
   let service: ReminderService;
   let mockSchedulesService: jest.Mocked<SchedulesService>;
   let mockBotService: jest.Mocked<BotService>;
   let mockDateParser: jest.Mocked<DateParser>;
+  let mockUsersService: jest.Mocked<UsersService>;
 
   const mockUser: User = {
     user_id: 'user123',
@@ -22,7 +24,7 @@ describe('ReminderService', () => {
     recurrence_type: 'none',
     recurrence_interval: 1,
     recurrence_until: null,
-    priority: "normal",
+    priority: 'normal',
     recurrence_parent_id: null,
     is_pinned: false,
     is_hidden: false,
@@ -39,7 +41,7 @@ describe('ReminderService', () => {
     recurrence_type: 'none',
     recurrence_interval: 1,
     recurrence_until: null,
-    priority: "normal",
+    priority: 'normal',
     recurrence_parent_id: null,
     is_pinned: false,
     is_hidden: false,
@@ -64,7 +66,7 @@ describe('ReminderService', () => {
     recurrence_type: 'none',
     recurrence_interval: 1,
     recurrence_until: null,
-    priority: "normal",
+    priority: 'normal',
     recurrence_parent_id: null,
     is_pinned: false,
     is_hidden: false,
@@ -76,12 +78,19 @@ describe('ReminderService', () => {
       findDueEndNotifications: jest.fn(),
       rescheduleAfterPing: jest.fn(),
       markEndNotified: jest.fn(),
+      findByDateRange: jest.fn(),
+      findOverdue: jest.fn(),
     } as any;
 
     mockBotService = {
+      sendMessage: jest.fn(),
       sendDmInteractive: jest.fn(),
       sendBuzzInteractive: jest.fn(),
       sendDirectMessage: jest.fn(),
+    } as any;
+
+    mockUsersService = {
+      findActiveWithSettings: jest.fn(),
     } as any;
 
     mockDateParser = {
@@ -95,6 +104,7 @@ describe('ReminderService', () => {
         { provide: SchedulesService, useValue: mockSchedulesService },
         { provide: BotService, useValue: mockBotService },
         { provide: DateParser, useValue: mockDateParser },
+        { provide: UsersService, useValue: mockUsersService },
       ],
     }).compile();
 
@@ -108,7 +118,10 @@ describe('ReminderService', () => {
   describe('tick', () => {
     it('should process due start reminders', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
@@ -135,7 +148,10 @@ describe('ReminderService', () => {
 
     it('should process due end notifications', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.markEndNotified.mockResolvedValue();
@@ -170,7 +186,10 @@ describe('ReminderService', () => {
 
     it('should handle errors in start reminder gracefully', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockBotService.sendBuzzInteractive.mockRejectedValue(new Error('Send failed'));
@@ -182,7 +201,10 @@ describe('ReminderService', () => {
 
     it('should handle errors in end notification gracefully', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([scheduleWithSettings]);
       mockBotService.sendBuzzInteractive.mockRejectedValue(new Error('Send failed'));
@@ -228,7 +250,7 @@ describe('ReminderService', () => {
 
       // Act
       await expect(service.tick()).resolves.not.toThrow();
-      
+
       // Second tick should not be skipped
       mockSchedulesService.findDueReminders.mockResolvedValue([]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
@@ -266,7 +288,10 @@ describe('ReminderService', () => {
 
     it('should send via channel when notify_via_dm is false and channel is set', async () => {
       // Arrange
-      const scheduleWithChannel = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithChannel = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithChannel]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
@@ -364,27 +389,28 @@ describe('ReminderService', () => {
       expect(mockBotService.sendDmInteractive).not.toHaveBeenCalled();
     });
 
-    it('should fallback to DM when channel is not set', async () => {
+    it('should not fallback to DM when user disabled DM and channel is not set', async () => {
       // Arrange
       const noChannelSettings = { ...mockSettings, default_channel_id: null };
-      const scheduleNoChannel = { ...mockSchedule, user: { ...mockUser, settings: noChannelSettings } };
+      const scheduleNoChannel = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: noChannelSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleNoChannel]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
-      mockBotService.sendDmInteractive.mockResolvedValue(undefined);
 
       // Act
       await service.tick();
 
       // Assert
-      expect(mockBotService.sendDmInteractive).toHaveBeenCalledWith(
-        'user123',
-        expect.any(Object),
-        expect.any(Array),
-        undefined,
-        true,
-      );
+      expect(mockBotService.sendDmInteractive).not.toHaveBeenCalled();
       expect(mockBotService.sendBuzzInteractive).not.toHaveBeenCalled();
+      expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(
+        1,
+        15,
+        expect.any(Date),
+      );
     });
 
     it('should fallback to DM when settings are undefined', async () => {
@@ -409,10 +435,69 @@ describe('ReminderService', () => {
     });
   });
 
+  describe('daily digest', () => {
+    it('should send today and overdue digest to configured channel', async () => {
+      const now = new Date('2026-04-23T01:00:00Z');
+      const todaySchedule = {
+        ...mockSchedule,
+        id: 2,
+        title: 'Today Task',
+        start_time: new Date('2026-04-23T10:00:00Z'),
+      };
+      const overdueSchedule = {
+        ...mockSchedule,
+        id: 3,
+        title: 'Overdue Task',
+        start_time: new Date('2026-04-22T10:00:00Z'),
+      };
+
+      mockUsersService.findActiveWithSettings.mockResolvedValue([
+        { ...mockUser, settings: mockSettings } as any,
+      ]);
+      mockSchedulesService.findByDateRange.mockResolvedValue([todaySchedule]);
+      mockSchedulesService.findOverdue.mockResolvedValue({
+        items: [overdueSchedule],
+        total: 1,
+      });
+      mockBotService.sendMessage.mockResolvedValue(undefined);
+
+      await service.sendDailyDigest(now);
+
+      expect(mockSchedulesService.findByDateRange).toHaveBeenCalledWith(
+        'user123',
+        expect.any(Date),
+        expect.any(Date),
+      );
+      expect(mockSchedulesService.findOverdue).toHaveBeenCalledWith('user123', now, 5, 0);
+      expect(mockBotService.sendMessage).toHaveBeenCalledTimes(1);
+      const [channelId, text] = mockBotService.sendMessage.mock.calls[0];
+      expect(channelId).toBe('channel123');
+      expect(text).toContain('Today Task');
+      expect(text).toContain('Overdue Task');
+    });
+
+    it('should skip digest when user has no upcoming or overdue schedules', async () => {
+      const now = new Date('2026-04-23T01:00:00Z');
+      mockUsersService.findActiveWithSettings.mockResolvedValue([
+        { ...mockUser, settings: mockSettings } as any,
+      ]);
+      mockSchedulesService.findByDateRange.mockResolvedValue([]);
+      mockSchedulesService.findOverdue.mockResolvedValue({ items: [], total: 0 });
+
+      await service.sendDailyDigest(now);
+
+      expect(mockBotService.sendMessage).not.toHaveBeenCalled();
+      expect(mockBotService.sendDirectMessage).not.toHaveBeenCalled();
+    });
+  });
+
   describe('start reminder embed', () => {
     it('should include schedule details in embed', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
@@ -429,7 +514,10 @@ describe('ReminderService', () => {
 
     it('should include end_time if present', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
@@ -478,7 +566,10 @@ describe('ReminderService', () => {
   describe('start reminder buttons', () => {
     it('should include acknowledge and snooze buttons', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
@@ -506,7 +597,11 @@ describe('ReminderService', () => {
       await service.tick();
 
       // Assert
-      expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(1, 45, expect.any(Date));
+      expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(
+        1,
+        45,
+        expect.any(Date),
+      );
     });
 
     it('should use default snooze minutes when settings not available', async () => {
@@ -521,14 +616,21 @@ describe('ReminderService', () => {
       await service.tick();
 
       // Assert
-      expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(1, 30, expect.any(Date));
+      expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(
+        1,
+        30,
+        expect.any(Date),
+      );
     });
   });
 
   describe('end notification embed', () => {
     it('should include schedule details in end notification', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.markEndNotified.mockResolvedValue();
@@ -563,7 +665,10 @@ describe('ReminderService', () => {
   describe('end notification buttons', () => {
     it('should include done and later buttons', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.markEndNotified.mockResolvedValue();
@@ -582,7 +687,10 @@ describe('ReminderService', () => {
   describe('rescheduleAfterPing', () => {
     it('should reschedule reminder after sending', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
@@ -603,7 +711,10 @@ describe('ReminderService', () => {
   describe('markEndNotified', () => {
     it('should mark schedule as end notified after sending', async () => {
       // Arrange
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.markEndNotified.mockResolvedValue();
@@ -619,7 +730,10 @@ describe('ReminderService', () => {
 
   describe('mention payload', () => {
     it('should pass @username + mention array to channel send', async () => {
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
@@ -629,7 +743,12 @@ describe('ReminderService', () => {
 
       const call = mockBotService.sendBuzzInteractive.mock.calls[0];
       expect(call[3]).toBe('@testuser ');
-      const mentions = call[4] as Array<{ user_id: string; username: string; s: number; e: number }>;
+      const mentions = call[4] as Array<{
+        user_id: string;
+        username: string;
+        s: number;
+        e: number;
+      }>;
       expect(mentions).toHaveLength(1);
       expect(mentions[0]).toMatchObject({
         user_id: 'user123',
@@ -657,7 +776,10 @@ describe('ReminderService', () => {
 
   describe('custom snooze button on start reminder', () => {
     it('should include reminder:custom button on start reminder', async () => {
-      const scheduleWithSettings = { ...mockSchedule, user: { ...mockUser, settings: mockSettings } };
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
       mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
       mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
       mockSchedulesService.rescheduleAfterPing.mockResolvedValue();

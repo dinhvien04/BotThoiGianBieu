@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -8,35 +9,35 @@ import {
   Query,
   Res,
   UnauthorizedException,
-} from "@nestjs/common";
-import { AuthService, ChannelAppAuthBody } from "./auth.service";
+} from '@nestjs/common';
+import { AuthService, ChannelAppAuthBody } from './auth.service';
 
 interface HttpResponse {
   setHeader(name: string, value: string | string[]): this;
   redirect(url: string): void;
 }
 
-@Controller("auth")
+@Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
   constructor(private readonly authService: AuthService) {}
 
-  @Get("mezon")
+  @Get('mezon')
   startMezonLogin(
-    @Query("returnTo") returnTo: string | undefined,
+    @Query('returnTo') returnTo: string | undefined,
     @Res() response: HttpResponse,
   ): void {
     const start = this.authService.createMezonOAuthStart(returnTo);
-    response.setHeader("Set-Cookie", start.cookies);
+    response.setHeader('Set-Cookie', start.cookies);
     response.redirect(start.authorizationUrl);
   }
 
-  @Get("mezon/callback")
+  @Get('mezon/callback')
   async completeMezonLogin(
-    @Query("code") code: string | undefined,
-    @Query("state") state: string | undefined,
-    @Headers("cookie") cookieHeader: string | undefined,
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Headers('cookie') cookieHeader: string | undefined,
     @Res() response: HttpResponse,
   ): Promise<void> {
     try {
@@ -46,7 +47,7 @@ export class AuthController {
         cookieHeader,
       });
 
-      response.setHeader("Set-Cookie", [
+      response.setHeader('Set-Cookie', [
         ...this.authService.clearMezonOAuthCookies(),
         this.authService.createSessionCookie(result.sessionToken),
       ]);
@@ -54,32 +55,26 @@ export class AuthController {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Mezon OAuth callback failed: ${message}`);
-      response.setHeader(
-        "Set-Cookie",
-        this.authService.clearMezonOAuthCookies(),
-      );
-      response.redirect(this.authService.createLoginErrorUrl("mezon_failed"));
+      response.setHeader('Set-Cookie', this.authService.clearMezonOAuthCookies());
+      response.redirect(this.authService.createLoginErrorUrl(this.getOAuthErrorCode(err)));
     }
   }
 
-  @Post("mezon/channel-app")
+  @Post('mezon/channel-app')
   async loginWithChannelApp(
     @Body() body: ChannelAppAuthBody,
     @Res({ passthrough: true }) response: HttpResponse,
   ): Promise<unknown> {
     const result = await this.authService.authenticateChannelApp(body);
-    response.setHeader(
-      "Set-Cookie",
-      this.authService.createSessionCookie(result.accessToken),
-    );
+    response.setHeader('Set-Cookie', this.authService.createSessionCookie(result.accessToken));
     return result;
   }
 
-  @Get("mezon/me")
-  getCurrentUser(@Headers("cookie") cookieHeader: string | undefined) {
-    const session = this.authService.readSessionFromCookie(cookieHeader);
+  @Get('mezon/me')
+  async getCurrentUser(@Headers('cookie') cookieHeader: string | undefined) {
+    const session = await this.authService.readActiveSessionFromCookie(cookieHeader);
     if (!session) {
-      throw new UnauthorizedException("Not authenticated");
+      throw new UnauthorizedException('Not authenticated');
     }
 
     return {
@@ -93,9 +88,30 @@ export class AuthController {
     };
   }
 
-  @Post("logout")
-  logout(@Res({ passthrough: true }) response: HttpResponse) {
-    response.setHeader("Set-Cookie", this.authService.clearSessionCookie());
+  @Post('logout')
+  async logout(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Res({ passthrough: true }) response: HttpResponse,
+  ) {
+    await this.authService.revokeSessionFromCookie(cookieHeader);
+    response.setHeader('Set-Cookie', [
+      this.authService.clearSessionCookie(),
+      ...this.authService.clearMezonOAuthCookies(),
+    ]);
     return { success: true };
+  }
+
+  private getOAuthErrorCode(err: unknown): string {
+    const message = err instanceof Error ? err.message.toLowerCase() : '';
+    if (err instanceof BadRequestException) {
+      return 'mezon_callback';
+    }
+    if (err instanceof UnauthorizedException) {
+      if (message.includes('state')) return 'mezon_state';
+      if (message.includes('token')) return 'mezon_token';
+      if (message.includes('unavailable')) return 'mezon_unreachable';
+      if (message.includes('user')) return 'mezon_user';
+    }
+    return 'mezon_failed';
   }
 }

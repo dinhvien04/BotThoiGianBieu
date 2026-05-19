@@ -1,31 +1,32 @@
-const features = [
-  {
-    icon: "calendar_month",
-    title: "Quản lý sự kiện",
-    description:
-      "Giao diện trực quan giúp bạn tạo và sắp xếp các sự kiện quan trọng một cách khoa học.",
-  },
-  {
-    icon: "notifications",
-    title: "Nhắc việc tự động",
-    description:
-      "Thông báo thông minh đa nền tảng, đảm bảo bạn không bao giờ bỏ lỡ một deadline nào.",
-  },
-  {
-    icon: "smart_toy",
-    title: "Chatbot Mezon",
-    description:
-      "Tương tác trực tiếp bằng lệnh text để thêm lịch nhanh chóng ngay khi đang chat.",
-  },
-  {
-    icon: "insights",
-    title: "Thống kê tiến độ",
-    description:
-      "Biểu đồ phân tích hiệu suất làm việc giúp bạn đánh giá quá trình hoàn thành mục tiêu.",
-  },
-];
+"use client";
+
+import { useLandingLanguage } from "./LanguageContext";
 
 export default function Features() {
+  const { t } = useLandingLanguage();
+  const features = [
+    {
+      icon: "calendar_month",
+      title: t("features.calendar.title"),
+      description: t("features.calendar.desc"),
+    },
+    {
+      icon: "notifications",
+      title: t("features.reminder.title"),
+      description: t("features.reminder.desc"),
+    },
+    {
+      icon: "smart_toy",
+      title: t("features.bot.title"),
+      description: t("features.bot.desc"),
+    },
+    {
+      icon: "insights",
+      title: t("features.stats.title"),
+      description: t("features.stats.desc"),
+    },
+  ];
+
   return (
     <section
       id="features"
@@ -38,11 +39,10 @@ export default function Features() {
             id="features-heading"
             className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-lp-on-surface"
           >
-            Tất cả công cụ quản lý lịch trình trong một hệ thống
+            {t("features.heading")}
           </h2>
           <p className="text-lp-on-surface-variant text-base max-w-2xl mx-auto">
-            Tối ưu hiệu suất làm việc của bạn với sự kết hợp hoàn hảo giữa công
-            nghệ Web Dashboard và Chatbot thông minh.
+            {t("features.subheading")}
           </p>
         </div>
 
@@ -50,7 +50,7 @@ export default function Features() {
           {features.map((feature) => (
             <article
               key={feature.title}
-              className="glass-card p-6 sm:p-8 rounded-2xl hover:border-lp-primary/50 hover-lift group"
+              className="glass-card p-6 sm:p-8 rounded-3xl hover:border-lp-primary/40 hover-lift group"
             >
               <div className="w-12 h-12 rounded-xl bg-lp-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <span

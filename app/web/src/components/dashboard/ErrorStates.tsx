@@ -96,7 +96,7 @@ function ErrorTemplate({
   retryLabel?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-md mx-auto">
+    <div className="bg-surface-container-lowest rounded-2xl p-8 shadow-sm text-center max-w-md mx-auto">
       <div className="flex justify-center mb-4">{icon}</div>
       <h3 className="text-lg font-bold text-on-surface">{title}</h3>
       <p className="text-sm text-on-surface-variant mt-2 max-w-xs mx-auto">{message}</p>

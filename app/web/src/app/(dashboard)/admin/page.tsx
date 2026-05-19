@@ -15,7 +15,7 @@ export default function AdminDashboardPage() {
     adminGetStats()
       .then((res) => {
         if (!cancelled) {
-          if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+          if (res.success === false) throw new Error((res as { error?: string; message?: string }).error || (res as { error?: string; message?: string }).message || "API Error");
           setStats(res.stats);
         }
       })
@@ -126,8 +126,8 @@ function KpiCard({
   return (
     <div
       className={`card-lift rounded-2xl p-4 border ${tone === "warn"
-          ? "border-tertiary/40 bg-tertiary-container text-on-tertiary-container"
-          : "border-outline-variant bg-surface-container-lowest"
+        ? "border-tertiary/40 bg-tertiary-container text-on-tertiary-container"
+        : "border-outline-variant bg-surface-container-lowest"
         }`}
     >
       <p className="text-xs text-on-surface-variant uppercase tracking-wide">{label}</p>

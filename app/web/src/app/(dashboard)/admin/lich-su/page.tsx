@@ -26,7 +26,7 @@ export default function AdminAuditPage() {
         action: action || undefined,
         schedule_id: scheduleId ? Number(scheduleId) : undefined,
       });
-      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      if (res.success === false) throw new Error((res as { error?: string; message?: string }).error || (res as { error?: string; message?: string }).message || "API Error");
       setItems(res.items || []);
       setTotal(res.total || 0);
     } catch (err: unknown) {

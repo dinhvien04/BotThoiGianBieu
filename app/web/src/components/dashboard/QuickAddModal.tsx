@@ -28,7 +28,7 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl w-full max-w-md shadow-xl">
+      <div className="relative bg-surface-container-lowest rounded-2xl w-full max-w-md shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-surface-container-high">
           <h2 className="text-lg font-bold text-on-surface">Thêm nhanh lịch</h2>
@@ -86,9 +86,8 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
                 <button
                   key={t.value}
                   onClick={() => setType(t.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    type === t.value ? "text-on-primary" : "bg-surface-container text-on-surface-variant"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${type === t.value ? "text-on-primary" : "bg-surface-container text-on-surface-variant"
+                    }`}
                   style={type === t.value ? { backgroundColor: t.color } : undefined}
                 >
                   {t.label}

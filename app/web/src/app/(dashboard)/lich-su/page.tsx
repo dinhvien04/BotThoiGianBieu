@@ -38,7 +38,7 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Lịch sử thay đổi</h1>
           <p className="text-sm text-on-surface-variant mt-1">
@@ -53,7 +53,7 @@ export default function HistoryPage() {
         </button>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto w-full sm:w-auto pb-2 custom-scrollbar">
         {(["all", "create", "update", "complete", "delete"] as const).map((type) => (
           <button
             key={type}

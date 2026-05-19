@@ -42,7 +42,7 @@ export default function AdminSettingsPage() {
     setError(null);
     try {
       const res = await adminGetSettings();
-      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      if (res.success === false) throw new Error((res as { error?: string; message?: string }).error || (res as { error?: string; message?: string }).message || "API Error");
       setSettings(res.settings || {});
       setDrafts(res.settings || {});
     } catch (err: unknown) {

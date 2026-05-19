@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useLandingLanguage } from "./LanguageContext";
 
 export default function CTA() {
+  const { t } = useLandingLanguage();
+
   return (
     <section
       aria-labelledby="cta-heading"
@@ -22,27 +27,27 @@ export default function CTA() {
             id="cta-heading"
             className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-6 relative z-10 text-lp-on-surface"
           >
-            Biến Mezon thành trợ lý quản lý công việc của bạn
+            {t("cta.heading")}
           </h2>
           <p className="text-base sm:text-lg text-lp-on-surface-variant mb-10 max-w-2xl mx-auto relative z-10">
-            Gia nhập cùng 500+ đội ngũ đang tối ưu hóa hiệu suất làm việc mỗi ngày.
+            {t("cta.subheading")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
             <Link
               href="/dang-nhap"
-              className="bg-lp-primary-container text-lp-on-primary-container font-semibold px-8 sm:px-10 py-4 rounded-2xl shadow-xl hover:scale-105 transition-transform flex items-center justify-center gap-2"
+              className="bg-lp-primary text-lp-on-primary font-bold px-8 sm:px-10 py-4 rounded-full shadow-xl shadow-lp-primary/25 hover:shadow-lp-primary/40 hover:scale-105 transition-all flex items-center justify-center gap-2"
             >
-              Vào Dashboard
+              {t("cta.dashboard")}
               <span className="material-symbols-outlined" aria-hidden="true">
                 arrow_forward
               </span>
             </Link>
             <button
               type="button"
-              className="bg-lp-surface border border-lp-outline-variant text-lp-on-surface font-semibold px-8 sm:px-10 py-4 rounded-2xl hover:bg-lp-surface-container-low transition-all flex items-center justify-center gap-2"
+              className="bg-lp-surface border border-lp-outline-variant/60 text-lp-on-surface font-semibold px-8 sm:px-10 py-4 rounded-full hover:bg-lp-surface-container-high/60 hover:border-lp-outline-variant transition-all flex items-center justify-center gap-2"
             >
-              Kết nối Mezon
+              {t("cta.connect")}
               <span className="material-symbols-outlined" aria-hidden="true">
                 link
               </span>

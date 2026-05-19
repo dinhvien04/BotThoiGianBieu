@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useTags, useSchedules } from "@/lib/hooks";
 import { createTag, deleteTag } from "@/lib/api";
+import { useLanguage } from "@/components/dashboard/LanguageContext";
 
 const defaultColors = ["#6750A4", "#F2994A", "#27AE60", "#2F80ED", "#EB5757", "#9B51E0"];
 
 export default function TagsPage() {
+  const { language } = useLanguage();
+  const isEnglish = language === "en";
   const { data: apiTags, refetch: refetchTags } = useTags();
   const tags = (apiTags ?? []).map((t, i) => ({
     ...t,
@@ -14,17 +17,17 @@ export default function TagsPage() {
     count: 0,
   }));
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
-  const selectedTag = tags.find((t) => t.id === selectedTagId) ?? tags[0] ?? { id: 0, name: "Chưa có thẻ", color: "#6750A4", count: 0, user_id: "", created_at: "" };
+  const selectedTag = tags.find((t) => t.id === selectedTagId) ?? tags[0] ?? { id: 0, name: isEnglish ? "No tags" : "Chưa có thẻ", color: "#6750A4", count: 0, user_id: "", created_at: "" };
 
   const handleCreateTag = async () => {
-    const name = prompt("Nhập tên thẻ mới (a-z, 0-9, -, _):");
+    const name = prompt(isEnglish ? "Enter new tag name (a-z, 0-9, -, _):" : "Nhập tên thẻ mới (a-z, 0-9, -, _):");
     if (!name) return;
     await createTag(name);
     refetchTags();
   };
 
   const handleDeleteTag = async (name: string) => {
-    if (!confirm(`Xóa thẻ "${name}"?`)) return;
+    if (!confirm(isEnglish ? `Delete tag "${name}"?` : `Xóa thẻ "${name}"?`)) return;
     await deleteTag(name);
     refetchTags();
   };
@@ -36,13 +39,13 @@ export default function TagsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left - Tag List */}
         <div className="space-y-4">
           <div>
-            <h1 className="text-2xl font-bold text-on-surface">Quản lý Thẻ</h1>
+            <h1 className="text-2xl font-bold text-on-surface">{isEnglish ? "Tag management" : "Quản lý Thẻ"}</h1>
             <p className="text-sm text-on-surface-variant mt-1">
-              Tổ chức công việc theo danh mục
+              {isEnglish ? "Organize work by category" : "Tổ chức công việc theo danh mục"}
             </p>
           </div>
 
@@ -50,7 +53,7 @@ export default function TagsPage() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            Tạo thẻ mới
+            {isEnglish ? "Create new tag" : "Tạo thẻ mới"}
           </button>
 
           <div className="space-y-2">
@@ -71,7 +74,7 @@ export default function TagsPage() {
                 <div className="flex-1">
                   <p className="font-medium">{tag.name}</p>
                   <p className={`text-xs ${selectedTag.id === tag.id ? "text-on-primary/70" : "text-on-surface-variant"}`}>
-                    {tag.count} sự kiện
+                    {tag.count} {isEnglish ? "events" : "sự kiện"}
                   </p>
                 </div>
               </button>
@@ -80,7 +83,7 @@ export default function TagsPage() {
         </div>
 
         {/* Right - Tag Events */}
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: selectedTag.color + "20" }}>
@@ -90,15 +93,15 @@ export default function TagsPage() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-on-surface">
-                  Lịch trình thuộc thẻ: <span style={{ color: selectedTag.color }}>{selectedTag.name}</span>
+                  {isEnglish ? "Schedules tagged" : "Lịch trình thuộc thẻ"}: <span style={{ color: selectedTag.color }}>{selectedTag.name}</span>
                 </h2>
                 <p className="text-xs text-on-surface-variant">
-                  Đang hiển thị các sự kiện được gắn nhãn này
+                  {isEnglish ? "Showing events assigned to this tag" : "Đang hiển thị các sự kiện được gắn nhãn này"}
                 </p>
               </div>
             </div>
             <button className="text-primary text-sm font-medium hover:underline">
-              Xem tất cả &rarr;
+              {isEnglish ? "View all" : "Xem tất cả"} &rarr;
             </button>
           </div>
 
@@ -122,7 +125,7 @@ export default function TagsPage() {
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                           </svg>
-                          Đã hoàn thành
+                          {isEnglish ? "Completed" : "Đã hoàn thành"}
                         </p>
                       )}
                     </div>
@@ -138,7 +141,7 @@ export default function TagsPage() {
 
             {tagSchedules.length === 0 && (
               <div className="text-center py-12 text-on-surface-variant">
-                <p>Chưa có sự kiện nào được gắn thẻ &ldquo;{selectedTag.name}&rdquo;</p>
+                <p>{isEnglish ? `No events are tagged "${selectedTag.name}"` : `Chưa có sự kiện nào được gắn thẻ “${selectedTag.name}”`}</p>
               </div>
             )}
           </div>
@@ -151,9 +154,11 @@ export default function TagsPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-semibold text-on-surface">Mẹo nhỏ</p>
+              <p className="text-sm font-semibold text-on-surface">{isEnglish ? "Small tip" : "Mẹo nhỏ"}</p>
               <p className="text-xs text-on-surface-variant mt-0.5">
-                Sử dụng màu sắc tương phản để phân biệt nhanh các dự án quan trọng trên lịch trình của bạn.
+                {isEnglish
+                  ? "Use contrasting colors to quickly distinguish important projects on your schedule."
+                  : "Sử dụng màu sắc tương phản để phân biệt nhanh các dự án quan trọng trên lịch trình của bạn."}
               </p>
             </div>
           </div>

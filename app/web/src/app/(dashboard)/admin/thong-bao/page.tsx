@@ -20,7 +20,7 @@ export default function AdminBroadcastPage() {
   const loadHistory = useCallback(async () => {
     try {
       const res = await adminListBroadcasts({ page: 1, limit: 20 });
-      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      if (res.success === false) throw new Error((res as { error?: string; message?: string }).error || (res as { error?: string; message?: string }).message || "API Error");
       setItems(res.items || []);
       setTotal(res.total || 0);
     } catch (err: unknown) {

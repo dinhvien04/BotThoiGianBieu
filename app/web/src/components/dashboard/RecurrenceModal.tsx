@@ -35,7 +35,7 @@ export default function RecurrenceModal({ isOpen, onClose, eventTitle = "Sự ki
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl w-full max-w-md shadow-xl">
+      <div className="relative bg-surface-container-lowest rounded-2xl w-full max-w-md shadow-xl">
         <div className="flex items-center justify-between p-5 border-b border-surface-container-high">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
@@ -77,9 +77,8 @@ export default function RecurrenceModal({ isOpen, onClose, eventTitle = "Sự ki
                 <button
                   key={f.value}
                   onClick={() => setFrequency(f.value)}
-                  className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    frequency === f.value ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
-                  }`}
+                  className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${frequency === f.value ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
+                    }`}
                 >
                   {f.label}
                 </button>
@@ -111,9 +110,8 @@ export default function RecurrenceModal({ isOpen, onClose, eventTitle = "Sự ki
                   <button
                     key={day.value}
                     onClick={() => toggleDay(day.value)}
-                    className={`w-10 h-10 rounded-xl text-xs font-medium transition-colors ${
-                      selectedDays.includes(day.value) ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
-                    }`}
+                    className={`w-10 h-10 rounded-xl text-xs font-medium transition-colors ${selectedDays.includes(day.value) ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
+                      }`}
                   >
                     {day.label}
                   </button>

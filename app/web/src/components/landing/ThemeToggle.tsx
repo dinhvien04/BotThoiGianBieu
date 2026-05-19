@@ -3,13 +3,30 @@
 import { useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
+type ThemeToggleLabels = {
+  toLight: string;
+  toDark: string;
+  light: string;
+  dark: string;
+};
 
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
-export default function ThemeToggle({ className = "" }: { className?: string }) {
+export default function ThemeToggle({
+  className = "",
+  labels = {
+    toLight: "Chuyển sang chế độ sáng",
+    toDark: "Chuyển sang chế độ tối",
+    light: "Chế độ sáng",
+    dark: "Chế độ tối",
+  },
+}: {
+  className?: string;
+  labels?: ThemeToggleLabels;
+}) {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
@@ -37,8 +54,8 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
     <button
       type="button"
       onClick={toggle}
-      aria-label={isDark ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
-      title={isDark ? "Chế độ sáng" : "Chế độ tối"}
+      aria-label={isDark ? labels.toLight : labels.toDark}
+      title={isDark ? labels.light : labels.dark}
       className={`inline-flex items-center justify-center w-10 h-10 rounded-full border border-black/10 dark:border-white/15 text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 transition-all ${className}`}
     >
       <span

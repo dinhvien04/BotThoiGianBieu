@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { adminGetStats, type AdminDashboardStats } from "@/lib/api";
+import { adminGetStats, getApiErrorMsg, type AdminDashboardStats } from "@/lib/api";
 
 export default function AdminStatsPage() {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
@@ -12,7 +12,7 @@ export default function AdminStatsPage() {
     adminGetStats()
       .then((res) => {
         if (!cancelled) {
-          if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+          if (res.success === false) throw new Error(getApiErrorMsg(res));
           setStats(res.stats);
         }
       })

@@ -1,30 +1,24 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import {
-  createHash,
-  createHmac,
-  randomBytes,
-  timingSafeEqual,
-} from "node:crypto";
-import { UsersService } from "../users/users.service";
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { UsersService } from '../users/users.service';
 
-const AUTHORIZATION_URL = "https://oauth2.mezon.ai/oauth2/auth";
-const TOKEN_URL = "https://oauth2.mezon.ai/oauth2/token";
-const USERINFO_URL = "https://oauth2.mezon.ai/userinfo";
+const AUTHORIZATION_URL = 'https://oauth2.mezon.ai/oauth2/auth';
+const TOKEN_URL = 'https://oauth2.mezon.ai/oauth2/token';
+const USERINFO_URL = 'https://oauth2.mezon.ai/userinfo';
 
-const SESSION_COOKIE = "btgb_auth";
-const OAUTH_STATE_COOKIE = "btgb_mezon_state";
-const OAUTH_RETURN_TO_COOKIE = "btgb_mezon_return_to";
-const DEFAULT_WEB_URL = "http://localhost:3000";
-const DEFAULT_API_URL = "http://localhost:3001";
-const DEFAULT_RETURN_TO = "/dashboard";
+const SESSION_COOKIE = 'btgb_auth';
+const OAUTH_STATE_COOKIE = 'btgb_mezon_state';
+const OAUTH_RETURN_TO_COOKIE = 'btgb_mezon_return_to';
+const DEFAULT_WEB_URL = 'http://localhost:3000';
+const DEFAULT_API_URL = 'http://localhost:3001';
+const DEFAULT_RETURN_TO = '/dashboard';
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const CHANNEL_AUTH_MAX_AGE_SECONDS = 60 * 60 * 24;
+const OAUTH_FETCH_TIMEOUT_MS = 10_000;
+const SESSION_IAT_CLOCK_SKEW_SECONDS = 300;
+
+type CookieSameSite = 'Lax' | 'Strict' | 'None';
 
 export interface ChannelAppAuthBody {
   hashData?: string;
@@ -36,7 +30,8 @@ export interface SessionPayload {
   sub: string;
   username: string | null;
   displayName: string | null;
-  provider: "mezon";
+  provider: 'mezon';
+  tokenVersion: number;
   iat: number;
   exp: number;
 }
@@ -89,6 +84,7 @@ interface ParsedChannelAuth {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private warnedSessionSecretFallback = false;
 
   constructor(
     private readonly config: ConfigService,
@@ -101,37 +97,35 @@ export class AuthService {
     const safeReturnTo = this.normalizeReturnTo(returnTo);
     const url = new URL(AUTHORIZATION_URL);
 
-    url.searchParams.set("client_id", oauth.clientId);
-    url.searchParams.set("redirect_uri", oauth.redirectUri);
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set("scope", oauth.scope);
-    url.searchParams.set("state", state);
+    url.searchParams.set('client_id', oauth.clientId);
+    url.searchParams.set('redirect_uri', oauth.redirectUri);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('scope', oauth.scope);
+    url.searchParams.set('state', state);
 
     return {
       authorizationUrl: url.toString(),
       cookies: [
         this.buildCookie(OAUTH_STATE_COOKIE, state, {
           maxAgeSeconds: 600,
-          path: "/auth/mezon",
+          path: '/auth/mezon',
         }),
         this.buildCookie(OAUTH_RETURN_TO_COOKIE, safeReturnTo, {
           maxAgeSeconds: 600,
-          path: "/auth/mezon",
+          path: '/auth/mezon',
         }),
       ],
     };
   }
 
-  async completeMezonOAuth(
-    input: OAuthCompleteInput,
-  ): Promise<OAuthCompleteResult> {
+  async completeMezonOAuth(input: OAuthCompleteInput): Promise<OAuthCompleteResult> {
     if (!input.code || !input.state) {
-      throw new BadRequestException("Missing Mezon OAuth callback parameters");
+      throw new BadRequestException('Missing Mezon OAuth callback parameters');
     }
 
     const cookies = this.parseCookies(input.cookieHeader);
     if (cookies[OAUTH_STATE_COOKIE] !== input.state) {
-      throw new UnauthorizedException("Invalid Mezon OAuth state");
+      throw new UnauthorizedException('Invalid Mezon OAuth state');
     }
 
     const oauth = this.getOAuthConfig();
@@ -139,22 +133,21 @@ export class AuthService {
     const mezonUser = await this.fetchMezonUser(token);
     const user = this.normalizeOAuthUser(mezonUser);
 
-    await this.usersService.registerUser(user);
+    const registered = await this.usersService.registerUser(user);
 
     const sessionToken = this.signSession({
       sub: user.user_id,
       username: user.username,
       displayName: user.display_name,
-      provider: "mezon",
+      provider: 'mezon',
+      tokenVersion: registered.user.token_version ?? 0,
       iat: this.nowSeconds(),
       exp: this.nowSeconds() + SESSION_TTL_SECONDS,
     });
 
     return {
       sessionToken,
-      redirectUrl: this.createWebUrl(
-        cookies[OAUTH_RETURN_TO_COOKIE] ?? DEFAULT_RETURN_TO,
-      ),
+      redirectUrl: this.createWebUrl(cookies[OAUTH_RETURN_TO_COOKIE] ?? DEFAULT_RETURN_TO),
     };
   }
 
@@ -163,20 +156,21 @@ export class AuthService {
     const appSecret = this.getMezonAppSecret();
 
     if (!this.validateMezonHash(appSecret, rawHashData)) {
-      throw new UnauthorizedException("Invalid Mezon hash signature");
+      throw new UnauthorizedException('Invalid Mezon hash signature');
     }
 
     const parsed = this.parseChannelAuthData(rawHashData);
     this.assertFreshChannelAuth(parsed.auth_date);
 
     const user = this.normalizeChannelUser(parsed.user);
-    await this.usersService.registerUser(user);
+    const registered = await this.usersService.registerUser(user);
 
     const accessToken = this.signSession({
       sub: user.user_id,
       username: user.username,
       displayName: user.display_name,
-      provider: "mezon",
+      provider: 'mezon',
+      tokenVersion: registered.user.token_version ?? 0,
       iat: this.nowSeconds(),
       exp: this.nowSeconds() + SESSION_TTL_SECONDS,
     });
@@ -196,27 +190,47 @@ export class AuthService {
     return token ? this.verifySession(token) : null;
   }
 
+  async readActiveSessionFromCookie(cookieHeader?: string): Promise<SessionPayload | null> {
+    const session = this.readSessionFromCookie(cookieHeader);
+    if (!session) {
+      return null;
+    }
+    const user = await this.usersService.findByUserId(session.sub);
+    if (!user || user.is_locked || (user.token_version ?? 0) !== session.tokenVersion) {
+      return null;
+    }
+    return session;
+  }
+
   createSessionCookie(sessionToken: string): string {
     return this.buildCookie(SESSION_COOKIE, sessionToken, {
       maxAgeSeconds: SESSION_TTL_SECONDS,
-      path: "/",
+      path: '/',
     });
   }
 
   clearSessionCookie(): string {
-    return this.clearCookie(SESSION_COOKIE, "/");
+    return this.clearCookie(SESSION_COOKIE, '/');
+  }
+
+  async revokeSessionFromCookie(cookieHeader?: string): Promise<void> {
+    const session = this.readSessionFromCookie(cookieHeader);
+    if (!session) {
+      return;
+    }
+    await this.usersService.incrementTokenVersion(session.sub);
   }
 
   clearMezonOAuthCookies(): string[] {
     return [
-      this.clearCookie(OAUTH_STATE_COOKIE, "/auth/mezon"),
-      this.clearCookie(OAUTH_RETURN_TO_COOKIE, "/auth/mezon"),
+      this.clearCookie(OAUTH_STATE_COOKIE, '/auth/mezon'),
+      this.clearCookie(OAUTH_RETURN_TO_COOKIE, '/auth/mezon'),
     ];
   }
 
   createLoginErrorUrl(error: string): string {
-    const url = new URL("/dang-nhap", this.getWebUrl());
-    url.searchParams.set("error", error);
+    const url = new URL('/dang-nhap', this.getWebUrl());
+    url.searchParams.set('error', error);
     return url.toString();
   }
 
@@ -226,7 +240,7 @@ export class AuthService {
     state: string,
   ): Promise<string> {
     const form = new URLSearchParams({
-      grant_type: "authorization_code",
+      grant_type: 'authorization_code',
       code,
       state,
       client_id: oauth.clientId,
@@ -234,87 +248,101 @@ export class AuthService {
       redirect_uri: oauth.redirectUri,
     });
 
-    const response = await fetch(TOKEN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    const { response, data } = await this.fetchOAuthJson(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form,
     });
-    const data = (await response.json()) as OAuthTokenResponse;
+    const tokenData = this.isRecord(data) ? (data as OAuthTokenResponse) : {};
 
-    if (!response.ok || typeof data.access_token !== "string") {
+    if (!response.ok || typeof tokenData.access_token !== 'string') {
       this.logger.error(
-        `Mezon token exchange failed (${response.status}): ${JSON.stringify(data)}`,
+        `Mezon token exchange failed (${response.status}): ${JSON.stringify(
+          this.sanitizeOAuthError(data),
+        )}`,
       );
-      throw new UnauthorizedException("Mezon token exchange failed");
+      throw new UnauthorizedException('Mezon token exchange failed');
     }
 
-    return data.access_token;
+    return tokenData.access_token;
   }
 
   private async fetchMezonUser(accessToken: string): Promise<Record<string, unknown>> {
-    const response = await fetch(USERINFO_URL, {
+    const { response, data } = await this.fetchOAuthJson(USERINFO_URL, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const data = (await response.json()) as unknown;
 
     if (!response.ok || !this.isRecord(data)) {
       this.logger.error(
-        `Mezon userinfo failed (${response.status}): ${JSON.stringify(data)}`,
+        `Mezon userinfo failed (${response.status}): ${JSON.stringify(
+          this.sanitizeOAuthError(data),
+        )}`,
       );
-      throw new UnauthorizedException("Cannot fetch Mezon user info");
+      throw new UnauthorizedException('Cannot fetch Mezon user info');
     }
 
     return data;
+  }
+
+  private async fetchOAuthJson(
+    url: string,
+    init: RequestInit,
+  ): Promise<{ response: Response; data: unknown }> {
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(this.getOAuthFetchTimeoutMs()),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Mezon OAuth request failed: ${message}`);
+      throw new UnauthorizedException('Mezon OAuth service unavailable');
+    }
+
+    let data: unknown = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    return { response, data };
   }
 
   private normalizeOAuthUser(data: Record<string, unknown>): NormalizedMezonUser {
     const nestedUser = this.isRecord(data.user) ? data.user : undefined;
     const source = nestedUser ?? data;
     const id =
-      this.readString(source, ["id", "user_id", "sub"]) ??
-      this.readString(data, ["sub", "id", "user_id"]);
+      this.readString(source, ['id', 'user_id', 'sub']) ??
+      this.readString(data, ['sub', 'id', 'user_id']);
 
     if (!id) {
-      throw new UnauthorizedException("Mezon user info is missing user id");
+      throw new UnauthorizedException('Mezon user info is missing user id');
     }
 
     return {
       user_id: id,
-      username: this.readString(source, [
-        "username",
-        "preferred_username",
-        "mezon_id",
-      ]),
-      display_name: this.readString(source, [
-        "display_name",
-        "name",
-        "full_name",
-        "username",
-      ]),
+      username: this.readString(source, ['username', 'preferred_username', 'mezon_id']),
+      display_name: this.readString(source, ['display_name', 'name', 'full_name', 'username']),
     };
   }
 
-  private normalizeChannelUser(
-    data: Record<string, unknown>,
-  ): NormalizedMezonUser {
-    const id = this.readString(data, ["id", "user_id", "mezon_id"]);
+  private normalizeChannelUser(data: Record<string, unknown>): NormalizedMezonUser {
+    const id = this.readString(data, ['id', 'user_id', 'mezon_id']);
     if (!id) {
-      throw new BadRequestException("Mezon channel auth is missing user id");
+      throw new BadRequestException('Mezon channel auth is missing user id');
     }
 
     return {
       user_id: id,
-      username: this.readString(data, ["username", "mezon_id"]),
-      display_name: this.readString(data, [
-        "display_name",
-        "name",
-        "username",
-      ]),
+      username: this.readString(data, ['username', 'mezon_id']),
+      display_name: this.readString(data, ['display_name', 'name', 'username']),
     };
   }
 
   private validateMezonHash(appSecret: string, rawHashData: string): boolean {
-    const delimiter = "&hash=";
+    const delimiter = '&hash=';
     const index = rawHashData.indexOf(delimiter);
     if (index < 0) {
       return false;
@@ -326,72 +354,63 @@ export class AuthService {
       return false;
     }
 
-    const hashedSecret = createHash("md5").update(appSecret).digest("hex");
-    const secretKey = createHmac("sha256", hashedSecret)
-      .update("WebAppData")
-      .digest();
-    const computedHash = createHmac("sha256", secretKey)
-      .update(queryData)
-      .digest("hex");
+    const hashedSecret = createHash('md5').update(appSecret).digest('hex');
+    const secretKey = createHmac('sha256', hashedSecret).update('WebAppData').digest();
+    const computedHash = createHmac('sha256', secretKey).update(queryData).digest('hex');
 
-    const computed = Buffer.from(computedHash, "hex");
-    const received = Buffer.from(receivedHash, "hex");
-    return (
-      computed.length === received.length && timingSafeEqual(computed, received)
-    );
+    const computed = Buffer.from(computedHash, 'hex');
+    const received = Buffer.from(receivedHash, 'hex');
+    return computed.length === received.length && timingSafeEqual(computed, received);
   }
 
   private parseChannelAuthData(rawHashData: string): ParsedChannelAuth {
-    const delimiter = "&hash=";
+    const delimiter = '&hash=';
     const index = rawHashData.indexOf(delimiter);
     if (index < 0) {
-      throw new BadRequestException("Invalid Mezon hash data");
+      throw new BadRequestException('Invalid Mezon hash data');
     }
 
     const queryData = rawHashData.slice(0, index);
     const params = new URLSearchParams(queryData);
-    const userRaw = params.get("user");
-    const authDateRaw = params.get("auth_date");
+    const userRaw = params.get('user');
+    const authDateRaw = params.get('auth_date');
 
     if (!userRaw || !authDateRaw) {
-      throw new BadRequestException("Mezon hash data is missing fields");
+      throw new BadRequestException('Mezon hash data is missing fields');
     }
 
     const user = JSON.parse(userRaw) as unknown;
     const authDate = Number(authDateRaw);
     if (!this.isRecord(user) || !Number.isFinite(authDate)) {
-      throw new BadRequestException("Invalid Mezon channel auth payload");
+      throw new BadRequestException('Invalid Mezon channel auth payload');
     }
 
     return {
-      query_id: params.get("query_id"),
+      query_id: params.get('query_id'),
       auth_date: authDate,
-      signature: params.get("signature"),
+      signature: params.get('signature'),
       user,
     };
   }
 
   private assertFreshChannelAuth(authDate: number): void {
     const maxAge = Number(
-      this.readConfig(
-        ["MEZON_CHANNEL_AUTH_MAX_AGE_SECONDS"],
-        String(CHANNEL_AUTH_MAX_AGE_SECONDS),
-      ),
+      this.readConfig(['MEZON_CHANNEL_AUTH_MAX_AGE_SECONDS'], String(CHANNEL_AUTH_MAX_AGE_SECONDS)),
     );
     const age = Math.abs(this.nowSeconds() - authDate);
     if (Number.isFinite(maxAge) && maxAge > 0 && age > maxAge) {
-      throw new UnauthorizedException("Mezon channel auth has expired");
+      throw new UnauthorizedException('Mezon channel auth has expired');
     }
   }
 
   private decodeChannelHashData(body: ChannelAppAuthBody): string {
     const value = body.hashData ?? body.rawHashData ?? body.data;
-    if (!value || typeof value !== "string") {
-      throw new BadRequestException("Missing Mezon hash data");
+    if (!value || typeof value !== 'string') {
+      throw new BadRequestException('Missing Mezon hash data');
     }
 
     const trimmed = value.trim();
-    if (trimmed.includes("&hash=")) {
+    if (trimmed.includes('&hash=')) {
       return trimmed;
     }
 
@@ -401,16 +420,16 @@ export class AuthService {
     } catch {
       decodedUrl = trimmed;
     }
-    if (decodedUrl.includes("&hash=")) {
+    if (decodedUrl.includes('&hash=')) {
       return decodedUrl;
     }
 
-    const decodedBase64 = Buffer.from(trimmed, "base64").toString("utf8");
-    if (decodedBase64.includes("&hash=")) {
+    const decodedBase64 = Buffer.from(trimmed, 'base64').toString('utf8');
+    if (decodedBase64.includes('&hash=')) {
       return decodedBase64;
     }
 
-    throw new BadRequestException("Invalid Mezon hash data encoding");
+    throw new BadRequestException('Invalid Mezon hash data encoding');
   }
 
   private signSession(payload: SessionPayload): string {
@@ -420,7 +439,7 @@ export class AuthService {
   }
 
   private verifySession(token: string): SessionPayload | null {
-    const [encodedPayload, signature] = token.split(".");
+    const [encodedPayload, signature] = token.split('.');
     if (!encodedPayload || !signature) {
       return null;
     }
@@ -432,9 +451,7 @@ export class AuthService {
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(
-        Buffer.from(encodedPayload, "base64url").toString("utf8"),
-      );
+      parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
     } catch {
       return null;
     }
@@ -447,9 +464,7 @@ export class AuthService {
   }
 
   private hmacSession(encodedPayload: string): string {
-    return createHmac("sha256", this.getSessionSecret())
-      .update(encodedPayload)
-      .digest("base64url");
+    return createHmac('sha256', this.getSessionSecret()).update(encodedPayload).digest('base64url');
   }
 
   private safeEqual(a: string, b: string): boolean {
@@ -459,19 +474,16 @@ export class AuthService {
   }
 
   private getOAuthConfig(): OAuthConfig {
-    const clientId = this.readConfig(["MEZON_CLIENT_ID", "APPLICATION_ID"]);
-    const clientSecret = this.readConfig([
-      "MEZON_CLIENT_SECRET",
-      "APPLICATION_TOKEN",
-    ]);
+    const clientId = this.readConfig(['MEZON_CLIENT_ID', 'APPLICATION_ID']);
+    const clientSecret = this.readConfig(['MEZON_CLIENT_SECRET', 'APPLICATION_TOKEN']);
     const redirectUri = this.readConfig(
-      ["MEZON_REDIRECT_URI"],
+      ['MEZON_REDIRECT_URI'],
       `${this.getApiUrl()}/auth/mezon/callback`,
     );
 
     if (!clientId || !clientSecret) {
       throw new Error(
-        "Missing MEZON_CLIENT_ID/MEZON_CLIENT_SECRET or APPLICATION_ID/APPLICATION_TOKEN",
+        'Missing MEZON_CLIENT_ID/MEZON_CLIENT_SECRET or APPLICATION_ID/APPLICATION_TOKEN',
       );
     }
 
@@ -479,43 +491,56 @@ export class AuthService {
       clientId,
       clientSecret,
       redirectUri,
-      scope: this.readConfig(["MEZON_OAUTH_SCOPE"], "openid offline"),
+      scope: this.readConfig(['MEZON_OAUTH_SCOPE'], 'openid offline'),
     };
   }
 
   private getMezonAppSecret(): string {
     const secret = this.readConfig([
-      "MEZON_APP_SECRET",
-      "MEZON_CLIENT_SECRET",
-      "APPLICATION_TOKEN",
+      'MEZON_APP_SECRET',
+      'MEZON_CLIENT_SECRET',
+      'APPLICATION_TOKEN',
     ]);
     if (!secret) {
-      throw new Error("Missing MEZON_APP_SECRET or APPLICATION_TOKEN");
+      throw new Error('Missing MEZON_APP_SECRET or APPLICATION_TOKEN');
     }
     return secret;
   }
 
   private getSessionSecret(): string {
-    const secret =
-      this.readConfig(["AUTH_TOKEN_SECRET"]) ?? this.getMezonAppSecret();
+    const secret = this.readConfig(['AUTH_TOKEN_SECRET']);
+    if (!secret) {
+      if (this.config.get<string>('NODE_ENV') === 'production') {
+        throw new Error('AUTH_TOKEN_SECRET is required in production');
+      }
+      if (!this.warnedSessionSecretFallback) {
+        this.logger.warn(
+          'AUTH_TOKEN_SECRET is missing; falling back to the Mezon app secret for development only.',
+        );
+        this.warnedSessionSecretFallback = true;
+      }
+      const fallbackSecret = this.getMezonAppSecret();
+      if (fallbackSecret.length < 16) {
+        throw new Error('AUTH_TOKEN_SECRET must be at least 16 characters');
+      }
+      return fallbackSecret;
+    }
+
     if (secret.length < 16) {
-      throw new Error("AUTH_TOKEN_SECRET must be at least 16 characters");
+      throw new Error('AUTH_TOKEN_SECRET must be at least 16 characters');
     }
     return secret;
   }
 
   private getApiUrl(): string {
     return this.trimTrailingSlash(
-      this.readConfig(
-        ["BACKEND_PUBLIC_URL", "API_PUBLIC_URL"],
-        DEFAULT_API_URL,
-      ),
+      this.readConfig(['BACKEND_PUBLIC_URL', 'API_PUBLIC_URL'], DEFAULT_API_URL),
     );
   }
 
   private getWebUrl(): string {
     return this.trimTrailingSlash(
-      this.readConfig(["WEB_APP_URL", "FRONTEND_URL"], DEFAULT_WEB_URL),
+      this.readConfig(['WEB_APP_URL', 'FRONTEND_URL'], DEFAULT_WEB_URL),
     );
   }
 
@@ -529,14 +554,15 @@ export class AuthService {
       return DEFAULT_RETURN_TO;
     }
 
-    if (returnTo.startsWith("/") && !returnTo.startsWith("//")) {
-      return returnTo;
+    if (returnTo.startsWith('/') && !returnTo.startsWith('//')) {
+      return this.isBlockedReturnPath(returnTo) ? DEFAULT_RETURN_TO : returnTo;
     }
 
     try {
       const url = new URL(returnTo);
       if (url.origin === new URL(this.getWebUrl()).origin) {
-        return `${url.pathname}${url.search}${url.hash}`;
+        const normalized = `${url.pathname}${url.search}${url.hash}`;
+        return this.isBlockedReturnPath(normalized) ? DEFAULT_RETURN_TO : normalized;
       }
     } catch {
       return DEFAULT_RETURN_TO;
@@ -545,10 +571,18 @@ export class AuthService {
     return DEFAULT_RETURN_TO;
   }
 
+  private isBlockedReturnPath(returnTo: string): boolean {
+    const pathname = returnTo.split(/[?#]/, 1)[0];
+    return (
+      pathname === '/dang-nhap' ||
+      pathname === '/dang-ky' ||
+      pathname === '/auth' ||
+      pathname.startsWith('/auth/')
+    );
+  }
+
   private createOAuthState(): string {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const bytes = randomBytes(11);
-    return Array.from(bytes, (byte) => chars[byte % chars.length]).join("");
+    return randomBytes(16).toString('base64url');
   }
 
   private buildCookie(
@@ -556,43 +590,53 @@ export class AuthService {
     value: string,
     options: { maxAgeSeconds: number; path: string },
   ): string {
+    const sameSite = this.getCookieSameSite();
     const parts = [
       `${name}=${encodeURIComponent(value)}`,
       `Max-Age=${options.maxAgeSeconds}`,
       `Path=${options.path}`,
-      "HttpOnly",
-      "SameSite=Lax",
+      'HttpOnly',
+      `SameSite=${sameSite}`,
     ];
 
-    const domain = this.config.get<string>("AUTH_COOKIE_DOMAIN");
+    const domain = this.config.get<string>('AUTH_COOKIE_DOMAIN');
     if (domain) {
       parts.push(`Domain=${domain}`);
     }
-    if (this.config.get<string>("NODE_ENV") === "production") {
-      parts.push("Secure");
+    if (this.shouldUseSecureCookies(sameSite)) {
+      parts.push('Secure');
     }
 
-    return parts.join("; ");
+    return parts.join('; ');
   }
 
   private clearCookie(name: string, path: string): string {
-    const parts = [
-      `${name}=`,
-      "Max-Age=0",
-      `Path=${path}`,
-      "HttpOnly",
-      "SameSite=Lax",
-    ];
+    const sameSite = this.getCookieSameSite();
+    const parts = [`${name}=`, 'Max-Age=0', `Path=${path}`, 'HttpOnly', `SameSite=${sameSite}`];
 
-    const domain = this.config.get<string>("AUTH_COOKIE_DOMAIN");
+    const domain = this.config.get<string>('AUTH_COOKIE_DOMAIN');
     if (domain) {
       parts.push(`Domain=${domain}`);
     }
-    if (this.config.get<string>("NODE_ENV") === "production") {
-      parts.push("Secure");
+    if (this.shouldUseSecureCookies(sameSite)) {
+      parts.push('Secure');
     }
 
-    return parts.join("; ");
+    return parts.join('; ');
+  }
+
+  private getCookieSameSite(): CookieSameSite {
+    const configured = this.readConfig(['AUTH_COOKIE_SAMESITE'], 'Lax').toLowerCase();
+    if (configured === 'none') return 'None';
+    if (configured === 'strict') return 'Strict';
+    return 'Lax';
+  }
+
+  private shouldUseSecureCookies(sameSite: CookieSameSite): boolean {
+    if (sameSite === 'None') {
+      return true;
+    }
+    return this.config.get<string>('NODE_ENV') === 'production';
   }
 
   private parseCookies(cookieHeader?: string): Record<string, string> {
@@ -600,29 +644,36 @@ export class AuthService {
       return {};
     }
 
-    return cookieHeader.split(";").reduce<Record<string, string>>(
-      (acc, part) => {
-        const [rawName, ...rawValue] = part.trim().split("=");
-        if (!rawName) {
-          return acc;
-        }
-        acc[rawName] = decodeURIComponent(rawValue.join("="));
+    return cookieHeader.split(';').reduce<Record<string, string>>((acc, part) => {
+      const trimmed = part.trim();
+      const separatorIndex = trimmed.indexOf('=');
+      if (separatorIndex <= 0) {
         return acc;
-      },
-      {},
-    );
+      }
+      const rawName = trimmed.slice(0, separatorIndex).trim();
+      if (!rawName) {
+        return acc;
+      }
+      let rawValue = trimmed.slice(separatorIndex + 1).trim();
+      if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
+        rawValue = rawValue.slice(1, -1);
+      }
+      try {
+        acc[rawName] = decodeURIComponent(rawValue);
+      } catch {
+        acc[rawName] = rawValue;
+      }
+      return acc;
+    }, {});
   }
 
-  private readString(
-    source: Record<string, unknown>,
-    keys: string[],
-  ): string | null {
+  private readString(source: Record<string, unknown>, keys: string[]): string | null {
     for (const key of keys) {
       const value = source[key];
-      if (typeof value === "string" && value.trim()) {
+      if (typeof value === 'string' && value.trim()) {
         return value.trim();
       }
-      if (typeof value === "number" || typeof value === "bigint") {
+      if (typeof value === 'number' || typeof value === 'bigint') {
         return String(value);
       }
     }
@@ -634,7 +685,7 @@ export class AuthService {
   private readConfig(keys: string[], fallback?: string): string | undefined {
     for (const key of keys) {
       const value = this.config.get<string>(key);
-      if (typeof value === "string" && value.trim()) {
+      if (typeof value === 'string' && value.trim()) {
         return value.trim();
       }
     }
@@ -642,27 +693,59 @@ export class AuthService {
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private isSessionPayload(value: unknown): value is SessionPayload {
+    if (
+      !this.isRecord(value) ||
+      typeof value.sub !== 'string' ||
+      (typeof value.username !== 'string' && value.username !== null) ||
+      (typeof value.displayName !== 'string' && value.displayName !== null) ||
+      value.provider !== 'mezon' ||
+      typeof value.tokenVersion !== 'number' ||
+      !Number.isFinite(value.tokenVersion) ||
+      typeof value.iat !== 'number' ||
+      typeof value.exp !== 'number' ||
+      !Number.isFinite(value.iat) ||
+      !Number.isFinite(value.exp)
+    ) {
+      return false;
+    }
+
     return (
-      this.isRecord(value) &&
-      typeof value.sub === "string" &&
-      (typeof value.username === "string" || value.username === null) &&
-      (typeof value.displayName === "string" || value.displayName === null) &&
-      value.provider === "mezon" &&
-      typeof value.iat === "number" &&
-      typeof value.exp === "number"
+      value.iat <= value.exp && value.iat <= this.nowSeconds() + SESSION_IAT_CLOCK_SKEW_SECONDS
     );
   }
 
+  private getOAuthFetchTimeoutMs(): number {
+    const configured = Number(
+      this.readConfig(['OAUTH_FETCH_TIMEOUT_MS'], String(OAUTH_FETCH_TIMEOUT_MS)),
+    );
+    return Number.isFinite(configured) && configured > 0 ? configured : OAUTH_FETCH_TIMEOUT_MS;
+  }
+
+  private sanitizeOAuthError(data: unknown): Record<string, unknown> {
+    if (!this.isRecord(data)) {
+      return { type: data === null ? 'null' : typeof data };
+    }
+
+    const sanitized: Record<string, unknown> = {};
+    for (const key of ['error', 'error_description', 'message', 'status']) {
+      const value = data[key];
+      if (typeof value === 'string' || typeof value === 'number') {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  }
+
   private base64UrlEncode(value: string): string {
-    return Buffer.from(value, "utf8").toString("base64url");
+    return Buffer.from(value, 'utf8').toString('base64url');
   }
 
   private trimTrailingSlash(value: string): string {
-    return value.replace(/\/+$/, "");
+    return value.replace(/\/+$/, '');
   }
 
   private nowSeconds(): number {

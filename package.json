@@ -30,6 +30,7 @@
     "bot:debug": "npm run start:debug -w app/bot",
     "bot:local": "npm run start:local -w app/bot",
     "bot:prod": "npm run start:prod -w app/bot",
+    "bot:migrate": "npm run migrate -w app/bot",
     "web:dev": "npm run dev -w app/web",
     "web:build": "npm run build -w app/web",
     "web:start": "npm run start -w app/web",

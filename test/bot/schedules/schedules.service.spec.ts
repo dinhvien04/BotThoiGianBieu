@@ -451,6 +451,37 @@ describe('SchedulesService', () => {
     });
   });
 
+  describe('findAllForUser', () => {
+    it('should return all visible schedules when no status is provided', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[mockSchedule], 1]);
+
+      const result = await service.findAllForUser('user123', 50, 0);
+
+      expect(mockRepository.findAndCount).toHaveBeenCalledWith({
+        where: { user_id: 'user123', is_hidden: false },
+        order: { is_pinned: 'DESC', start_time: 'DESC', id: 'DESC' },
+        take: 50,
+        skip: 0,
+      });
+      expect(result).toEqual({ items: [mockSchedule], total: 1 });
+    });
+
+    it('should filter by status and priority when provided', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAllForUser('user123', 10, 5, 'completed', 'high');
+
+      const call = mockRepository.findAndCount.mock.calls[0]?.[0];
+      expect(call?.where).toMatchObject({
+        user_id: 'user123',
+        status: 'completed',
+        priority: 'high',
+      });
+      expect(call?.take).toBe(10);
+      expect(call?.skip).toBe(5);
+    });
+  });
+
   describe('findOverdue', () => {
     it('should query pending schedules with start_time < now', async () => {
       mockRepository.findAndCount.mockResolvedValue([[mockSchedule], 1]);

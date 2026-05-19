@@ -19,6 +19,16 @@ export interface CreateTemplateInput {
   priority?: SchedulePriority;
 }
 
+export interface UpdateTemplatePatch {
+  name?: string;
+  item_type?: ScheduleItemType;
+  title?: string;
+  description?: string | null;
+  duration_minutes?: number | null;
+  default_remind_minutes?: number | null;
+  priority?: SchedulePriority;
+}
+
 export const TEMPLATE_NAME_REGEX = /^[a-z0-9_-]+$/;
 export const MAX_TEMPLATE_NAME_LENGTH = 50;
 
@@ -127,5 +137,28 @@ export class TemplatesService {
       where: { user_id: userId, name },
     });
     return count > 0;
+  }
+
+  async updateByName(
+    userId: string,
+    rawName: string,
+    patch: UpdateTemplatePatch,
+  ): Promise<ScheduleTemplate | null> {
+    const template = await this.findByName(userId, rawName);
+    if (!template) return null;
+
+    if (patch.name !== undefined) {
+      template.name = TemplatesService.normalizeName(patch.name);
+    }
+    if (patch.item_type !== undefined) template.item_type = patch.item_type;
+    if (patch.title !== undefined) template.title = patch.title;
+    if (patch.description !== undefined) template.description = patch.description;
+    if (patch.duration_minutes !== undefined) template.duration_minutes = patch.duration_minutes;
+    if (patch.default_remind_minutes !== undefined) {
+      template.default_remind_minutes = patch.default_remind_minutes;
+    }
+    if (patch.priority !== undefined) template.priority = patch.priority;
+
+    return this.templateRepository.save(template);
   }
 }

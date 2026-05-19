@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { getUserProfile, type UserProfile } from "@/lib/api";
+import { useProfile } from "@/components/dashboard/ProfileContext";
+import { useLanguage } from "@/components/dashboard/LanguageContext";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -51,6 +51,29 @@ const navGroups: NavGroup[] = [
 const adminGroup: NavGroup = {
   title: "Quản trị viên",
   items: [{ href: "/admin", label: "Quản trị", icon: "admin" }],
+};
+
+const groupTitleKeys = [
+  "nav.main",
+  "nav.organization",
+  "nav.analytics",
+  "nav.system",
+];
+
+const itemLabelKeys: Record<string, string> = {
+  "/dashboard": "nav.dashboard",
+  "/lich": "nav.myCalendar",
+  "/nhac-viec": "nav.reminders",
+  "/the": "nav.tags",
+  "/mau-lich": "nav.templates",
+  "/chia-se": "nav.share",
+  "/thong-ke": "nav.statistics",
+  "/lich-su": "nav.history",
+  "/nhap-xuat": "nav.importExport",
+  "/thong-bao": "common.notifications",
+  "/cai-dat": "nav.settings",
+  "/tro-giup": "common.help",
+  "/admin": "nav.admin",
 };
 
 const icons: Record<string, React.ReactNode> = {
@@ -125,21 +148,8 @@ const icons: Record<string, React.ReactNode> = {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    getUserProfile()
-      .then((res) => {
-        if (!cancelled) setProfile(res.user);
-      })
-      .catch(() => {
-        if (!cancelled) setProfile(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { user: profile } = useProfile();
+  const { t } = useLanguage();
 
   const isAdmin = profile?.role === "admin";
   const groups: NavGroup[] = isAdmin ? [...navGroups, adminGroup] : navGroups;
@@ -150,9 +160,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     .slice(0, 2)
     .map((s) => s[0]?.toUpperCase() ?? "")
     .join("") || "?";
-  const planLabel = isAdmin ? "Admin" : "User";
+  const planLabel = isAdmin ? t("common.admin") : t("common.user");
   const displayLabel =
-    profile?.display_name ?? profile?.username ?? "Người dùng";
+    profile?.display_name ?? profile?.username ?? t("common.user");
 
   return (
     <>
@@ -171,7 +181,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <div>
               <h1 className="text-lg font-bold leading-tight text-on-surface">FocusFlow Pro</h1>
-              <p className="text-xs text-on-surface-variant">Hệ thống quản lý</p>
+              <p className="text-xs text-on-surface-variant">{t("app.subtitle")}</p>
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden p-1 hover:bg-surface-container-high rounded-lg text-on-surface-variant">
@@ -190,15 +200,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            Tạo mới
+            {t("common.createNew")}
           </Link>
         </div>
 
         <nav className="flex-1 px-3 pb-3 overflow-y-auto">
-          {groups.map((group) => (
+          {groups.map((group, groupIndex) => (
             <div key={group.title} className="mb-4">
               <h3 className="px-4 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">
-                {group.title}
+                {t(group === adminGroup ? "nav.adminGroup" : groupTitleKeys[groupIndex])}
               </h3>
               <div className="space-y-1">
                 {group.items.map((item) => {
@@ -211,12 +221,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                       href={item.href}
                       onClick={onClose}
                       className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
-                          ? "bg-primary text-on-primary"
-                          : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                        ? "bg-primary text-on-primary"
+                        : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                         }`}
                     >
                       {icons[item.icon]}
-                      {item.label}
+                      {t(itemLabelKeys[item.href] ?? item.label)}
                     </Link>
                   );
                 })}

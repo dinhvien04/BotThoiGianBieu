@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   adminDeleteSchedule,
   adminListSchedules,
+  getApiErrorMsg,
   type AdminScheduleListItem,
 } from "@/lib/api";
 
@@ -32,7 +33,7 @@ export default function AdminSchedulesPage() {
         status: status || undefined,
         user_id: userId || undefined,
       });
-      if (res.success === false) throw new Error((res as any).error || (res as any).message || "API Error");
+      if (res.success === false) throw new Error(getApiErrorMsg(res));
       setItems(res.items || []);
       setTotal(res.total || 0);
     } catch (err: unknown) {

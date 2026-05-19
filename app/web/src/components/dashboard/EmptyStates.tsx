@@ -23,7 +23,7 @@ function EmptyTemplate({
   features?: { icon: React.ReactNode; label: string; desc: string }[];
 }) {
   return (
-    <div className="bg-white rounded-2xl p-10 shadow-sm text-center max-w-xl mx-auto">
+    <div className="bg-surface-container-lowest rounded-2xl p-10 shadow-sm text-center max-w-xl mx-auto">
       <div className="flex justify-center mb-6">{icon}</div>
       <h3 className="text-xl font-bold text-on-surface">{title}</h3>
       <p className="text-sm text-on-surface-variant mt-2 max-w-sm mx-auto leading-relaxed">{message}</p>
@@ -127,8 +127,8 @@ export function TagsEmpty() {
       title="Chưa có Thẻ nào được tạo"
       message="Sử dụng Thẻ để nhóm các sự kiện theo chủ đề như Công việc, Cá nhân hoặc Dự án, giúp bạn lọc và quản lý lịch trình khoa học hơn."
       actions={[
-        { label: "Tạo thẻ đầu tiên", onClick: () => {} },
-        { label: "Tìm hiểu thêm", onClick: () => {}, variant: "outline" },
+        { label: "Tạo thẻ đầu tiên", onClick: () => { } },
+        { label: "Tìm hiểu thêm", onClick: () => { }, variant: "outline" },
       ]}
       features={[
         {
@@ -177,7 +177,7 @@ export function TemplatesEmpty() {
       message="Tiết kiệm thời gian bằng cách lưu các lịch trình thường xuyên lặp lại thành mẫu. Bạn có thể tạo lịch mới chỉ với một cú nhấp chuột để duy trì tính hiệu quả và tập trung."
       actions={[
         { label: "Tạo mẫu đầu tiên", href: "/mau-lich" },
-        { label: "Tìm hiểu thêm", onClick: () => {}, variant: "outline" },
+        { label: "Tìm hiểu thêm", onClick: () => { }, variant: "outline" },
       ]}
       features={[
         {

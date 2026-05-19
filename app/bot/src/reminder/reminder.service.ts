@@ -10,10 +10,9 @@ import { BotService } from '../bot/bot.service';
 import { SchedulesService } from '../schedules/schedules.service';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { DateParser } from '../shared/utils/date-parser';
-import {
-  isWithinWorkingHours,
-  nextWorkingStart,
-} from '../shared/utils/working-hours';
+import { isWithinWorkingHours, nextWorkingStart } from '../shared/utils/working-hours';
+import { User } from '../users/entities/user.entity';
+import { UsersService } from '../users/users.service';
 
 /**
  * Interval mặc định (phút) để auto-resend khi user bấm hoãn lấy theo
@@ -21,6 +20,17 @@ import {
  * dùng cùng interval đó để UX nhất quán.
  */
 const DEFAULT_SNOOZE_MINUTES = 30;
+const VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+const VIETNAM_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DAILY_DIGEST_TODAY_LIMIT = 8;
+const DAILY_DIGEST_OVERDUE_LIMIT = 5;
+
+type NotificationSettings = {
+  notify_via_dm?: boolean;
+  notify_via_channel?: boolean;
+  default_channel_id?: string | null;
+};
 
 /**
  * Các preset snooze nhanh hiển thị dạng button row ngoài cùng với nút "Hoãn
@@ -37,11 +47,13 @@ export class ReminderService {
 
   /** Tránh reentrancy khi tick dài hơn 1 phút. */
   private running = false;
+  private dailyDigestRunning = false;
 
   constructor(
     private readonly schedulesService: SchedulesService,
     private readonly botService: BotService,
     private readonly dateParser: DateParser,
+    private readonly usersService: UsersService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -89,6 +101,55 @@ export class ReminderService {
     }
   }
 
+  @Cron('0 8 * * *', { timeZone: VIETNAM_TIME_ZONE })
+  async sendDailyDigest(now: Date = new Date()): Promise<void> {
+    if (this.dailyDigestRunning) {
+      this.logger.debug('Daily digest cu chua xong, bo qua lan hien tai.');
+      return;
+    }
+    this.dailyDigestRunning = true;
+
+    try {
+      const users = await this.usersService.findActiveWithSettings();
+      if (users.length === 0) return;
+
+      const { start, end } = this.getVietnamDayRange(now);
+
+      for (const user of users) {
+        try {
+          const [todaySchedules, overdueResult] = await Promise.all([
+            this.schedulesService.findByDateRange(user.user_id, start, end),
+            this.schedulesService.findOverdue(user.user_id, now, DAILY_DIGEST_OVERDUE_LIMIT, 0),
+          ]);
+
+          const upcomingToday = todaySchedules
+            .filter((schedule) => schedule.status === 'pending' && schedule.start_time >= now)
+            .slice(0, DAILY_DIGEST_TODAY_LIMIT);
+
+          const digestText = this.buildDailyDigestText(
+            user,
+            upcomingToday,
+            overdueResult.items,
+            overdueResult.total,
+            now,
+          );
+          if (!digestText) continue;
+
+          const dispatched = await this.dispatchText(user.user_id, user.settings, digestText);
+          if (dispatched) {
+            this.logger.log(`Da gui daily digest cho user ${user.user_id}`);
+          }
+        } catch (err) {
+          this.logError(`Daily digest loi cho user ${user.user_id}`, err);
+        }
+      }
+    } catch (err) {
+      this.logError('Daily digest loi o tang truy van / ha tang', err);
+    } finally {
+      this.dailyDigestRunning = false;
+    }
+  }
+
   private async sendStartReminder(schedule: Schedule, now: Date): Promise<void> {
     const settings = schedule.user?.settings;
 
@@ -100,11 +161,7 @@ export class ReminderService {
         1,
         Math.round((nextStart.getTime() - now.getTime()) / 60000),
       );
-      await this.schedulesService.rescheduleAfterPing(
-        schedule.id,
-        minutesUntilStart,
-        now,
-      );
+      await this.schedulesService.rescheduleAfterPing(schedule.id, minutesUntilStart, now);
       this.logger.log(
         `🌙 Trong giờ yên lặng — dồn reminder #${schedule.id} sang ${this.dateParser.formatVietnam(nextStart)}`,
       );
@@ -117,7 +174,7 @@ export class ReminderService {
     const buttons = this.buildStartButtons(schedule.id, snoozeMinutes);
     const mention = this.buildMentionPayload(schedule);
 
-    await this.dispatch(
+    const dispatched = await this.dispatch(
       schedule.user_id,
       settings,
       embed,
@@ -128,7 +185,11 @@ export class ReminderService {
 
     // Đẩy `remind_at` về future → nếu user ignore thì cron sẽ ping lại sau `snoozeMinutes` phút.
     await this.schedulesService.rescheduleAfterPing(schedule.id, snoozeMinutes, now);
-    this.logger.log(`✅ Đã gửi start reminder #${schedule.id} (repeat sau ${snoozeMinutes} phút nếu ignore)`);
+    this.logger.log(
+      dispatched
+        ? `Da gui start reminder #${schedule.id} (repeat sau ${snoozeMinutes} phut neu ignore)`
+        : `Da bo qua start reminder #${schedule.id} vi khong co route hop le`,
+    );
   }
 
   private async sendEndNotification(schedule: Schedule, now: Date): Promise<void> {
@@ -138,7 +199,7 @@ export class ReminderService {
     const buttons = this.buildEndButtons(schedule.id);
     const mention = this.buildMentionPayload(schedule);
 
-    await this.dispatch(
+    const dispatched = await this.dispatch(
       schedule.user_id,
       settings,
       embed,
@@ -149,29 +210,27 @@ export class ReminderService {
 
     // Chỉ gửi 1 lần — set timestamp để cron không gửi lại.
     await this.schedulesService.markEndNotified(schedule.id, now);
-    this.logger.log(`🏁 Đã gửi end notification #${schedule.id}`);
+    this.logger.log(
+      dispatched
+        ? `Da gui end notification #${schedule.id}`
+        : `Da bo qua end notification #${schedule.id} vi khong co route hop le`,
+    );
   }
 
   /**
    * Gửi reminder theo cài đặt user.
    * - Channel là nơi chính: gửi embed có button để user xác nhận/hoãn/hoàn thành.
    * - DM chỉ nhắc thêm bằng text khi đã có ít nhất một channel nhận được form.
-   * - Nếu không có channel hợp lệ thì fallback DM interactive để user vẫn thao tác được.
+   * - If explicit settings have no valid route, log and skip instead of overriding them.
    */
   private async dispatch(
     userId: string,
-    settings:
-      | {
-          notify_via_dm?: boolean;
-          notify_via_channel?: boolean;
-          default_channel_id?: string | null;
-        }
-      | undefined,
+    settings: NotificationSettings | undefined,
     embed: ReturnType<InteractiveBuilder['build']>,
     buttons: unknown[],
     dmText: string,
     mention?: { text: string; mentions: ApiMessageMention[] } | null,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const wantDm = settings?.notify_via_dm === true;
     const wantChannel = settings?.notify_via_channel !== false; // default true
     const channelIds = this.parseChannelIds(settings?.default_channel_id ?? null);
@@ -202,12 +261,15 @@ export class ReminderService {
       );
     }
 
-    // Fallback: nếu không có route nào (vd user chọn "chỉ channel" nhưng chưa
-    // set channel nào) → gửi DM interactive để user ít nhất nhận được và bấm được.
     if (tasks.length === 0) {
-      tasks.push(
-        this.botService.sendDmInteractive(userId, embed, buttons, undefined, true),
-      );
+      if (!settings) {
+        tasks.push(this.botService.sendDmInteractive(userId, embed, buttons, undefined, true));
+      } else {
+        this.logger.warn(
+          `Khong co route reminder hop le cho user ${userId}; bo qua gui thong bao.`,
+        );
+        return false;
+      }
     }
 
     // Gửi song song. Một route lỗi không ảnh hưởng route khác.
@@ -217,6 +279,46 @@ export class ReminderService {
         this.logError('Reminder dispatch lỗi 1 route', r.reason);
       }
     }
+    return true;
+  }
+
+  private async dispatchText(
+    userId: string,
+    settings: NotificationSettings | undefined,
+    text: string,
+  ): Promise<boolean> {
+    const wantDm = settings?.notify_via_dm === true;
+    const wantChannel = settings?.notify_via_channel !== false; // default true
+    const channelIds = this.parseChannelIds(settings?.default_channel_id ?? null);
+
+    const tasks: Array<Promise<void>> = [];
+
+    if (wantChannel && channelIds.length > 0) {
+      for (const channelId of channelIds) {
+        tasks.push(this.botService.sendMessage(channelId, text));
+      }
+    }
+
+    if (wantDm) {
+      tasks.push(this.botService.sendDirectMessage(userId, text));
+    }
+
+    if (tasks.length === 0) {
+      if (!settings) {
+        tasks.push(this.botService.sendDirectMessage(userId, text));
+      } else {
+        this.logger.warn(`Khong co route digest hop le cho user ${userId}; bo qua.`);
+        return false;
+      }
+    }
+
+    const results = await Promise.allSettled(tasks);
+    for (const r of results) {
+      if (r.status === 'rejected') {
+        this.logError('Daily digest dispatch loi 1 route', r.reason);
+      }
+    }
+    return true;
   }
 
   private parseChannelIds(raw: string | null): string[] {
@@ -226,6 +328,68 @@ export class ReminderService {
       .map((id) => id.trim())
       .filter(Boolean);
     return [...new Set(ids)];
+  }
+
+  private getVietnamDayRange(now: Date): { start: Date; end: Date } {
+    const shifted = new Date(now.getTime() + VIETNAM_UTC_OFFSET_MS);
+    const startMs =
+      Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) -
+      VIETNAM_UTC_OFFSET_MS;
+
+    return {
+      start: new Date(startMs),
+      end: new Date(startMs + DAY_MS - 1),
+    };
+  }
+
+  private buildDailyDigestText(
+    user: User,
+    today: Schedule[],
+    overdue: Schedule[],
+    overdueTotal: number,
+    now: Date,
+  ): string | null {
+    if (today.length === 0 && overdueTotal === 0) return null;
+
+    const displayName = user.display_name ?? user.username ?? 'bạn';
+    const lines = [
+      `📋 Tóm tắt lịch hôm nay (${this.dateParser.formatVietnam(now)})`,
+      `Chào ${displayName}, bạn có ${today.length} lịch sắp tới${
+        overdueTotal > 0 ? ` và ${overdueTotal} lịch quá hạn` : ''
+      }.`,
+    ];
+
+    if (overdue.length > 0) {
+      lines.push('', `⚠️ Quá hạn (${overdueTotal})`);
+      for (const schedule of overdue) {
+        lines.push(this.formatDigestScheduleLine(schedule));
+      }
+      const remaining = overdueTotal - overdue.length;
+      if (remaining > 0) {
+        lines.push(`- Còn ${remaining} lịch quá hạn khác.`);
+      }
+    }
+
+    if (today.length > 0) {
+      lines.push('', `🗓 Hôm nay (${today.length})`);
+      for (const schedule of today) {
+        lines.push(this.formatDigestScheduleLine(schedule));
+      }
+    }
+
+    lines.push('', 'Dùng *chi-tiet <ID> để xem chi tiết hoặc mở dashboard để cập nhật.');
+    return lines.join('\n');
+  }
+
+  private formatDigestScheduleLine(schedule: Schedule): string {
+    const title = schedule.title.replace(/\s+/g, ' ').trim();
+    return `- #${schedule.id} ${this.formatDigestPriority(schedule.priority)} ${title} (${this.dateParser.formatVietnam(schedule.start_time)})`;
+  }
+
+  private formatDigestPriority(priority: Schedule['priority']): string {
+    if (priority === 'high') return '[cao]';
+    if (priority === 'low') return '[thấp]';
+    return '[bình thường]';
   }
 
   // ============== EMBED + BUTTONS: START ==============
@@ -333,7 +497,7 @@ export class ReminderService {
     }
 
     return {
-      text: parts.join(" ") + " ",
+      text: parts.join(' ') + ' ',
       mentions,
     };
   }
@@ -372,9 +536,10 @@ export class ReminderService {
     const minutesPassed = schedule.end_time
       ? Math.max(0, Math.round((now.getTime() - schedule.end_time.getTime()) / 60000))
       : 0;
-    const passedText = minutesPassed === 0
-      ? 'vừa kết thúc'
-      : `kết thúc cách đây **${this.dateParser.formatMinutes(minutesPassed)}**`;
+    const passedText =
+      minutesPassed === 0
+        ? 'vừa kết thúc'
+        : `kết thúc cách đây **${this.dateParser.formatMinutes(minutesPassed)}**`;
 
     const builder = new InteractiveBuilder('🏁 LỊCH ĐÃ KẾT THÚC')
       .setDescription(`Lịch **${schedule.title}** ${passedText}.`)
@@ -406,14 +571,17 @@ export class ReminderService {
     const minutesPassed = schedule.end_time
       ? Math.max(0, Math.round((now.getTime() - schedule.end_time.getTime()) / 60000))
       : 0;
-    const passedText = minutesPassed === 0
-      ? 'vừa kết thúc'
-      : `kết thúc cách đây ${this.dateParser.formatMinutes(minutesPassed)}`;
+    const passedText =
+      minutesPassed === 0
+        ? 'vừa kết thúc'
+        : `kết thúc cách đây ${this.dateParser.formatMinutes(minutesPassed)}`;
 
     return [
       `🏁 Lịch đã kết thúc: ${schedule.title}`,
       `ID: ${schedule.id}`,
-      schedule.end_time ? `Kết thúc lúc: ${this.dateParser.formatVietnam(schedule.end_time)}` : null,
+      schedule.end_time
+        ? `Kết thúc lúc: ${this.dateParser.formatVietnam(schedule.end_time)}`
+        : null,
       `Trạng thái: ${passedText}.`,
       'Vui lòng bấm hoàn thành/để sau ở message trong channel.',
     ]

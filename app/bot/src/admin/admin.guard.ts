@@ -4,10 +4,10 @@ import {
   ForbiddenException,
   Injectable,
   UnauthorizedException,
-} from "@nestjs/common";
-import { AuthService } from "../auth/auth.service";
-import type { AuthenticatedRequest } from "../auth/session.guard";
-import { UsersService } from "../users/users.service";
+} from '@nestjs/common';
+import { AuthService } from '../auth/auth.service';
+import type { AuthenticatedRequest } from '../auth/session.guard';
+import { UsersService } from '../users/users.service';
 
 /**
  * Guard cho mọi route `/api/admin/*`. Yêu cầu:
@@ -26,25 +26,26 @@ export class AdminGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const cookieHeader = request.headers["cookie"];
-    const cookie = Array.isArray(cookieHeader)
-      ? cookieHeader[0]
-      : cookieHeader;
+    const cookieHeader = request.headers['cookie'];
+    const cookie = Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader;
 
     const session = this.authService.readSessionFromCookie(cookie);
     if (!session) {
-      throw new UnauthorizedException("Not authenticated");
+      throw new UnauthorizedException('Not authenticated');
     }
 
     const user = await this.usersService.findByUserId(session.sub);
     if (!user) {
-      throw new ForbiddenException("User not found");
+      throw new ForbiddenException('User not found');
+    }
+    if ((user.token_version ?? 0) !== session.tokenVersion) {
+      throw new UnauthorizedException('Session revoked');
     }
     if (user.is_locked) {
-      throw new ForbiddenException("Account locked");
+      throw new ForbiddenException('Account locked');
     }
-    if (user.role !== "admin") {
-      throw new ForbiddenException("Admin access required");
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Admin access required');
     }
 
     request.session = session;

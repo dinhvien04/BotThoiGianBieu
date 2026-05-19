@@ -1,6 +1,8 @@
 import React, { ReactElement } from 'react'
 import { render, RenderOptions } from '@testing-library/react'
 import { ToastProvider } from '@/components/dashboard/Toast'
+import { LanguageProvider } from '@/components/dashboard/LanguageContext'
+import { ProfileProvider } from '@/components/dashboard/ProfileContext'
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
@@ -23,7 +25,21 @@ jest.mock('next/navigation', () => ({
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   return (
     <ToastProvider>
-      {children}
+      <LanguageProvider>
+        {children}
+      </LanguageProvider>
+    </ToastProvider>
+  )
+}
+
+const DashboardProviders = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <ToastProvider>
+      <LanguageProvider>
+        <ProfileProvider>
+          {children}
+        </ProfileProvider>
+      </LanguageProvider>
     </ToastProvider>
   )
 }
@@ -33,8 +49,13 @@ const customRender = (
   options?: Omit<RenderOptions, 'wrapper'>,
 ) => render(ui, { wrapper: AllTheProviders, ...options })
 
+const renderWithDashboardProviders = (
+  ui: ReactElement,
+  options?: Omit<RenderOptions, 'wrapper'>,
+) => render(ui, { wrapper: DashboardProviders, ...options })
+
 export * from '@testing-library/react'
-export { customRender as render }
+export { customRender as render, renderWithDashboardProviders }
 
 // Custom matchers
 export const expectToBeInDocument = (element: HTMLElement | null) => {

@@ -11,7 +11,7 @@ function DialogOverlay({ isOpen, onCancel, children }: { isOpen: boolean; onCanc
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
-      <div className="relative bg-white rounded-2xl p-6 w-full max-w-md shadow-xl mx-4">
+      <div className="relative bg-surface-container-lowest rounded-2xl p-6 w-full max-w-md shadow-xl mx-4">
         {children}
       </div>
     </div>

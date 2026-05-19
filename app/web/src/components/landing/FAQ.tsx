@@ -1,27 +1,25 @@
 "use client";
 
 import { useState } from "react";
-
-const faqs = [
-  {
-    question: "Productivity Flow có miễn phí không?",
-    answer:
-      "Có! Chúng tôi cung cấp gói miễn phí với đầy đủ tính năng cơ bản bao gồm quản lý lịch, nhắc nhở, đồng bộ cơ bản và hỗ trợ Bot Mezon. Các gói nâng cao sẽ bổ sung thêm báo cáo phân tích, template nâng cao và ưu tiên hỗ trợ.",
-  },
-  {
-    question: "Làm thế nào để kết nối với Bot Mezon?",
-    answer:
-      "Sau khi đăng ký tài khoản, vào mục Cài đặt > Mezon Integration và nhấn nút 'Kết nối'. Bạn sẽ được hướng dẫn thêm Bot vào kênh Mezon của mình chỉ trong 2 bước đơn giản.",
-  },
-  {
-    question: "Dữ liệu của tôi có an toàn không?",
-    answer:
-      "Tuyệt đối! Chúng tôi sử dụng mã hóa đầu cuối cho tất cả dữ liệu. Máy chủ được đặt tại cơ sở hạ tầng đạt chuẩn ISO 27001. Bạn có toàn quyền kiểm soát và có thể xuất/xóa dữ liệu bất cứ lúc nào.",
-  },
-];
+import { useLandingLanguage } from "./LanguageContext";
 
 export default function FAQ() {
   const [open, setOpen] = useState<number | null>(null);
+  const { t } = useLandingLanguage();
+  const faqs = [
+    {
+      question: t("faq.free.q"),
+      answer: t("faq.free.a"),
+    },
+    {
+      question: t("faq.connect.q"),
+      answer: t("faq.connect.a"),
+    },
+    {
+      question: t("faq.safe.q"),
+      answer: t("faq.safe.a"),
+    },
+  ];
 
   return (
     <section
@@ -31,10 +29,10 @@ export default function FAQ() {
     >
       <div className="text-center mb-12 sm:mb-16 md:mb-20">
         <h2 id="faq-heading" className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-lp-on-surface">
-          Câu hỏi thường gặp
+          {t("faq.heading")}
         </h2>
         <p className="text-lp-on-surface-variant text-sm">
-          Mọi thứ bạn cần biết trước khi bắt đầu.
+          {t("faq.subheading")}
         </p>
       </div>
 

@@ -1,11 +1,11 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Brackets, Repository } from "typeorm";
-import { User, UserRole } from "../users/entities/user.entity";
-import { Schedule } from "../schedules/entities/schedule.entity";
-import { ScheduleAuditLog } from "../schedules/entities/schedule-audit-log.entity";
-import { SystemSetting } from "./entities/system-setting.entity";
-import { Broadcast } from "./entities/broadcast.entity";
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Brackets, Repository } from 'typeorm';
+import { User, UserRole } from '../users/entities/user.entity';
+import { Schedule } from '../schedules/entities/schedule.entity';
+import { ScheduleAuditLog } from '../schedules/entities/schedule-audit-log.entity';
+import { SystemSetting } from './entities/system-setting.entity';
+import { Broadcast } from './entities/broadcast.entity';
 
 export interface AdminUserListItem {
   user_id: string;
@@ -120,30 +120,27 @@ export class AdminService {
       schedules_completed,
     ] = await Promise.all([
       this.userRepository.count(),
-      this.userRepository.count({ where: { role: "admin" } }),
+      this.userRepository.count({ where: { role: 'admin' } }),
       this.userRepository.count({ where: { is_locked: true } }),
       this.scheduleRepository.count(),
-      this.scheduleRepository.count({ where: { status: "pending" } }),
-      this.scheduleRepository.count({ where: { status: "completed" } }),
+      this.scheduleRepository.count({ where: { status: 'pending' } }),
+      this.scheduleRepository.count({ where: { status: 'completed' } }),
     ]);
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
     const new_users_today = await this.userRepository
-      .createQueryBuilder("u")
-      .where("u.created_at >= :today", { today: startOfToday })
+      .createQueryBuilder('u')
+      .where('u.created_at >= :today', { today: startOfToday })
       .getCount();
     const new_schedules_today = await this.scheduleRepository
-      .createQueryBuilder("s")
-      .where("s.created_at >= :today", { today: startOfToday })
+      .createQueryBuilder('s')
+      .where('s.created_at >= :today', { today: startOfToday })
       .getCount();
 
-    const signups_last_30_days = await this.countByDayLast30("users", "created_at");
-    const schedules_last_30_days = await this.countByDayLast30(
-      "schedules",
-      "created_at",
-    );
+    const signups_last_30_days = await this.countByDayLast30('users', 'created_at');
+    const schedules_last_30_days = await this.countByDayLast30('schedules', 'created_at');
 
     return {
       total_users,
@@ -163,8 +160,8 @@ export class AdminService {
     tableName: string,
     columnName: string,
   ): Promise<Array<{ date: string; count: number }>> {
-    const rows: Array<{ date: string; count: string | number }> = await this
-      .userRepository.manager.query(
+    const rows: Array<{ date: string; count: string | number }> =
+      await this.userRepository.manager.query(
         `SELECT to_char(${columnName} AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD') AS date,
                 COUNT(*)::int AS count
          FROM ${tableName}
@@ -188,35 +185,45 @@ export class AdminService {
     locked?: boolean;
   }): Promise<AdminUserListResult> {
     const qb = this.userRepository
-      .createQueryBuilder("u")
-      .leftJoin("schedules", "s", "s.user_id = u.user_id")
-      .select("u.user_id", "user_id")
-      .addSelect("u.username", "username")
-      .addSelect("u.display_name", "display_name")
-      .addSelect("u.role", "role")
-      .addSelect("u.is_locked", "is_locked")
-      .addSelect("u.created_at", "created_at")
-      .addSelect("u.updated_at", "updated_at")
-      .addSelect("COUNT(s.id)", "schedule_count")
-      .groupBy("u.user_id")
-      .orderBy("u.created_at", "DESC");
+      .createQueryBuilder('u')
+      .leftJoin('schedules', 's', 's.user_id = u.user_id')
+      .select('u.user_id', 'user_id')
+      .addSelect('u.username', 'username')
+      .addSelect('u.display_name', 'display_name')
+      .addSelect('u.role', 'role')
+      .addSelect('u.is_locked', 'is_locked')
+      .addSelect('u.created_at', 'created_at')
+      .addSelect('u.updated_at', 'updated_at')
+      .addSelect('COUNT(s.id)', 'schedule_count')
+      .groupBy(
+        [
+          'u.user_id',
+          'u.username',
+          'u.display_name',
+          'u.role',
+          'u.is_locked',
+          'u.created_at',
+          'u.updated_at',
+        ].join(', '),
+      )
+      .orderBy('u.created_at', 'DESC');
 
     if (opts.search) {
       const term = `%${opts.search}%`;
       qb.andWhere(
         new Brackets((sub) => {
           sub
-            .where("u.user_id ILIKE :term", { term })
-            .orWhere("u.username ILIKE :term", { term })
-            .orWhere("u.display_name ILIKE :term", { term });
+            .where('u.user_id ILIKE :term', { term })
+            .orWhere('u.username ILIKE :term', { term })
+            .orWhere('u.display_name ILIKE :term', { term });
         }),
       );
     }
     if (opts.role) {
-      qb.andWhere("u.role = :role", { role: opts.role });
+      qb.andWhere('u.role = :role', { role: opts.role });
     }
-    if (typeof opts.locked === "boolean") {
-      qb.andWhere("u.is_locked = :locked", { locked: opts.locked });
+    if (typeof opts.locked === 'boolean') {
+      qb.andWhere('u.is_locked = :locked', { locked: opts.locked });
     }
 
     const limit = Math.min(100, Math.max(1, opts.limit));
@@ -234,23 +241,23 @@ export class AdminService {
       schedule_count: string | number;
     }>();
 
-    const countQb = this.userRepository.createQueryBuilder("u");
+    const countQb = this.userRepository.createQueryBuilder('u');
     if (opts.search) {
       const term = `%${opts.search}%`;
       countQb.andWhere(
         new Brackets((sub) => {
           sub
-            .where("u.user_id ILIKE :term", { term })
-            .orWhere("u.username ILIKE :term", { term })
-            .orWhere("u.display_name ILIKE :term", { term });
+            .where('u.user_id ILIKE :term', { term })
+            .orWhere('u.username ILIKE :term', { term })
+            .orWhere('u.display_name ILIKE :term', { term });
         }),
       );
     }
     if (opts.role) {
-      countQb.andWhere("u.role = :role", { role: opts.role });
+      countQb.andWhere('u.role = :role', { role: opts.role });
     }
-    if (typeof opts.locked === "boolean") {
-      countQb.andWhere("u.is_locked = :locked", { locked: opts.locked });
+    if (typeof opts.locked === 'boolean') {
+      countQb.andWhere('u.is_locked = :locked', { locked: opts.locked });
     }
     const total = await countQb.getCount();
 
@@ -279,16 +286,16 @@ export class AdminService {
   }> {
     const user = await this.userRepository.findOne({
       where: { user_id: userId },
-      relations: ["settings"],
+      relations: ['settings'],
     });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException('User not found');
     }
     const [schedule_count, pending_count, completed_count] = await Promise.all([
       this.scheduleRepository.count({ where: { user_id: userId } }),
-      this.scheduleRepository.count({ where: { user_id: userId, status: "pending" } }),
+      this.scheduleRepository.count({ where: { user_id: userId, status: 'pending' } }),
       this.scheduleRepository.count({
-        where: { user_id: userId, status: "completed" },
+        where: { user_id: userId, status: 'completed' },
       }),
     ]);
     return { user, schedule_count, pending_count, completed_count };
@@ -297,7 +304,7 @@ export class AdminService {
   async setRole(userId: string, role: UserRole): Promise<User> {
     const user = await this.userRepository.findOne({ where: { user_id: userId } });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException('User not found');
     }
     user.role = role;
     await this.userRepository.save(user);
@@ -308,9 +315,12 @@ export class AdminService {
   async setLocked(userId: string, locked: boolean): Promise<User> {
     const user = await this.userRepository.findOne({ where: { user_id: userId } });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException('User not found');
     }
     user.is_locked = locked;
+    if (locked) {
+      user.token_version = (user.token_version ?? 0) + 1;
+    }
     await this.userRepository.save(user);
     this.logger.log(`User ${userId} locked -> ${locked}`);
     return user;
@@ -323,7 +333,7 @@ export class AdminService {
   async deleteUser(userId: string): Promise<void> {
     const user = await this.userRepository.findOne({ where: { user_id: userId } });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException('User not found');
     }
     await this.userRepository.manager.transaction(async (m) => {
       await m.query(`DELETE FROM schedule_audit_logs WHERE user_id = $1`, [userId]);
@@ -344,34 +354,34 @@ export class AdminService {
     user_id?: string;
   }): Promise<AdminScheduleListResult> {
     const qb = this.scheduleRepository
-      .createQueryBuilder("s")
-      .leftJoin("users", "u", "u.user_id = s.user_id")
-      .select("s.id", "id")
-      .addSelect("s.user_id", "user_id")
-      .addSelect("u.display_name", "user_display_name")
-      .addSelect("u.username", "user_username")
-      .addSelect("s.title", "title")
-      .addSelect("s.status", "status")
-      .addSelect("s.priority", "priority")
-      .addSelect("s.start_time", "start_time")
-      .addSelect("s.end_time", "end_time")
-      .addSelect("s.created_at", "created_at")
-      .orderBy("s.created_at", "DESC");
+      .createQueryBuilder('s')
+      .leftJoin('users', 'u', 'u.user_id = s.user_id')
+      .select('s.id', 'id')
+      .addSelect('s.user_id', 'user_id')
+      .addSelect('u.display_name', 'user_display_name')
+      .addSelect('u.username', 'user_username')
+      .addSelect('s.title', 'title')
+      .addSelect('s.status', 'status')
+      .addSelect('s.priority', 'priority')
+      .addSelect('s.start_time', 'start_time')
+      .addSelect('s.end_time', 'end_time')
+      .addSelect('s.created_at', 'created_at')
+      .orderBy('s.created_at', 'DESC');
 
     if (opts.search) {
-      qb.andWhere("s.title ILIKE :term", { term: `%${opts.search}%` });
+      qb.andWhere('s.title ILIKE :term', { term: `%${opts.search}%` });
     }
     if (opts.status) {
-      qb.andWhere("s.status = :status", { status: opts.status });
+      qb.andWhere('s.status = :status', { status: opts.status });
     }
     if (opts.user_id) {
-      qb.andWhere("s.user_id = :uid", { uid: opts.user_id });
+      qb.andWhere('s.user_id = :uid', { uid: opts.user_id });
     }
 
     const limit = Math.min(100, Math.max(1, opts.limit));
     const page = Math.max(1, opts.page);
 
-    const total = await qb.clone().select("COUNT(*)", "cnt").getRawOne<{
+    const total = await qb.clone().select('COUNT(*)', 'cnt').getRawOne<{
       cnt: string | number;
     }>();
     qb.offset((page - 1) * limit).limit(limit);
@@ -412,7 +422,7 @@ export class AdminService {
       where: { id: scheduleId },
     });
     if (!found) {
-      throw new NotFoundException("Schedule not found");
+      throw new NotFoundException('Schedule not found');
     }
     await this.scheduleRepository.delete({ id: scheduleId });
     this.logger.log(`Schedule ${scheduleId} deleted by admin`);
@@ -428,25 +438,25 @@ export class AdminService {
     schedule_id?: number;
   }): Promise<AdminAuditListResult> {
     const qb = this.auditRepository
-      .createQueryBuilder("a")
-      .leftJoin("users", "u", "u.user_id = a.user_id")
-      .select("a.id", "id")
-      .addSelect("a.schedule_id", "schedule_id")
-      .addSelect("a.user_id", "user_id")
-      .addSelect("u.display_name", "user_display_name")
-      .addSelect("a.action", "action")
-      .addSelect("a.changes", "changes")
-      .addSelect("a.created_at", "created_at")
-      .orderBy("a.created_at", "DESC");
+      .createQueryBuilder('a')
+      .leftJoin('users', 'u', 'u.user_id = a.user_id')
+      .select('a.id', 'id')
+      .addSelect('a.schedule_id', 'schedule_id')
+      .addSelect('a.user_id', 'user_id')
+      .addSelect('u.display_name', 'user_display_name')
+      .addSelect('a.action', 'action')
+      .addSelect('a.changes', 'changes')
+      .addSelect('a.created_at', 'created_at')
+      .orderBy('a.created_at', 'DESC');
 
     if (opts.user_id) {
-      qb.andWhere("a.user_id = :uid", { uid: opts.user_id });
+      qb.andWhere('a.user_id = :uid', { uid: opts.user_id });
     }
     if (opts.action) {
-      qb.andWhere("a.action = :action", { action: opts.action });
+      qb.andWhere('a.action = :action', { action: opts.action });
     }
-    if (typeof opts.schedule_id === "number" && Number.isFinite(opts.schedule_id)) {
-      qb.andWhere("a.schedule_id = :sid", { sid: opts.schedule_id });
+    if (typeof opts.schedule_id === 'number' && Number.isFinite(opts.schedule_id)) {
+      qb.andWhere('a.schedule_id = :sid', { sid: opts.schedule_id });
     }
 
     const limit = Math.min(100, Math.max(1, opts.limit));
@@ -454,7 +464,7 @@ export class AdminService {
 
     const totalRow = await qb
       .clone()
-      .select("COUNT(*)", "cnt")
+      .select('COUNT(*)', 'cnt')
       .getRawOne<{ cnt: string | number }>();
     qb.offset((page - 1) * limit).limit(limit);
     const rows = await qb.getRawMany<{
@@ -499,11 +509,7 @@ export class AdminService {
     return row ? (row.value as T) : null;
   }
 
-  async setSetting(
-    key: string,
-    value: unknown,
-    updatedBy: string,
-  ): Promise<SystemSetting> {
+  async setSetting(key: string, value: unknown, updatedBy: string): Promise<SystemSetting> {
     const existing = await this.settingRepository.findOne({ where: { key } });
     if (existing) {
       existing.value = value;
@@ -557,10 +563,7 @@ export class AdminService {
     return this.broadcastRepository.save(broadcast);
   }
 
-  async listBroadcasts(opts: {
-    page: number;
-    limit: number;
-  }): Promise<{
+  async listBroadcasts(opts: { page: number; limit: number }): Promise<{
     items: BroadcastRecord[];
     total: number;
     page: number;
@@ -569,7 +572,7 @@ export class AdminService {
     const limit = Math.min(100, Math.max(1, opts.limit));
     const page = Math.max(1, opts.page);
     const [rows, total] = await this.broadcastRepository.findAndCount({
-      order: { created_at: "DESC" },
+      order: { created_at: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
     });
@@ -589,5 +592,4 @@ export class AdminService {
       limit,
     };
   }
-
 }

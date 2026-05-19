@@ -1,4 +1,10 @@
+"use client";
+
+import { useLandingLanguage } from "./LanguageContext";
+
 export default function Preview() {
+  const { t } = useLandingLanguage();
+
   return (
     <section
       id="preview"
@@ -6,7 +12,7 @@ export default function Preview() {
       className="py-20 sm:py-24 lg:py-32 bg-lp-surface-container-low"
     >
       <h2 id="preview-heading" className="sr-only">
-        Giao diện sản phẩm
+        {t("preview.heading")}
       </h2>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
@@ -17,7 +23,7 @@ export default function Preview() {
                 Web Dashboard
               </h3>
               <p className="text-lp-on-surface-variant text-sm">
-                Giao diện tập trung dành cho quản trị viên.
+                {t("preview.dashboard.desc")}
               </p>
             </div>
             <div className="p-5 sm:p-6 bg-lp-bg/40 flex-1">
@@ -74,7 +80,7 @@ export default function Preview() {
                 Chatbot Mezon
               </h3>
               <p className="text-lp-on-surface-variant text-sm">
-                Tương tác nhanh chóng, mọi lúc mọi nơi.
+                {t("preview.bot.desc")}
               </p>
             </div>
             <div className="p-5 sm:p-6 bg-lp-bg/40 flex-1 flex items-center justify-center">
@@ -90,7 +96,7 @@ export default function Preview() {
                     </span>
                   </div>
                   <div className="bg-lp-surface-container p-4 rounded-2xl rounded-tl-none border border-lp-outline-variant/30 text-sm text-lp-on-surface">
-                    Xin chào! Bạn có muốn tôi nhắc nhở sự kiện tiếp theo không?
+                    {t("preview.bot.message")}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 pl-12">
@@ -98,13 +104,13 @@ export default function Preview() {
                     type="button"
                     className="px-4 py-2 bg-lp-primary/10 border border-lp-primary/30 rounded-full text-xs text-lp-primary hover:bg-lp-primary/20 transition-colors"
                   >
-                    Nhắc tôi sau 5p
+                    {t("preview.bot.remind")}
                   </button>
                   <button
                     type="button"
                     className="px-4 py-2 bg-lp-primary/10 border border-lp-primary/30 rounded-full text-xs text-lp-primary hover:bg-lp-primary/20 transition-colors"
                   >
-                    Xem chi tiết
+                    {t("preview.bot.details")}
                   </button>
                 </div>
               </div>

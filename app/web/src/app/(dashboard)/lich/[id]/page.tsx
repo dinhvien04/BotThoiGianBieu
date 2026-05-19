@@ -5,19 +5,34 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { typeLabels, typeColors, priorityLabels, priorityColors, statusLabels, statusColors } from "@/lib/mock-data";
 import DeleteConfirmDialog from "@/components/dashboard/DeleteConfirmDialog";
-import { deleteSchedule } from "@/lib/api";
+import { deleteSchedule, completeSchedule } from "@/lib/api";
 import { useScheduleById, apiToDisplay } from "@/lib/hooks";
 import { useToast } from "@/components/dashboard/Toast";
 
 export default function ScheduleDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [, setDeleting] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
   const id = Number(params.id);
-  const { data: apiSchedule, loading } = useScheduleById(id);
+  const { data: apiSchedule, loading, refetch } = useScheduleById(id);
   const schedule = apiSchedule ? apiToDisplay(apiSchedule) : null;
+
+  const handleComplete = async () => {
+    if (!schedule || schedule.status === "hoan-thanh" || completing) return;
+    setCompleting(true);
+    try {
+      await completeSchedule(id);
+      showToast("Đã đánh dấu hoàn thành!", "success");
+      refetch();
+    } catch {
+      showToast("Không thể cập nhật trạng thái. Vui lòng thử lại.", "error");
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   if (loading || !schedule) {
     return <div className="p-8 text-center text-on-surface-variant">Đang tải...</div>;
@@ -49,13 +64,16 @@ export default function ScheduleDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            className="px-4 py-2 rounded-xl text-on-primary font-medium text-sm flex items-center gap-2"
+            type="button"
+            onClick={handleComplete}
+            disabled={schedule.status === "hoan-thanh" || completing}
+            className="px-4 py-2 rounded-xl text-on-primary font-medium text-sm flex items-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ backgroundColor: statusColors[schedule.status] }}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {schedule.status === "hoan-thanh" ? "Đã hoàn thành" : "Hoàn thành"}
+            {schedule.status === "hoan-thanh" ? "Đã hoàn thành" : completing ? "Đang lưu..." : "Hoàn thành"}
           </button>
           <Link
             href={`/lich/${id}/sua`}

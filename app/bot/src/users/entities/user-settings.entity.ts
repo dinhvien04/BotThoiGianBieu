@@ -17,6 +17,9 @@ export class UserSettings {
   @Column({ type: "varchar", length: 50, default: "Asia/Ho_Chi_Minh" })
   timezone!: string;
 
+  @Column({ type: "varchar", length: 10, default: "vi" })
+  language!: "vi" | "en";
+
   @Column({ type: "varchar", length: 50, nullable: true })
   default_channel_id!: string | null;
 

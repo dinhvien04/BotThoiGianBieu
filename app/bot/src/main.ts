@@ -1,25 +1,36 @@
-import "reflect-metadata";
-import { Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
+import 'reflect-metadata';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
+import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const logger = new Logger("Bootstrap");
+  const logger = new Logger('Bootstrap');
 
   const app = await NestFactory.create(AppModule, {
-    logger: ["log", "error", "warn", "debug", "verbose"],
+    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
   });
   const config = app.get(ConfigService);
-  const port = Number(config.get<string>("PORT") || "3001");
+  const port = Number(config.get<string>('PORT') || '3001');
   const corsOrigins = (
-    config.get<string>("CORS_ORIGIN") ||
-    config.get<string>("WEB_APP_URL") ||
-    "http://localhost:3000"
+    config.get<string>('CORS_ORIGIN') ||
+    config.get<string>('WEB_APP_URL') ||
+    'http://localhost:3000'
   )
-    .split(",")
+    .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+
+  app.use(helmet());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+      whitelist: true,
+    }),
+  );
 
   app.enableCors({
     origin: corsOrigins,
@@ -32,8 +43,8 @@ async function bootstrap(): Promise<void> {
     process.exit(0);
   };
 
-  process.on("SIGINT", () => void shutdown("SIGINT"));
-  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
   await app.listen(port);
   logger.log(`Bot/API da khoi dong tai http://localhost:${port}`);
@@ -41,6 +52,6 @@ async function bootstrap(): Promise<void> {
 
 bootstrap().catch((err) => {
   // eslint-disable-next-line no-console
-  console.error("Bootstrap that bai:", err);
+  console.error('Bootstrap that bai:', err);
   process.exit(1);
 });

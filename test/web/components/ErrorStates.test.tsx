@@ -177,11 +177,11 @@ describe('ErrorStates Components', () => {
       const { rerender } = render(<ConnectionError />);
       
       let container = screen.getByText('Lỗi kết nối hệ thống').closest('div');
-      expect(container).toHaveClass('bg-white', 'rounded-2xl', 'p-8', 'shadow-sm', 'text-center');
+      expect(container).toHaveClass('bg-surface-container-lowest', 'rounded-2xl', 'p-8', 'shadow-sm', 'text-center');
 
       rerender(<MezonSyncError />);
       container = screen.getByText('Lỗi đồng bộ Mezon').closest('div');
-      expect(container).toHaveClass('bg-white', 'rounded-2xl', 'p-8', 'shadow-sm', 'text-center');
+      expect(container).toHaveClass('bg-surface-container-lowest', 'rounded-2xl', 'p-8', 'shadow-sm', 'text-center');
     });
 
     it('renders title with correct styling', () => {
@@ -208,7 +208,7 @@ describe('ErrorStates Components', () => {
         'px-6',
         'py-2.5',
         'bg-primary',
-        'text-white',
+        'text-on-primary',
         'rounded-xl',
         'font-medium',
         'text-sm'

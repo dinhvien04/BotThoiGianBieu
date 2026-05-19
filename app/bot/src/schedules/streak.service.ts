@@ -51,7 +51,7 @@ export class StreakService {
   constructor(
     @InjectRepository(Schedule)
     private readonly scheduleRepository: Repository<Schedule>,
-  ) {}
+  ) { }
 
   async computeStreak(userId: string, now: Date = new Date()): Promise<StreakStats> {
     const completed = await this.scheduleRepository.find({

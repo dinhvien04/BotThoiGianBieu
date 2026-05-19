@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import ThemeToggle from "@/components/landing/ThemeToggle";
+import { useProfile } from "@/components/dashboard/ProfileContext";
+import { useToast } from "@/components/dashboard/Toast";
+import { useLanguage, type Language } from "@/components/dashboard/LanguageContext";
+import { updateUserSettings } from "@/lib/api";
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -10,6 +14,33 @@ interface TopbarProps {
 
 export default function Topbar({ onMenuClick }: TopbarProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [savingLanguage, setSavingLanguage] = useState(false);
+  const { user, refetch } = useProfile();
+  const { language, setLanguage, t } = useLanguage();
+  const { showToast } = useToast();
+  const displayName = user?.display_name ?? user?.username ?? "";
+  const initial = displayName.trim().charAt(0).toUpperCase() || "?";
+  const tooltip = displayName || t("common.profile");
+
+  const handleLanguageChange = useCallback(
+    async (next: Language) => {
+      if (next === language || savingLanguage) return;
+
+      const previous = language;
+      setLanguage(next);
+      setSavingLanguage(true);
+      try {
+        await updateUserSettings({ language: next });
+        refetch();
+      } catch (err) {
+        setLanguage(previous);
+        showToast(err instanceof Error ? err.message : t("common.saveSettingsError"), "error");
+      } finally {
+        setSavingLanguage(false);
+      }
+    },
+    [language, refetch, savingLanguage, setLanguage, showToast, t],
+  );
 
   return (
     <header className="h-topbar-height bg-surface border-b border-outline-variant px-3 sm:px-4 md:px-6 sticky top-0 z-20">
@@ -18,7 +49,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           <button
             type="button"
             onClick={onMenuClick}
-            aria-label="Mở menu"
+            aria-label={t("common.openMenu")}
             className="lg:hidden p-2 -ml-1 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -26,10 +57,13 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             </svg>
           </button>
 
+          {/* Mobile Branding */}
+          <span className="lg:hidden text-base font-bold text-on-surface tracking-tight ml-1">FocusFlow</span>
+
           {/* Desktop search */}
           <form role="search" className="hidden sm:flex items-center gap-2 flex-1 min-w-0">
             <label htmlFor="topbar-search" className="sr-only">
-              Tìm kiếm công việc, sự kiện
+              {t("common.search")}
             </label>
             <svg className="w-5 h-5 text-on-surface-variant flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -37,7 +71,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             <input
               id="topbar-search"
               type="search"
-              placeholder="Tìm kiếm công việc, sự kiện..."
+              placeholder={t("topbar.searchPlaceholder")}
               className="w-full bg-surface-container-low rounded-lg px-4 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </form>
@@ -48,7 +82,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           <button
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
-            aria-label="Tìm kiếm"
+            aria-label={t("common.search")}
             aria-expanded={mobileSearchOpen}
             className="sm:hidden p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors"
           >
@@ -59,9 +93,32 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
           <ThemeToggle className="!w-9 !h-9 !border-outline-variant" />
 
+          <div
+            role="group"
+            className="flex h-9 items-center rounded-lg border border-outline-variant bg-surface-container-low p-0.5"
+            aria-label={t("settings.language")}
+          >
+            {(["vi", "en"] as const).map((code) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => void handleLanguageChange(code)}
+                disabled={savingLanguage}
+                aria-pressed={language === code}
+                className={`h-8 min-w-9 rounded-md px-2 text-xs font-bold transition-colors disabled:opacity-60 ${
+                  language === code
+                    ? "bg-primary text-on-primary"
+                    : "text-on-surface-variant hover:bg-surface-container-high"
+                }`}
+              >
+                {code === "vi" ? "VI" : "EN"}
+              </button>
+            ))}
+          </div>
+
           <Link
             href="/thong-bao"
-            aria-label="Thông báo"
+            aria-label={t("common.notifications")}
             className="relative p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
@@ -72,7 +129,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
           <Link
             href="/tro-giup"
-            aria-label="Trợ giúp"
+            aria-label={t("common.help")}
             className="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors hidden md:block"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
@@ -82,10 +139,11 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
           <Link
             href="/ho-so"
-            aria-label="Hồ sơ cá nhân"
+            aria-label={tooltip}
+            title={tooltip}
             className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-on-primary text-sm font-bold flex-shrink-0"
           >
-            Q
+            {initial}
           </Link>
         </div>
       </div>
@@ -94,7 +152,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
       {mobileSearchOpen && (
         <form role="search" className="sm:hidden absolute left-0 right-0 top-full bg-surface border-b border-outline-variant px-3 py-3 flex items-center gap-2 shadow-sm">
           <label htmlFor="topbar-search-mobile" className="sr-only">
-            Tìm kiếm công việc, sự kiện
+            {t("common.search")}
           </label>
           <svg className="w-5 h-5 text-on-surface-variant flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -103,7 +161,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             id="topbar-search-mobile"
             type="search"
             autoFocus
-            placeholder="Tìm kiếm công việc, sự kiện..."
+            placeholder={t("topbar.searchPlaceholder")}
             className="w-full bg-surface-container-low rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </form>
