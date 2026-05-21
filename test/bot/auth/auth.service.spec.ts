@@ -113,6 +113,16 @@ describe('AuthService', () => {
     expect(cookie).toContain('Secure');
   });
 
+  it('creates a readable CSRF cookie separate from the HttpOnly session cookie', () => {
+    const token = service.createCsrfToken();
+    const cookie = service.createCsrfCookie(token);
+
+    expect(token).toHaveLength(43);
+    expect(cookie).toContain(`btgb_csrf=${token}`);
+    expect(cookie).toContain('SameSite=Lax');
+    expect(cookie).not.toContain('HttpOnly');
+  });
+
   it('requires a dedicated session secret in production', async () => {
     const serviceWithoutSessionSecret = makeService(
       {

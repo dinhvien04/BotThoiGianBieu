@@ -19,6 +19,7 @@ module.exports = {
   coverageDirectory: '<rootDir>/app/bot/coverage',
   testEnvironment: 'node',
   roots: ['<rootDir>/app/bot/src/', '<rootDir>/test/bot/'],
+  moduleDirectories: ['node_modules', '<rootDir>/app/bot/node_modules'],
   moduleNameMapper: {
     '^src/(.*)$': '<rootDir>/app/bot/src/$1',
   },

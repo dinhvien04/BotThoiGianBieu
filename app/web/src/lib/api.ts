@@ -7,6 +7,9 @@ const BASE = "";
 let isRedirectingToLogin = false;
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const CSRF_COOKIE = 'btgb_csrf';
+
+let csrfTokenPromise: Promise<string | null> | null = null;
 
 export class ApiError extends Error {
   status: number;
@@ -34,9 +37,15 @@ export function getApiErrorMsg(res: unknown): string {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const { headers: optionHeaders, ...restOptions } = options;
   const method = (options.method ?? 'GET').toUpperCase();
+  const csrfToken = SAFE_METHODS.has(method) ? null : await ensureCsrfToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(SAFE_METHODS.has(method) ? {} : { 'X-Requested-With': 'XMLHttpRequest' }),
+    ...(SAFE_METHODS.has(method)
+      ? {}
+      : {
+          'X-Requested-With': 'XMLHttpRequest',
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+        }),
   };
   new Headers(optionHeaders).forEach((value, key) => {
     headers[key] = value;
@@ -57,10 +66,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         // Nếu không clear, middleware thấy cookie còn sẽ bounce ngược lại
         // → vòng lặp /dashboard ⇄ /dang-nhap vô tận.
         try {
+          const csrfToken = await ensureCsrfToken();
           await fetch("/auth/logout", {
             method: "POST",
             credentials: "include",
-            headers: { "X-Requested-With": "XMLHttpRequest" },
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+              ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+            },
           });
         } catch {
           // ignore — vẫn redirect
@@ -102,6 +115,52 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return body as T;
+}
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const prefix = `${name}=`;
+  return (
+    document.cookie
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(prefix))
+      ?.slice(prefix.length) ?? null
+  );
+}
+
+async function ensureCsrfToken(): Promise<string | null> {
+  const existing = readCookie(CSRF_COOKIE);
+  if (existing) return decodeCookieValue(existing);
+  if (typeof window === 'undefined') return null;
+
+  csrfTokenPromise ??= fetch('/auth/csrf', {
+    credentials: 'include',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+  })
+    .then(async (res) => {
+      if (!res.ok) return null;
+      const body = (await res.json().catch(() => null)) as { csrfToken?: unknown } | null;
+      const cookieToken = readCookie(CSRF_COOKIE);
+      return typeof body?.csrfToken === 'string'
+        ? body.csrfToken
+        : cookieToken
+          ? decodeCookieValue(cookieToken)
+          : null;
+    })
+    .finally(() => {
+      csrfTokenPromise = null;
+    });
+
+  return csrfTokenPromise;
+}
+
+function decodeCookieValue(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 export interface Schedule {
@@ -235,6 +294,7 @@ export async function createSchedule(data: {
   item_type?: string;
   start_time: string;
   end_time?: string;
+  status?: string;
   priority?: string;
   remind_at?: string;
   recurrence_type?: string;

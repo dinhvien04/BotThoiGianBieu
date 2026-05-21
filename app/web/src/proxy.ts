@@ -19,7 +19,7 @@ const PROTECTED_PREFIXES = [
   "/admin",
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(AUTH_COOKIE);
 

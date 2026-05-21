@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const inter = Inter({
@@ -116,13 +117,50 @@ const themeInitScript = `
 })();
 `;
 
+const devExtensionErrorFilterScript =
+  process.env.NODE_ENV === "development"
+    ? `
+(function(){
+  function collectText(value) {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+
+    var parts = [];
+    try {
+      parts.push(value.message, value.stack, value.filename);
+      parts.push(collectText(value.error));
+      parts.push(collectText(value.reason));
+    } catch (e) {}
+
+    return parts.filter(Boolean).join("\\n");
+  }
+
+  function isExtensionError(value) {
+    var text = collectText(value);
+    return text.indexOf("chrome-extension://") !== -1 ||
+      text.indexOf("moz-extension://") !== -1 ||
+      text.indexOf("safari-web-extension://") !== -1;
+  }
+
+  function silence(event) {
+    if (!isExtensionError(event)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  window.addEventListener("error", silence, true);
+  window.addEventListener("unhandledrejection", silence, true);
+})();
+`
+    : "";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html lang="vi" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -134,6 +172,15 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
           rel="stylesheet"
         />
+        {devExtensionErrorFilterScript ? (
+          <Script
+            id="dev-extension-error-filter"
+            strategy="beforeInteractive"
+            dangerouslySetInnerHTML={{
+              __html: devExtensionErrorFilterScript,
+            }}
+          />
+        ) : null}
         {/* eslint-disable-next-line react/no-danger */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

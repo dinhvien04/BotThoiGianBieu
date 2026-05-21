@@ -6,6 +6,7 @@ export interface ScheduleImportInput {
   item_type?: string;
   start_time: string;
   end_time?: string;
+  status?: string;
   priority?: string;
   remind_at?: string;
   recurrence_type?: string;
@@ -15,10 +16,11 @@ export interface ScheduleImportInput {
 
 function csvEscape(value: unknown): string {
   const text = value == null ? "" : String(value);
-  if (/[",\n\r]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
+  const safeText = /^\s*[=+\-@]/.test(text) ? `'${text}` : text;
+  if (/[",\n\r]/.test(safeText)) {
+    return `"${safeText.replace(/"/g, '""')}"`;
   }
-  return text;
+  return safeText;
 }
 
 function parseCsv(text: string): string[][] {
@@ -71,10 +73,19 @@ function isValidDateString(value: string | undefined): value is string {
   return Boolean(value && !Number.isNaN(new Date(value).getTime()));
 }
 
+function isValidScheduleStatus(value: string | undefined): value is string {
+  return value === "pending" || value === "completed" || value === "cancelled";
+}
+
 function parseOptionalNumber(value: string | undefined): number | undefined {
   if (!value) return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseOptionalPositiveInteger(value: string | undefined): number | undefined {
+  const parsed = parseOptionalNumber(value);
+  return parsed && Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
 }
 
 function formatIcsDate(value: string | null | undefined): string | null {
@@ -87,6 +98,7 @@ function formatIcsDate(value: string | null | undefined): string | null {
 function escapeIcsText(value: string | null | undefined): string {
   return (value ?? "")
     .replace(/\\/g, "\\\\")
+    .replace(/\r/g, "")
     .replace(/\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
@@ -111,6 +123,135 @@ function parseIcsDate(value: string): string | undefined {
   const iso = `${year}-${month}-${day}T${hour}:${minute}:${second}${zulu ? ".000Z" : ""}`;
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function mapScheduleStatusToIcs(status: string | null | undefined): string {
+  switch (status) {
+    case "completed":
+      return "CONFIRMED";
+    case "cancelled":
+      return "CANCELLED";
+    case "pending":
+    default:
+      return "TENTATIVE";
+  }
+}
+
+function mapSchedulePriorityToIcs(priority: string | null | undefined): number | null {
+  switch (priority) {
+    case "high":
+      return 1;
+    case "normal":
+      return 5;
+    case "low":
+      return 9;
+    default:
+      return null;
+  }
+}
+
+function mapIcsPriorityToSchedule(priority: string | undefined): string {
+  const parsed = parseOptionalNumber(priority);
+  if (!parsed) return "normal";
+  if (parsed <= 4) return "high";
+  if (parsed >= 6) return "low";
+  return "normal";
+}
+
+function mapIcsStatusToSchedule(status: string | undefined, focusFlowStatus: string | undefined): string | undefined {
+  if (isValidScheduleStatus(focusFlowStatus)) return focusFlowStatus;
+  switch (status?.toUpperCase()) {
+    case "CANCELLED":
+      return "cancelled";
+    case "TENTATIVE":
+      return "pending";
+    default:
+      return undefined;
+  }
+}
+
+function formatIcsAlarmTrigger(startTime: string, remindAt: string | null | undefined): string | null {
+  if (!remindAt) return null;
+  const start = new Date(startTime);
+  const reminder = new Date(remindAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(reminder.getTime())) return null;
+  const diffSeconds = Math.round((start.getTime() - reminder.getTime()) / 1000);
+  if (diffSeconds <= 0) return null;
+
+  const days = Math.floor(diffSeconds / 86400);
+  const hours = Math.floor((diffSeconds % 86400) / 3600);
+  const minutes = Math.floor((diffSeconds % 3600) / 60);
+  const seconds = diffSeconds % 60;
+  const timeParts = [
+    hours ? `${hours}H` : "",
+    minutes ? `${minutes}M` : "",
+    seconds ? `${seconds}S` : "",
+  ].join("");
+
+  return `-P${days ? `${days}D` : ""}${timeParts ? `T${timeParts}` : ""}`;
+}
+
+function parseIcsAlarmReminder(startTime: string, trigger: string | undefined): string | undefined {
+  if (!trigger?.startsWith("-P")) return undefined;
+  const match = trigger.match(/^-P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
+  if (!match) return undefined;
+  const [, days, hours, minutes, seconds] = match;
+  const durationMs =
+    ((Number(days ?? 0) * 24 * 60 * 60) +
+      (Number(hours ?? 0) * 60 * 60) +
+      (Number(minutes ?? 0) * 60) +
+      Number(seconds ?? 0)) *
+    1000;
+  if (durationMs <= 0) return undefined;
+  const start = new Date(startTime);
+  if (Number.isNaN(start.getTime())) return undefined;
+  return new Date(start.getTime() - durationMs).toISOString();
+}
+
+function buildIcsRrule(schedule: Schedule): string | null {
+  if (!schedule.recurrence_type || schedule.recurrence_type === "none") return null;
+  const freq =
+    schedule.recurrence_type === "daily"
+      ? "DAILY"
+      : schedule.recurrence_type === "weekly"
+        ? "WEEKLY"
+        : schedule.recurrence_type === "monthly"
+          ? "MONTHLY"
+          : null;
+  if (!freq) return null;
+
+  const parts = [`FREQ=${freq}`];
+  if (schedule.recurrence_interval > 1) parts.push(`INTERVAL=${schedule.recurrence_interval}`);
+  const until = formatIcsDate(schedule.recurrence_until);
+  if (until) parts.push(`UNTIL=${until}`);
+  return `RRULE:${parts.join(";")}`;
+}
+
+function parseIcsRrule(value: string | undefined): Pick<
+  ScheduleImportInput,
+  "recurrence_type" | "recurrence_interval" | "recurrence_until"
+> {
+  if (!value) return {};
+  const parts = new Map<string, string>();
+  value.split(";").forEach((part) => {
+    const separator = part.indexOf("=");
+    if (separator > 0) {
+      parts.set(part.slice(0, separator).toUpperCase(), part.slice(separator + 1));
+    }
+  });
+
+  const freq = parts.get("FREQ")?.toUpperCase();
+  const recurrence_type =
+    freq === "DAILY" ? "daily" : freq === "WEEKLY" ? "weekly" : freq === "MONTHLY" ? "monthly" : undefined;
+  if (!recurrence_type) return {};
+
+  const interval = parseOptionalPositiveInteger(parts.get("INTERVAL"));
+  const until = parts.get("UNTIL");
+  return {
+    recurrence_type,
+    recurrence_interval: interval,
+    recurrence_until: until ? parseIcsDate(until) : undefined,
+  };
 }
 
 export function downloadTextFile(filename: string, content: string, mimeType: string): void {
@@ -168,19 +309,36 @@ export function schedulesToJson(schedules: Schedule[]): string {
 }
 
 export function schedulesToIcs(schedules: Schedule[]): string {
+  const now = formatIcsDate(new Date().toISOString());
   const events = schedules
     .map((schedule) => {
       const start = formatIcsDate(schedule.start_time);
       if (!start) return null;
       const end = formatIcsDate(schedule.end_time);
+      const scheduleStatus = schedule.status ?? "pending";
+      const priority = mapSchedulePriorityToIcs(schedule.priority);
+      const alarmTrigger = formatIcsAlarmTrigger(schedule.start_time, schedule.remind_at);
       return [
         "BEGIN:VEVENT",
         `UID:focusflow-${schedule.id}@local`,
-        `DTSTAMP:${formatIcsDate(new Date().toISOString())}`,
+        now ? `DTSTAMP:${now}` : null,
         `DTSTART:${start}`,
         end ? `DTEND:${end}` : null,
         `SUMMARY:${escapeIcsText(schedule.title)}`,
         schedule.description ? `DESCRIPTION:${escapeIcsText(schedule.description)}` : null,
+        `STATUS:${mapScheduleStatusToIcs(scheduleStatus)}`,
+        `X-FOCUSFLOW-STATUS:${scheduleStatus}`,
+        priority ? `PRIORITY:${priority}` : null,
+        buildIcsRrule(schedule),
+        alarmTrigger
+          ? [
+              "BEGIN:VALARM",
+              "ACTION:DISPLAY",
+              `DESCRIPTION:${escapeIcsText(schedule.title)}`,
+              `TRIGGER:${alarmTrigger}`,
+              "END:VALARM",
+            ].join("\r\n")
+          : null,
         "END:VEVENT",
       ]
         .filter(Boolean)
@@ -266,6 +424,7 @@ export function parseCsvSchedules(text: string): ScheduleImportInput[] {
     if (!title || !isValidDateString(startTime)) continue;
 
     const endTime = record.get("end_time") || record.get("end");
+    const status = record.get("status");
     const remindAt = record.get("remind_at");
     const recurrenceUntil = record.get("recurrence_until");
 
@@ -275,6 +434,7 @@ export function parseCsvSchedules(text: string): ScheduleImportInput[] {
       item_type: record.get("item_type") || "task",
       start_time: new Date(startTime).toISOString(),
       end_time: isValidDateString(endTime) ? new Date(endTime).toISOString() : undefined,
+      ...(isValidScheduleStatus(status) ? { status } : {}),
       priority: record.get("priority") || "normal",
       remind_at: isValidDateString(remindAt) ? new Date(remindAt).toISOString() : undefined,
       recurrence_type: record.get("recurrence_type") || undefined,
@@ -292,37 +452,62 @@ export function parseIcsSchedules(text: string): ScheduleImportInput[] {
   const lines = text.replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
   const result: ScheduleImportInput[] = [];
   let event: Record<string, string> | null = null;
+  let inAlarm = false;
 
   for (const line of lines) {
-    if (line === "BEGIN:VEVENT") {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+    const controlLine = trimmedLine.toUpperCase();
+
+    if (controlLine === "BEGIN:VEVENT") {
       event = {};
+      inAlarm = false;
       continue;
     }
-    if (line === "END:VEVENT") {
+    if (controlLine === "END:VEVENT") {
       if (event) {
         const title = event.SUMMARY ? unescapeIcsText(event.SUMMARY) : "Imported event";
         const start = event.DTSTART ? parseIcsDate(event.DTSTART) : undefined;
         if (start) {
           const end = event.DTEND ? parseIcsDate(event.DTEND) : undefined;
+          const recurrence = parseIcsRrule(event.RRULE);
+          const status = mapIcsStatusToSchedule(event.STATUS, event["X-FOCUSFLOW-STATUS"]);
           result.push({
             title,
             description: event.DESCRIPTION ? unescapeIcsText(event.DESCRIPTION) : undefined,
             item_type: "event",
             start_time: start,
             end_time: end,
-            priority: "normal",
+            ...(status ? { status } : {}),
+            priority: mapIcsPriorityToSchedule(event.PRIORITY),
+            remind_at: parseIcsAlarmReminder(start, event.VALARM_TRIGGER),
+            ...recurrence,
           });
         }
       }
       event = null;
+      inAlarm = false;
       continue;
     }
 
     if (!event) continue;
+    if (controlLine === "BEGIN:VALARM") {
+      inAlarm = true;
+      continue;
+    }
+    if (controlLine === "END:VALARM") {
+      inAlarm = false;
+      continue;
+    }
+
     const separator = line.indexOf(":");
     if (separator < 0) continue;
-    const rawKey = line.slice(0, separator).split(";")[0];
+    const rawKey = line.slice(0, separator).split(";")[0].toUpperCase();
     const value = line.slice(separator + 1);
+    if (inAlarm) {
+      if (rawKey === "TRIGGER") event.VALARM_TRIGGER = value;
+      continue;
+    }
     event[rawKey] = value;
   }
 

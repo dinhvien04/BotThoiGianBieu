@@ -8,6 +8,7 @@ const TOKEN_URL = 'https://oauth2.mezon.ai/oauth2/token';
 const USERINFO_URL = 'https://oauth2.mezon.ai/userinfo';
 
 const SESSION_COOKIE = 'btgb_auth';
+const CSRF_COOKIE = 'btgb_csrf';
 const OAUTH_STATE_COOKIE = 'btgb_mezon_state';
 const OAUTH_RETURN_TO_COOKIE = 'btgb_mezon_return_to';
 const DEFAULT_WEB_URL = 'http://localhost:3000';
@@ -209,8 +210,24 @@ export class AuthService {
     });
   }
 
+  createCsrfToken(): string {
+    return randomBytes(32).toString('base64url');
+  }
+
+  createCsrfCookie(csrfToken: string): string {
+    return this.buildCookie(CSRF_COOKIE, csrfToken, {
+      httpOnly: false,
+      maxAgeSeconds: SESSION_TTL_SECONDS,
+      path: '/',
+    });
+  }
+
   clearSessionCookie(): string {
     return this.clearCookie(SESSION_COOKIE, '/');
+  }
+
+  clearCsrfCookie(): string {
+    return this.clearCookie(CSRF_COOKIE, '/');
   }
 
   async revokeSessionFromCookie(cookieHeader?: string): Promise<void> {
@@ -588,16 +605,18 @@ export class AuthService {
   private buildCookie(
     name: string,
     value: string,
-    options: { maxAgeSeconds: number; path: string },
+    options: { httpOnly?: boolean; maxAgeSeconds: number; path: string },
   ): string {
     const sameSite = this.getCookieSameSite();
     const parts = [
       `${name}=${encodeURIComponent(value)}`,
       `Max-Age=${options.maxAgeSeconds}`,
       `Path=${options.path}`,
-      'HttpOnly',
       `SameSite=${sameSite}`,
     ];
+    if (options.httpOnly !== false) {
+      parts.push('HttpOnly');
+    }
 
     const domain = this.config.get<string>('AUTH_COOKIE_DOMAIN');
     if (domain) {

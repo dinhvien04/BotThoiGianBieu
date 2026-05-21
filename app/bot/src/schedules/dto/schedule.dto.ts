@@ -54,6 +54,10 @@ export class CreateScheduleDto {
   priority?: SchedulePriority;
 
   @IsOptional()
+  @IsIn(SCHEDULE_STATUSES)
+  status?: ScheduleStatus;
+
+  @IsOptional()
   @IsISO8601({ strict: true })
   remind_at?: string;
 

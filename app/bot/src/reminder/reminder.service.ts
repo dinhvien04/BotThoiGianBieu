@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   ApiMessageMention,
@@ -25,6 +26,7 @@ const VIETNAM_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DAILY_DIGEST_TODAY_LIMIT = 8;
 const DAILY_DIGEST_OVERDUE_LIMIT = 5;
+const DEFAULT_INFRA_BACKOFF_MS = 5 * 60 * 1000;
 
 type NotificationSettings = {
   notify_via_dm?: boolean;
@@ -48,18 +50,28 @@ export class ReminderService {
   /** Tránh reentrancy khi tick dài hơn 1 phút. */
   private running = false;
   private dailyDigestRunning = false;
+  private nextQueryRetryAt = 0;
+  private readonly infraBackoffMs: number;
 
   constructor(
     private readonly schedulesService: SchedulesService,
     private readonly botService: BotService,
     private readonly dateParser: DateParser,
     private readonly usersService: UsersService,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    const configured = Number(this.config.get<string>('REMINDER_INFRA_BACKOFF_MS'));
+    this.infraBackoffMs =
+      Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_INFRA_BACKOFF_MS;
+  }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async tick(): Promise<void> {
     if (this.running) {
       this.logger.debug('Tick cũ chưa xong, bỏ qua tick hiện tại.');
+      return;
+    }
+    if (this.shouldSkipQueryWindow('Reminder tick')) {
       return;
     }
     this.running = true;
@@ -95,6 +107,7 @@ export class ReminderService {
         }
       } catch (err) {
         this.logError('Reminder tick lỗi ở tầng truy vấn / hạ tầng', err);
+        this.deferAfterTransientInfrastructureError(err);
       }
     } finally {
       this.running = false;
@@ -105,6 +118,9 @@ export class ReminderService {
   async sendDailyDigest(now: Date = new Date()): Promise<void> {
     if (this.dailyDigestRunning) {
       this.logger.debug('Daily digest cu chua xong, bo qua lan hien tai.');
+      return;
+    }
+    if (this.shouldSkipQueryWindow('Daily digest')) {
       return;
     }
     this.dailyDigestRunning = true;
@@ -145,6 +161,7 @@ export class ReminderService {
       }
     } catch (err) {
       this.logError('Daily digest loi o tang truy van / ha tang', err);
+      this.deferAfterTransientInfrastructureError(err);
     } finally {
       this.dailyDigestRunning = false;
     }
@@ -599,6 +616,52 @@ export class ReminderService {
   }
 
   /** Log error dạng chi tiết — bất kể err có phải Error instance hay không. */
+  private shouldSkipQueryWindow(scope: string): boolean {
+    const waitMs = this.nextQueryRetryAt - Date.now();
+    if (waitMs <= 0) {
+      return false;
+    }
+    this.logger.debug(
+      `${scope}: bo qua truy van DB, thu lai sau ${Math.ceil(waitMs / 1000)}s.`,
+    );
+    return true;
+  }
+
+  private deferAfterTransientInfrastructureError(err: unknown): void {
+    if (!this.isTransientInfrastructureError(err)) {
+      return;
+    }
+    this.nextQueryRetryAt = Date.now() + this.infraBackoffMs;
+    this.logger.warn(
+      `Tam dung truy van reminder ${Math.ceil(
+        this.infraBackoffMs / 1000,
+      )}s vi DB/DNS dang loi tam thoi.`,
+    );
+  }
+
+  private isTransientInfrastructureError(err: unknown): boolean {
+    const code = this.readErrorField(err, 'code');
+    if (
+      code === 'ENOTFOUND' ||
+      code === 'ECONNRESET' ||
+      code === 'ECONNREFUSED' ||
+      code === 'ETIMEDOUT'
+    ) {
+      return true;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    return /ENOTFOUND|ECONNRESET|ECONNREFUSED|ETIMEDOUT|Connection terminated unexpectedly/i.test(
+      message,
+    );
+  }
+
+  private readErrorField(err: unknown, field: string): unknown {
+    if (!err || typeof err !== 'object' || !(field in err)) {
+      return undefined;
+    }
+    return (err as Record<string, unknown>)[field];
+  }
+
   private logError(prefix: string, err: unknown): void {
     if (err instanceof Error) {
       this.logger.error(`${prefix}: ${err.message || '(empty message)'}`, err.stack);

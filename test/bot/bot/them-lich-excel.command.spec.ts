@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { ThemLichExcelCommand } from 'src/bot/commands/them-lich-excel.command';
 import { DateParser } from 'src/shared/utils/date-parser';
 
@@ -119,14 +118,9 @@ describe('ThemLichExcelCommand', () => {
 });
 
 function parseWorkbook(command: ThemLichExcelCommand, rows: unknown[][]): ParseWorkbookResult {
-  const sheet = XLSX.utils.aoa_to_sheet(rows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, 'lich');
-  const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-
   return (
     command as unknown as {
-      parseWorkbook(buffer: Buffer, defaultRemindMinutes: number): ParseWorkbookResult;
+      parseSheetRows(rows: unknown[][], defaultRemindMinutes: number): ParseWorkbookResult;
     }
-  ).parseWorkbook(buffer, 30);
+  ).parseSheetRows(rows, 30);
 }

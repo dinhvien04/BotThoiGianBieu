@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSchedules, useStatistics, useStreak, useOverdueCount } from "@/lib/hooks";
 import { useProfile } from "@/components/dashboard/ProfileContext";
 import { useLanguage } from "@/components/dashboard/LanguageContext";
@@ -192,7 +193,7 @@ export default function DashboardPage() {
                 <p className="text-xs sm:text-sm text-on-surface-variant mb-5 max-w-sm">
                   {t("dashboard.empty.desc")}
                 </p>
-                <a
+                <Link
                   href="/lich/tao-moi"
                   className="btn-press inline-flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary/90"
                 >
@@ -200,7 +201,7 @@ export default function DashboardPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
                   {t("dashboard.empty.cta")}
-                </a>
+                </Link>
               </div>
             ) : (
               <div className="space-y-0 max-h-[350px] sm:max-h-none overflow-y-auto pr-1">
@@ -276,7 +277,7 @@ export default function DashboardPage() {
                 const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 return (
                   <div key={day} className="flex justify-center">
-                    <a
+                    <Link
                       href={`/lich?date=${dateStr}`}
                       aria-label={`${t("dashboard.calendar.viewDay")} ${day}/${month + 1}/${year}`}
                       className={`w-8 h-8 flex items-center justify-center rounded-full text-sm transition-colors ${isToday
@@ -285,7 +286,7 @@ export default function DashboardPage() {
                         }`}
                     >
                       {day}
-                    </a>
+                    </Link>
                   </div>
                 );
               })}

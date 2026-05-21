@@ -26,17 +26,36 @@ describe('CsrfGuard', () => {
     expect(guard.canActivate(makeContext('OPTIONS'))).toBe(true);
   });
 
-  it('allows unsafe methods with X-Requested-With', () => {
-    expect(guard.canActivate(makeContext('POST', { 'x-requested-with': 'XMLHttpRequest' }))).toBe(
-      true,
-    );
+  it('allows unsafe methods with matching double-submit CSRF token', () => {
+    expect(
+      guard.canActivate(
+        makeContext('POST', {
+          cookie: 'btgb_csrf=test-token',
+          'x-csrf-token': 'test-token',
+          'x-requested-with': 'XMLHttpRequest',
+        }),
+      ),
+    ).toBe(true);
   });
 
-  it('rejects unsafe methods without X-Requested-With', () => {
+  it('rejects unsafe methods without a matching CSRF token', () => {
     expect(() => guard.canActivate(makeContext('DELETE'))).toThrow(ForbiddenException);
+    expect(() =>
+      guard.canActivate(
+        makeContext('DELETE', {
+          cookie: 'btgb_csrf=test-token',
+          'x-csrf-token': 'other-token',
+          'x-requested-with': 'XMLHttpRequest',
+        }),
+      ),
+    ).toThrow(ForbiddenException);
   });
 
   it('allows Mezon channel-app HMAC login without CSRF header', () => {
     expect(guard.canActivate(makeContext('POST', {}, '/auth/mezon/channel-app'))).toBe(true);
+  });
+
+  it('allows logout without CSRF so stale auth cookies can be cleared', () => {
+    expect(guard.canActivate(makeContext('POST', {}, '/auth/logout'))).toBe(true);
   });
 });

@@ -11,9 +11,53 @@ import {
   toApiScheduleItemType,
   toApiSchedulePriority,
 } from '@/lib/mock-data';
-import { updateSchedule } from '@/lib/api';
+import { attachTags, detachTag, updateSchedule } from '@/lib/api';
 import { useScheduleById } from '@/lib/hooks';
 import { useToast } from '@/components/dashboard/Toast';
+
+function normalizeTagName(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[-_]+|[-_]+$/g, '');
+}
+
+function uniqueNormalizedTags(tags: string[]) {
+  return Array.from(
+    new Set(
+      tags
+        .map((tag) => normalizeTagName(tag))
+        .filter((tag): tag is string => Boolean(tag)),
+    ),
+  );
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function parseScheduleDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function toDateInputValue(value?: string | null) {
+  const date = parseScheduleDate(value);
+  if (!date) return '';
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function toTimeInputValue(value?: string | null) {
+  const date = parseScheduleDate(value);
+  if (!date) return '';
+  return `${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
 
 export default function EditSchedulePage() {
   const params = useParams();
@@ -22,6 +66,8 @@ export default function EditSchedulePage() {
   const id = Number(params.id);
   const { data: schedule, loading } = useScheduleById(id);
   const [saving, setSaving] = useState(false);
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagDraft, setTagDraft] = useState('');
   const [form, setForm] = useState<{
     type: string;
     title: string;
@@ -38,22 +84,91 @@ export default function EditSchedulePage() {
 
   // Populate form once schedule loads
   if (schedule && !form) {
-    const start = schedule.start_time || '';
-    const end = schedule.end_time || '';
     setForm({
       type: toApiScheduleItemType(schedule.item_type),
       title: schedule.title || '',
       description: schedule.description || '',
-      startDate: start.split('T')[0] || '',
-      startTime: start.split('T')[1]?.slice(0, 5) || '',
-      endDate: end.split('T')[0] || '',
-      endTime: end.split('T')[1]?.slice(0, 5) || '',
+      startDate: toDateInputValue(schedule.start_time),
+      startTime: toTimeInputValue(schedule.start_time),
+      endDate: toDateInputValue(schedule.end_time),
+      endTime: toTimeInputValue(schedule.end_time),
       priority: toApiSchedulePriority(schedule.priority),
       reminder: '15',
       recurrence: schedule.recurrence_type || '',
       tags: schedule.tags ? schedule.tags.map((t) => t.name || '') : [],
     });
   }
+
+  const canSave = Boolean(form?.title && form?.startDate && form?.startTime) && !saving;
+
+  const handleAddTag = () => {
+    if (!form) return;
+
+    const tagName = normalizeTagName(tagDraft);
+    if (!tagName) {
+      showToast('Tag chỉ dùng chữ, số, dấu gạch ngang hoặc gạch dưới.', 'error');
+      return;
+    }
+    if (tagName.length > 30) {
+      showToast('Tên tag tối đa 30 ký tự.', 'error');
+      return;
+    }
+    if (form.tags.some((tag) => normalizeTagName(tag) === tagName)) {
+      showToast('Tag này đã có trong lịch.', 'error');
+      return;
+    }
+
+    setForm({ ...form, tags: [...form.tags, tagName] });
+    setTagDraft('');
+    setAddingTag(false);
+  };
+
+  const handleSave = async () => {
+    if (!form || !schedule || !canSave) return;
+
+    setSaving(true);
+    try {
+      const startIso = `${form.startDate}T${form.startTime}:00`;
+      const endIso = form.endDate && form.endTime ? `${form.endDate}T${form.endTime}:00` : null;
+      const reminderMinutes = Number(form.reminder) || 15;
+      const remindAt = new Date(
+        new Date(startIso).getTime() - reminderMinutes * 60000,
+      ).toISOString();
+      await updateSchedule(id, {
+        title: form.title,
+        description: form.description || null,
+        item_type: form.type,
+        start_time: new Date(startIso).toISOString(),
+        end_time: endIso ? new Date(endIso).toISOString() : null,
+        priority: form.priority,
+        remind_at: remindAt,
+        recurrence_type: form.recurrence || 'none',
+      });
+
+      const originalTags = uniqueNormalizedTags(schedule.tags?.map((tag) => tag.name || '') ?? []);
+      const nextTags = uniqueNormalizedTags(form.tags);
+      const removedTags = originalTags.filter((tag) => !nextTags.includes(tag));
+      const addedTags = nextTags.filter((tag) => !originalTags.includes(tag));
+
+      if (removedTags.length > 0) {
+        await Promise.all(removedTags.map((tag) => detachTag(id, tag)));
+      }
+      if (addedTags.length > 0) {
+        const result = await attachTags(id, addedTags);
+        if (result.invalid.length > 0) {
+          throw new Error('Invalid tags');
+        }
+      }
+
+      showToast('Cập nhật thành công!', 'success');
+      router.refresh();
+      router.push(`/lich/${id}`);
+    } catch {
+      showToast('Không thể cập nhật. Vui lòng thử lại.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading || !schedule || !form) {
     return (
@@ -81,36 +196,9 @@ export default function EditSchedulePage() {
             Hủy
           </Link>
           <button
-            disabled={saving || !form.title || !form.startDate || !form.startTime}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                const startIso = `${form.startDate}T${form.startTime}:00`;
-                const endIso =
-                  form.endDate && form.endTime ? `${form.endDate}T${form.endTime}:00` : null;
-                const reminderMinutes = Number(form.reminder) || 15;
-                const remindAt = new Date(
-                  new Date(startIso).getTime() - reminderMinutes * 60000,
-                ).toISOString();
-                await updateSchedule(id, {
-                  title: form.title,
-                  description: form.description || null,
-                  item_type: form.type,
-                  start_time: new Date(startIso).toISOString(),
-                  end_time: endIso ? new Date(endIso).toISOString() : null,
-                  priority: form.priority,
-                  remind_at: remindAt,
-                  recurrence_type: form.recurrence || 'none',
-                });
-                showToast('Cập nhật thành công!', 'success');
-                router.refresh();
-                router.push(`/lich/${id}`);
-              } catch {
-                showToast('Không thể cập nhật. Vui lòng thử lại.', 'error');
-              } finally {
-                setSaving(false);
-              }
-            }}
+            type="button"
+            disabled={!canSave}
+            onClick={handleSave}
             className="px-5 py-2.5 bg-primary text-on-primary rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
@@ -266,26 +354,38 @@ export default function EditSchedulePage() {
         <h2 className="text-lg font-semibold text-on-surface mt-8 mb-5">Thời gian thực hiện</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-on-surface mb-2">Bắt đầu</label>
+            <label className="block text-sm font-medium text-on-surface mb-2">Ngày bắt đầu</label>
             <input
-              type="datetime-local"
-              value={form.startDate && form.startTime ? `${form.startDate}T${form.startTime}` : ''}
-              onChange={(e) => {
-                const [d, t] = e.target.value.split('T');
-                setForm({ ...form, startDate: d, startTime: t });
-              }}
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
               className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-on-surface mb-2">Kết thúc</label>
+            <label className="block text-sm font-medium text-on-surface mb-2">Giờ bắt đầu</label>
             <input
-              type="datetime-local"
-              value={form.endDate && form.endTime ? `${form.endDate}T${form.endTime}` : ''}
-              onChange={(e) => {
-                const [d, t] = e.target.value.split('T');
-                setForm({ ...form, endDate: d, endTime: t });
-              }}
+              type="time"
+              value={form.startTime}
+              onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface mb-2">Ngày kết thúc</label>
+            <input
+              type="date"
+              value={form.endDate}
+              onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+              className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface mb-2">Giờ kết thúc</label>
+            <input
+              type="time"
+              value={form.endTime}
+              onChange={(e) => setForm({ ...form, endTime: e.target.value })}
               className="w-full px-4 py-3 border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
@@ -340,7 +440,9 @@ export default function EditSchedulePage() {
                 >
                   #{tag}
                   <button
+                    type="button"
                     onClick={() => setForm({ ...form, tags: form.tags.filter((t) => t !== tag) })}
+                    aria-label={`Gỡ tag ${tag}`}
                     className="ml-1 hover:text-error"
                   >
                     <svg
@@ -355,9 +457,54 @@ export default function EditSchedulePage() {
                   </button>
                 </span>
               ))}
-              <button className="px-3 py-1.5 text-primary border border-primary/30 rounded-full text-sm font-medium hover:bg-primary/5">
-                + Thêm tag
-              </button>
+              {addingTag ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={tagDraft}
+                    onChange={(e) => setTagDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                      if (e.key === 'Escape') {
+                        setAddingTag(false);
+                        setTagDraft('');
+                      }
+                    }}
+                    autoFocus
+                    maxLength={60}
+                    placeholder="vd: cong-viec"
+                    className="min-w-44 px-3 py-1.5 border border-outline-variant rounded-full text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="px-3 py-1.5 bg-primary text-on-primary rounded-full text-sm font-medium hover:bg-primary/90"
+                  >
+                    Thêm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingTag(false);
+                      setTagDraft('');
+                    }}
+                    className="px-3 py-1.5 text-on-surface-variant rounded-full text-sm font-medium hover:bg-surface-container"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingTag(true)}
+                  className="px-3 py-1.5 text-primary border border-primary/30 rounded-full text-sm font-medium hover:bg-primary/5"
+                >
+                  + Thêm tag
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -371,35 +518,9 @@ export default function EditSchedulePage() {
             Hủy
           </Link>
           <button
-            disabled={saving || !form.title || !form.startDate || !form.startTime}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                const startIso = `${form.startDate}T${form.startTime}:00`;
-                const endIso =
-                  form.endDate && form.endTime ? `${form.endDate}T${form.endTime}:00` : null;
-                const reminderMinutes = Number(form.reminder) || 15;
-                const remindAt = new Date(
-                  new Date(startIso).getTime() - reminderMinutes * 60000,
-                ).toISOString();
-                await updateSchedule(id, {
-                  title: form.title,
-                  description: form.description || null,
-                  item_type: form.type,
-                  start_time: new Date(startIso).toISOString(),
-                  end_time: endIso ? new Date(endIso).toISOString() : null,
-                  priority: form.priority,
-                  remind_at: remindAt,
-                  recurrence_type: form.recurrence || 'none',
-                });
-                showToast('Cập nhật thành công!', 'success');
-                router.push(`/lich/${id}`);
-              } catch {
-                showToast('Không thể cập nhật. Vui lòng thử lại.', 'error');
-              } finally {
-                setSaving(false);
-              }
-            }}
+            type="button"
+            disabled={!canSave}
+            onClick={handleSave}
             className="px-6 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Đang lưu...' : 'Lưu thay đổi'}

@@ -37,6 +37,7 @@ export interface CreateScheduleInput {
   start_time: Date;
   end_time?: Date | null;
   remind_at?: Date | null;
+  status?: ScheduleStatus;
   priority?: SchedulePriority;
   recurrence_type?: RecurrenceType;
   recurrence_interval?: number;
@@ -199,7 +200,7 @@ export class SchedulesService {
       is_reminded: false,
       acknowledged_at: null,
       end_notified_at: null,
-      status: 'pending',
+      status: input.status ?? 'pending',
       priority: input.priority ?? 'normal',
       recurrence_type: input.recurrence_type ?? 'none',
       recurrence_interval: input.recurrence_interval ?? 1,

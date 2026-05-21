@@ -78,16 +78,25 @@ function filterSchedules(schedules: Schedule[], range: string, itemType: string)
   });
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function schedulesReportHtml(schedules: Schedule[]): string {
   const rows = schedules
     .map(
       (schedule) => `<tr>
-        <td>${schedule.id}</td>
-        <td>${schedule.title}</td>
-        <td>${schedule.item_type}</td>
-        <td>${new Date(schedule.start_time).toLocaleString("vi-VN")}</td>
-        <td>${schedule.status}</td>
-        <td>${schedule.priority}</td>
+        <td>${escapeHtml(schedule.id)}</td>
+        <td>${escapeHtml(schedule.title)}</td>
+        <td>${escapeHtml(schedule.item_type)}</td>
+        <td>${escapeHtml(new Date(schedule.start_time).toLocaleString("vi-VN"))}</td>
+        <td>${escapeHtml(schedule.status)}</td>
+        <td>${escapeHtml(schedule.priority)}</td>
       </tr>`,
     )
     .join("");

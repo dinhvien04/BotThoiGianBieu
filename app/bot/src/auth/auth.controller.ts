@@ -50,6 +50,7 @@ export class AuthController {
       response.setHeader('Set-Cookie', [
         ...this.authService.clearMezonOAuthCookies(),
         this.authService.createSessionCookie(result.sessionToken),
+        this.authService.createCsrfCookie(this.authService.createCsrfToken()),
       ]);
       response.redirect(result.redirectUrl);
     } catch (err) {
@@ -66,8 +67,26 @@ export class AuthController {
     @Res({ passthrough: true }) response: HttpResponse,
   ): Promise<unknown> {
     const result = await this.authService.authenticateChannelApp(body);
-    response.setHeader('Set-Cookie', this.authService.createSessionCookie(result.accessToken));
+    response.setHeader('Set-Cookie', [
+      this.authService.createSessionCookie(result.accessToken),
+      this.authService.createCsrfCookie(this.authService.createCsrfToken()),
+    ]);
     return result;
+  }
+
+  @Get('csrf')
+  async getCsrfToken(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Res({ passthrough: true }) response: HttpResponse,
+  ) {
+    const session = await this.authService.readActiveSessionFromCookie(cookieHeader);
+    if (!session) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+
+    const csrfToken = this.authService.createCsrfToken();
+    response.setHeader('Set-Cookie', this.authService.createCsrfCookie(csrfToken));
+    return { success: true, csrfToken };
   }
 
   @Get('mezon/me')
@@ -96,6 +115,7 @@ export class AuthController {
     await this.authService.revokeSessionFromCookie(cookieHeader);
     response.setHeader('Set-Cookie', [
       this.authService.clearSessionCookie(),
+      this.authService.clearCsrfCookie(),
       ...this.authService.clearMezonOAuthCookies(),
     ]);
     return { success: true };

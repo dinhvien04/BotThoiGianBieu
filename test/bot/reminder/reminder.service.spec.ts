@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { ReminderService, REMINDER_INTERACTION_ID } from 'src/reminder/reminder.service';
 import { SchedulesService } from 'src/schedules/schedules.service';
 import { BotService } from 'src/bot/bot.service';
@@ -105,6 +106,7 @@ describe('ReminderService', () => {
         { provide: BotService, useValue: mockBotService },
         { provide: DateParser, useValue: mockDateParser },
         { provide: UsersService, useValue: mockUsersService },
+        { provide: ConfigService, useValue: { get: jest.fn(() => undefined) } },
       ],
     }).compile();
 
@@ -258,6 +260,22 @@ describe('ReminderService', () => {
 
       // Assert
       expect(mockSchedulesService.findDueReminders).toHaveBeenCalledTimes(2);
+    });
+
+    it('should back off after transient database infrastructure errors', async () => {
+      const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+      const err = Object.assign(new Error('getaddrinfo ENOTFOUND db.example.test'), {
+        code: 'ENOTFOUND',
+      });
+      mockSchedulesService.findDueReminders.mockRejectedValue(err);
+
+      await service.tick();
+
+      mockSchedulesService.findDueReminders.mockClear();
+      await service.tick();
+
+      expect(mockSchedulesService.findDueReminders).not.toHaveBeenCalled();
+      nowSpy.mockRestore();
     });
   });
 

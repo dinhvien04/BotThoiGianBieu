@@ -13,6 +13,7 @@ import { ReminderModule } from './reminder/reminder.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
 import { CsrfGuard } from './auth/csrf.guard';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { CsrfGuard } from './auth/csrf.guard';
     ReminderModule,
     AdminModule,
   ],
+  controllers: [HealthController],
   providers: [
     {
       provide: APP_GUARD,

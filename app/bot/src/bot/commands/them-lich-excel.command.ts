@@ -4,7 +4,7 @@ import {
   ButtonBuilder,
   EButtonMessageStyle,
 } from 'mezon-sdk';
-import * as XLSX from 'xlsx';
+import { readSheet } from 'read-excel-file/node';
 import { BotService } from '../bot.service';
 import { CommandRegistry } from './command-registry';
 import { BotCommand, CommandContext } from './command.types';
@@ -114,7 +114,7 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
     }
 
     const buffer = await this.downloadFile(source.url);
-    const result = this.parseWorkbook(buffer, user.settings?.default_remind_minutes ?? 30);
+    const result = await this.parseWorkbook(buffer, user.settings?.default_remind_minutes ?? 30);
     if (result.rows.length === 0) {
       await ctx.reply(this.formatPreview(result.rows, result.errors, null));
       return;
@@ -231,19 +231,26 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
     return Buffer.from(arrayBuffer);
   }
 
-  private parseWorkbook(
+  private async parseWorkbook(
     buffer: Buffer,
     defaultRemindMinutes: number,
+  ): Promise<{ rows: ParsedExcelRow[]; errors: RowError[] }> {
+    const sheetRows = await readSheet(buffer);
+    return this.parseSheetRows(sheetRows, defaultRemindMinutes);
+  }
+
+  private parseSheetRows(
+    sheetRows: unknown[][],
+    defaultRemindMinutes: number,
   ): { rows: ParsedExcelRow[]; errors: RowError[] } {
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-    const sheetName = workbook.SheetNames[0];
+    const sheetName = sheetRows.length > 0 ? 'sheet' : '';
     if (!sheetName) return { rows: [], errors: [{ rowNumber: 0, message: 'File không có sheet nào.' }] };
 
-    const sheet = workbook.Sheets[sheetName];
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-      defval: '',
-      raw: false,
-    });
+    const headers = sheetRows[0].map((cell) => this.stringifyCell(cell));
+    const rawRows = sheetRows
+      .slice(1)
+      .map((row) => this.rowToRecord(headers, row))
+      .filter((row) => Object.values(row).some((value) => value.trim() !== ''));
     const rows: ParsedExcelRow[] = [];
     const errors: RowError[] = [];
 
@@ -363,6 +370,30 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
       result[this.normalizeKey(key)] = String(value ?? '').trim();
     }
     return result;
+  }
+
+  private rowToRecord(headers: string[], row: unknown[]): Record<string, string> {
+    const record: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      if (!header) return;
+      record[header] = this.stringifyCell(row[index]);
+    });
+    return record;
+  }
+
+  private stringifyCell(value: unknown): string {
+    if (value == null) return '';
+    if (value instanceof Date) {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, '0');
+      const day = String(value.getDate()).padStart(2, '0');
+      const hour = String(value.getHours()).padStart(2, '0');
+      const minute = String(value.getMinutes()).padStart(2, '0');
+      const hasTime = value.getHours() !== 0 || value.getMinutes() !== 0 || value.getSeconds() !== 0;
+      if (year <= 1900) return `${hour}:${minute}`;
+      return hasTime ? `${day}/${month}/${year} ${hour}:${minute}` : `${day}/${month}/${year}`;
+    }
+    return String(value).trim();
   }
 
   private normalizeKey(value: string): string {

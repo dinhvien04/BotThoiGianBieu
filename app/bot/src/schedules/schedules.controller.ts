@@ -72,6 +72,7 @@ export class SchedulesController {
       item_type: body.item_type ?? 'task',
       start_time: new Date(body.start_time),
       end_time: body.end_time ? new Date(body.end_time) : null,
+      status: body.status ?? 'pending',
       priority: body.priority ?? 'normal',
       remind_at: body.remind_at ? new Date(body.remind_at) : null,
       recurrence_type: body.recurrence_type ?? 'none',
