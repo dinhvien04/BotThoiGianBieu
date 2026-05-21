@@ -23,6 +23,8 @@ Chào mừng bạn đến với tài liệu đầy đủ của hệ thống **Ch
 - [**Recurring Events**](./recurring-events.md) - Hệ thống lịch lặp lại
 - [**Reminder System**](./reminder-system.md) - Hệ thống nhắc nhở tự động
 - [**Priority & Tags**](./priority-tags.md) - Quản lý ưu tiên và nhãn
+- [**Admin Guide**](./admin-guide.md) - Hệ thống quản trị (AdminGuard, broadcast, user management)
+- [**Mezon Landing Design**](./mezon-landing-design.md) - Landing page design specification
 
 ### 🛠️ Maintenance & Tiến Độ
 - [**Troubleshooting**](./troubleshooting.md) - Xử lý sự cố thường gặp
@@ -61,6 +63,6 @@ Nếu bạn tìm thấy lỗi trong tài liệu hoặc muốn cải thiện, vui
 
 ---
 
-**Phiên bản tài liệu**: v1.0  
-**Cập nhật lần cuối**: 27/04/2026  
-**Tương thích với**: Bot v0.1.0
+**Phiên bản tài liệu**: v1.1  
+**Cập nhật lần cuối**: 14/05/2026  
+**Tương thích với**: Bot v0.1.0 + Web v0.1.0

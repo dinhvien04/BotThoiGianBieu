@@ -31,19 +31,20 @@ BotThoiGianBieu/
 │   │   │   ├── main.ts               # Bootstrap NestJS
 │   │   │   ├── app.module.ts         # Root module
 │   │   │   ├── bot/                  # Mezon bot core (commands, registry)
-│   │   │   ├── schedules/            # Schedule entity + service
-│   │   │   ├── users/                # User & UserSettings entities
-│   │   │   ├── auth/                 # Mezon OAuth authentication
+│   │   │   ├── schedules/            # Schedule entity, service, REST controllers
+│   │   │   ├── users/                # User & UserSettings entities + controller
+│   │   │   ├── auth/                 # Mezon OAuth + SessionGuard + CSRF
+│   │   │   ├── admin/                # Admin module (guard, service, controller, broadcast)
 │   │   │   ├── reminder/             # Cron jobs nhắc nhở tự động
 │   │   │   └── shared/utils/         # Parsers, formatters, helpers
-│   │   ├── test/                     # Jest test suite (964+ tests)
-│   │   ├── migrations/               # SQL migrations (idempotent)
+│   │   ├── test/                     # Jest test suite (1136+ tests)
+│   │   ├── migrations/               # SQL migrations 007–019 (idempotent)
 │   │   └── assets/                   # Excel template, bot assets
 │   │
 │   └── web/                          # Next.js 14 frontend
 │       └── src/
 │           ├── app/
-│           │   ├── (auth)/           # Auth pages (đăng nhập, đăng ký)
+│           │   ├── (auth)/           # Auth pages (Mezon OAuth login)
 │           │   ├── (dashboard)/      # Dashboard pages (protected)
 │           │   │   ├── dashboard/    # Tổng quan năng suất
 │           │   │   ├── lich/         # Quản lý lịch (CRUD, views, export)
@@ -51,17 +52,17 @@ BotThoiGianBieu/
 │           │   │   ├── the/          # Quản lý thẻ (Tags)
 │           │   │   ├── thong-ke/     # Thống kê năng suất
 │           │   │   ├── cai-dat/      # Cài đặt cá nhân
-│           │   │   ├── nhac-viec/    # Nhắc việc
-│           │   │   ├── chia-se/      # Chia sẻ lịch
-│           │   │   ├── ho-so/        # Hồ sơ người dùng
-│           │   │   ├── thong-bao/    # Trung tâm thông báo
-│           │   │   ├── tro-giup/     # Trung tâm trợ giúp
-│           │   │   └── ...           # Và nhiều trang khác
+│           │   │   ├── admin/        # Quản trị hệ thống (7 trang)
+│           │   │   └── ...           # Nhắc việc, chia sẻ, hồ sơ, thông báo, trợ giúp
 │           │   └── page.tsx          # Landing page
 │           ├── components/
-│           │   ├── dashboard/        # Reusable dashboard components
+│           │   ├── dashboard/        # Reusable dashboard components + LanguageContext
 │           │   └── landing/          # Landing page components
-│           └── middleware.ts          # Auth middleware
+│           ├── lib/
+│           │   ├── api.ts            # Typed API client (25+ endpoints)
+│           │   ├── hooks.ts          # React hooks (SWR + API-first + mock fallback)
+│           │   └── mock-data.ts      # Dữ liệu mẫu cho development
+│           └── middleware.ts          # Auth middleware (cookie-based)
 │
 ├── doc/                              # 15+ tài liệu chi tiết
 ├── docker-compose.yml                # Docker orchestration
@@ -96,13 +97,14 @@ Chỉnh `.env`:
 | `MEZON_CLIENT_ID` | Client ID cho OAuth web login | ✅ (web) |
 | `MEZON_CLIENT_SECRET` | Client Secret cho OAuth web login | ✅ (web) |
 | `AUTH_TOKEN_SECRET` | Secret key để ký JWT token | ✅ (web) |
+| `ADMIN_USER_IDS` | Danh sách user ID admin, cách nhau bởi dấu phẩy | ❌ |
 | `BOT_PREFIX` | Prefix lệnh bot (mặc định: `*`) | ❌ |
 
 ### 3. Chạy migrations
 
 ```bash
-psql "$DATABASE_URL" -f app/bot/migrations/007-add-recurrence.sql
-psql "$DATABASE_URL" -f app/bot/migrations/008-add-priority.sql
+# Chạy tất cả migrations (007–019)
+for f in app/bot/migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done
 ```
 
 > Tất cả migration đều **idempotent** — chạy lại nhiều lần vẫn an toàn.
@@ -137,7 +139,7 @@ Nếu mọi thứ OK, bạn sẽ thấy:
 
 Web dashboard xây dựng với **Next.js 14 + Tailwind CSS + TypeScript**, thiết kế theo Material Design 3 color system.
 
-### Đã implement (~27 trang + 12 reusable components)
+### Đã implement (~30+ trang + 12 reusable components)
 
 #### Trang chính
 | Trang | Route | Mô tả |
@@ -166,6 +168,13 @@ Web dashboard xây dựng với **Next.js 14 + Tailwind CSS + TypeScript**, thi�
 | Trợ giúp | `/tro-giup` | FAQ, bot commands, quick links |
 | Nhập/Xuất | `/nhap-xuat` | Import/Export data |
 | Onboarding | `/onboarding` | Thiết lập ban đầu (4 bước) |
+| Admin Dashboard | `/admin` | Tổng quan quản trị hệ thống |
+| Admin — Người dùng | `/admin/nguoi-dung` | Quản lý user (promote/lock/unlock) |
+| Admin — Lịch trình | `/admin/lich` | Xem toàn bộ lịch của users |
+| Admin — Audit Log | `/admin/lich-su` | Nhật ký thao tác hệ thống |
+| Admin — Broadcast | `/admin/thong-bao` | Gửi thông báo cho tất cả users |
+| Admin — Thống kê | `/admin/thong-ke` | Thống kê toàn hệ thống |
+| Admin — Cấu hình | `/admin/cai-dat` | Cấu hình hệ thống |
 
 #### Reusable Components
 | Component | Mô tả |
@@ -293,7 +302,7 @@ Hệ thống admin gồm phân quyền (`role`, `is_locked`), 7 trang `/admin/*`
 
 ## ✅ Tính năng chính
 
-### Backend (Bot) — ~70% hoàn thành
+### Backend (Bot) — ~85% hoàn thành
 - User Management (`*bat-dau`, `*cai-dat`)
 - Schedule CRUD: `*them-lich`, `*sua-lich`, `*xoa-lich`, `*hoan-thanh`, `*chi-tiet`
 - Excel import: `*them-lich-excel`, `*mau-lich-excel` (hỗ trợ ưu tiên + lặp)
@@ -303,17 +312,22 @@ Hệ thống admin gồm phân quyền (`role`, `is_locked`), 7 trang `/admin/*`
 - Reminders: cron tự động + button snooze multi-preset + `*nhac-sau` (relative)
 - Statistics: `*thong-ke` (completion rate, hot hours, breakdown theo loại / ưu tiên)
 - Interactive forms (InteractiveBuilder + buttons)
-- Mezon OAuth authentication (web login flow)
-- GitHub Actions CI (lint + build + test)
+- Mezon OAuth authentication (web login flow) + CSRF guard
+- REST API: 25+ endpoints (schedules, tags, templates, users, shares, audit)
+- Admin system: 6 lệnh bot + 7 API endpoints + AdminGuard + broadcast
+- GitHub Actions CI (lint + build + 1136 tests)
 
-### Frontend (Web) — ~85% giao diện hoàn thành
-- 24+ trang dashboard đầy đủ theo design Stitch
+### Frontend (Web) — ~95% giao diện hoàn thành
+- 30+ trang dashboard đầy đủ theo design Stitch (bao gồm 7 trang admin)
 - 12 reusable components (Sidebar, Topbar, Modals, Drawers, Error/Empty states...)
 - Material Design 3 color system (primary `#4F378A`)
+- Light/Dark theme support + micro-interactions
 - Responsive layout (mobile + desktop)
 - Mezon OAuth login flow
+- SWR data fetching — API-first với mock data fallback
+- SEO chuẩn (metadata, sitemap, robots.txt, JSON-LD)
 - Skeleton loading, toast notifications, error states
-- Mock data (chưa kết nối API REST)
+- Đa ngôn ngữ (LanguageContext)
 
 ### Design — 100% hoàn thành
 - 54 screens Stitch phủ đầy đủ mọi chức năng
@@ -321,8 +335,12 @@ Hệ thống admin gồm phân quyền (`role`, `is_locked`), 7 trang `/admin/*`
 
 ## 🚀 Roadmap
 
-- [ ] API REST cho frontend (hiện bot giao tiếp qua mezon-sdk WebSocket)
-- [ ] Kết nối frontend với backend API
+- [x] API REST cho frontend (25+ endpoints)
+- [x] Kết nối frontend với backend API (SWR hooks)
+- [x] Admin system (6 bot commands + 7 trang web + API)
+- [x] Light/Dark theme
+- [x] SEO (metadata, sitemap, robots, JSON-LD)
+- [x] Đa ngôn ngữ (LanguageContext)
 - [ ] Tag/nhãn (many-to-many) + filter (backend)
 - [ ] `*copy-lich` — duplicate lịch
 - [ ] `*lich-thang` — view cả tháng
@@ -337,7 +355,7 @@ Hệ thống admin gồm phân quyền (`role`, `is_locked`), 7 trang `/admin/*`
 Toàn bộ test chạy với Jest:
 
 ```bash
-npm test                   # Chạy tất cả test (964+ tests)
+npm test                   # Chạy tất cả test (1136+ tests)
 npm test -- --coverage     # Kèm coverage report
 npm test -- --watch        # Watch mode
 npm test -- priority       # Filter theo path
@@ -362,7 +380,7 @@ npm run start:prod         # Run production build (cần build trước)
 npm run lint               # ESLint --fix
 npm run web:lint           # ESLint cho web
 npm run format             # Prettier
-npm test                   # Jest (964+ tests)
+npm test                   # Jest (1136+ tests)
 ```
 
 ### Quy ước thêm command mới
@@ -382,6 +400,7 @@ npm test                   # Jest (964+ tests)
 ### 📖 Tài Liệu Chính
 - [`doc/README.md`](./doc/README.md) — **Mục lục tài liệu đầy đủ** - Điểm bắt đầu cho tất cả tài liệu
 - [`KIRO.md`](./KIRO.md) — Bối cảnh dự án đầy đủ cho AI assistant / new dev
+- [`doc/admin-guide.md`](./doc/admin-guide.md) — **Hướng dẫn hệ thống quản trị** (Admin)
 
 ### 🚀 Quick Start Guides
 - [`doc/user-guide.md`](./doc/user-guide.md) — **Hướng dẫn sử dụng** cho người dùng cuối
@@ -400,6 +419,8 @@ npm test                   # Jest (964+ tests)
 - [`doc/recurring-events.md`](./doc/recurring-events.md) — Hệ thống lịch lặp lại
 - [`doc/reminder-system.md`](./doc/reminder-system.md) — Hệ thống nhắc nhở tự động
 - [`doc/priority-tags.md`](./doc/priority-tags.md) — Quản lý ưu tiên và nhãn
+- [`doc/admin-guide.md`](./doc/admin-guide.md) — Hệ thống quản trị (Admin)
+- [`doc/mezon-landing-design.md`](./doc/mezon-landing-design.md) — Landing page design spec
 
 ### 🛠️ Maintenance & Support
 - [`doc/troubleshooting.md`](./doc/troubleshooting.md) — **Xử lý sự cố** thường gặp
