@@ -8,23 +8,23 @@ import { BotCommand, CommandContext } from './command.types';
 type StatRange = 'tuan' | 'thang' | 'nam' | 'all';
 
 const RANGE_LABELS: Record<StatRange, string> = {
-  tuan: '7 ngay qua',
-  thang: '30 ngay qua',
-  nam: '365 ngay qua',
-  all: 'toan bo lich su',
+  tuan: '7 ngày qua',
+  thang: '30 ngày qua',
+  nam: '365 ngày qua',
+  all: 'toàn bộ lịch sử',
 };
 
 const ITEM_TYPE_LABELS: Record<keyof ScheduleStatistics['byItemType'], string> = {
-  task: 'Task (cong viec)',
-  meeting: 'Meeting (hop)',
-  event: 'Event (su kien)',
-  reminder: 'Reminder (nhac nho)',
+  task: 'Task (công việc)',
+  meeting: 'Meeting (họp)',
+  event: 'Event (sự kiện)',
+  reminder: 'Reminder (nhắc nhở)',
 };
 
 const PRIORITY_LABELS: Record<keyof ScheduleStatistics['byPriority'], string> = {
   high: 'Cao',
-  normal: 'Vua',
-  low: 'Thap',
+  normal: 'Vừa',
+  low: 'Thấp',
 };
 
 const RANGE_ALIASES: Record<string, StatRange> = {
@@ -103,29 +103,29 @@ export class ThongKeCommand implements BotCommand, OnModuleInit {
 
   private formatStatistics(stats: ScheduleStatistics, range: StatRange): string {
     const lines: string[] = [];
-    lines.push(`Thong ke lich - ${RANGE_LABELS[range]}`);
+    lines.push(`Thống kê lịch - ${RANGE_LABELS[range]}`);
     lines.push('');
 
     if (stats.total === 0) {
-      lines.push(`Khong co lich nao trong khoang nay.`);
+      lines.push(`Không có lịch nào trong khoảng này.`);
       if (stats.recurringActiveCount > 0) {
         lines.push('');
-        lines.push(`Lich lap dang hoat dong: ${stats.recurringActiveCount}`);
+        lines.push(`Lịch lặp đang hoạt động: ${stats.recurringActiveCount}`);
       }
       return lines.join('\n');
     }
 
-    lines.push(`Tong so lich: ${stats.total}`);
-    lines.push(`Dang cho: ${stats.byStatus.pending}`);
-    lines.push(`Hoan thanh: ${stats.byStatus.completed}`);
-    lines.push(`Da huy: ${stats.byStatus.cancelled}`);
+    lines.push(`Tổng số lịch: ${stats.total}`);
+    lines.push(`Đang chờ: ${stats.byStatus.pending}`);
+    lines.push(`Hoàn thành: ${stats.byStatus.completed}`);
+    lines.push(`Đã hủy: ${stats.byStatus.cancelled}`);
 
     const finished = stats.byStatus.completed + stats.byStatus.cancelled;
     if (finished > 0) {
       const rate = (stats.byStatus.completed / finished) * 100;
       lines.push('');
       lines.push(
-        `Ti le hoan thanh: ${rate.toFixed(1)}% (${stats.byStatus.completed}/${finished} lich da chot)`,
+        `Tỉ lệ hoàn thành: ${rate.toFixed(1)}% (${stats.byStatus.completed}/${finished} lịch đã chốt)`,
       );
     }
 
@@ -136,7 +136,7 @@ export class ThongKeCommand implements BotCommand, OnModuleInit {
       .sort((a, b) => b[1] - a[1]);
     if (typeEntries.length > 0) {
       lines.push('');
-      lines.push(`Theo loai:`);
+      lines.push(`Theo loại:`);
       for (const [type, count] of typeEntries) {
         lines.push(`${ITEM_TYPE_LABELS[type]}: ${count}`);
       }
@@ -147,7 +147,7 @@ export class ThongKeCommand implements BotCommand, OnModuleInit {
     );
     if (priorityEntries.length > 0) {
       lines.push('');
-      lines.push(`Theo uu tien:`);
+      lines.push(`Theo ưu tiên:`);
       for (const p of priorityEntries) {
         lines.push(`${PRIORITY_LABELS[p]}: ${stats.byPriority[p]}`);
       }
@@ -155,15 +155,15 @@ export class ThongKeCommand implements BotCommand, OnModuleInit {
 
     if (stats.topHours.length > 0) {
       lines.push('');
-      lines.push(`Top gio ban nhat:`);
+      lines.push(`Top giờ bận nhất:`);
       for (const { hour, count } of stats.topHours) {
         const slot = `${this.pad(hour)}:00 - ${this.pad((hour + 1) % 24)}:00`;
-        lines.push(`${slot}: ${count} lich`);
+        lines.push(`${slot}: ${count} lịch`);
       }
     }
 
     lines.push('');
-    lines.push(`Lich lap dang hoat dong: ${stats.recurringActiveCount}`);
+    lines.push(`Lịch lặp đang hoạt động: ${stats.recurringActiveCount}`);
 
     return lines.join('\n');
   }
