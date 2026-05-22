@@ -1,17 +1,10 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import {
-  ButtonBuilder,
-  EButtonMessageStyle,
-  InteractiveBuilder,
-} from 'mezon-sdk';
+import { ButtonBuilder, EButtonMessageStyle, InteractiveBuilder } from 'mezon-sdk';
 import { BotService } from '../bot.service';
 import { CommandRegistry } from './command-registry';
 import { BotCommand, CommandContext } from './command.types';
 import { InteractionRegistry } from '../interactions/interaction-registry';
-import {
-  ButtonInteractionContext,
-  InteractionHandler,
-} from '../interactions/interaction.types';
+import { ButtonInteractionContext, InteractionHandler } from '../interactions/interaction.types';
 import { UsersService } from '../../users/users.service';
 import { SchedulesService } from '../../schedules/schedules.service';
 import { DateParser } from '../../shared/utils/date-parser';
@@ -20,29 +13,42 @@ import {
   SchedulePriority,
   ScheduleItemType,
 } from '../../schedules/entities/schedule.entity';
-import {
-  findItemTypeOption,
-  isValidItemType,
-  ITEM_TYPES,
-} from '../../schedules/schedules.constants';
-import {
-  formatRecurrence,
-  parseRecurrenceType,
-  RECURRENCE_TYPE_OPTIONS,
-} from '../../shared/utils/recurrence';
-import {
-  formatPriority,
-  parsePriority,
-  PRIORITY_OPTIONS,
-} from '../../shared/utils/priority';
+import { isValidItemType } from '../../schedules/schedules.constants';
+import { formatRecurrence, parseRecurrenceType } from '../../shared/utils/recurrence';
+import { parsePriority } from '../../shared/utils/priority';
 
 const INTERACTION_ID = 'them-lich';
+
+type FormOption<TValue extends string> = {
+  label: string;
+  value: TValue;
+};
+
+const ITEM_TYPE_FORM_OPTIONS: Array<FormOption<ScheduleItemType>> = [
+  { label: 'Task (công việc)', value: 'task' },
+  { label: 'Meeting (họp)', value: 'meeting' },
+  { label: 'Event (sự kiện)', value: 'event' },
+  { label: 'Reminder (nhắc nhở)', value: 'reminder' },
+];
+
+const PRIORITY_FORM_OPTIONS: Array<FormOption<SchedulePriority>> = [
+  { label: 'Thấp', value: 'low' },
+  { label: 'Vừa', value: 'normal' },
+  { label: 'Cao', value: 'high' },
+];
+
+const RECURRENCE_FORM_OPTIONS: Array<FormOption<RecurrenceType>> = [
+  { label: 'Không lặp', value: 'none' },
+  { label: 'Hàng ngày', value: 'daily' },
+  { label: 'Hàng tuần', value: 'weekly' },
+  { label: 'Hàng tháng', value: 'monthly' },
+];
 
 @Injectable()
 export class ThemLichCommand implements BotCommand, InteractionHandler, OnModuleInit {
   readonly name = 'them-lich';
   readonly description = 'Thêm lịch mới';
-  readonly category = '✏️ QUẢN LÝ LỊCH';
+  readonly category = 'QUẢN LÝ LỊCH';
   readonly syntax = 'them-lich';
   readonly interactionId = INTERACTION_ID;
 
@@ -67,7 +73,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const user = await this.usersService.findByUserId(ctx.message.sender_id);
     if (!user) {
       await ctx.reply(
-        `⚠️ Bạn chưa khởi tạo tài khoản.\n` +
+        `Bạn chưa khởi tạo tài khoản.\n` +
           `Vui lòng dùng lệnh \`${ctx.prefix}batdau\` trước khi thêm lịch.`,
       );
       return;
@@ -77,77 +83,77 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     const defaultStart = now;
     const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000); // +1h duration
 
-    const embed = new InteractiveBuilder('📋 THÊM LỊCH MỚI')
+    const embed = new InteractiveBuilder('THÊM LỊCH MỚI')
       .setDescription(
         'Điền thông tin bên dưới, sau đó bấm **Xác nhận** để lưu hoặc **Hủy** để bỏ qua.',
       )
-      .addInputField('title', '📌 Tiêu đề *', 'Vd: Họp team sprint review', {}, 'Bắt buộc')
+      .addInputField('title', 'Tiêu đề *', 'Vd: Họp team sprint review', {}, 'Bắt buộc')
       .addInputField(
         'description',
-        '📝 Mô tả',
+        'Mô tả',
         'Mô tả chi tiết (tuỳ chọn)',
         { textarea: true },
         'Tuỳ chọn',
       )
       .addSelectField(
         'item_type',
-        '🏷️ Loại lịch',
-        ITEM_TYPES,
-        ITEM_TYPES[0],
+        'Loại lịch',
+        ITEM_TYPE_FORM_OPTIONS,
+        ITEM_TYPE_FORM_OPTIONS[0],
         'Mặc định: Task',
       )
       .addInputField(
         'start_date',
-        '📅 Ngày bắt đầu *',
+        'Ngày bắt đầu *',
         'Chọn ngày bắt đầu',
         { type: 'date', defaultValue: this.dateParser.toDateInputVietnam(defaultStart) },
         'Bắt buộc',
       )
       .addInputField(
         'start_time',
-        '⏰ Giờ bắt đầu *',
+        'Giờ bắt đầu *',
         'Chọn giờ bắt đầu',
         { type: 'time', defaultValue: this.dateParser.formatVietnamTime(defaultStart) },
         'Bắt buộc — giờ Việt Nam',
       )
       .addInputField(
         'end_date',
-        '📅 Ngày kết thúc *',
+        'Ngày kết thúc *',
         'Chọn ngày kết thúc',
         { type: 'date', defaultValue: this.dateParser.toDateInputVietnam(defaultEnd) },
         'Bắt buộc',
       )
       .addInputField(
         'end_time',
-        '⏱️ Giờ kết thúc *',
+        'Giờ kết thúc *',
         'Chọn giờ kết thúc',
         { type: 'time', defaultValue: this.dateParser.formatVietnamTime(defaultEnd) },
         'Bắt buộc — phải sau giờ bắt đầu',
       )
       .addSelectField(
         'priority',
-        '⚡ Ưu tiên',
-        PRIORITY_OPTIONS,
-        PRIORITY_OPTIONS[1],
+        'Ưu tiên',
+        PRIORITY_FORM_OPTIONS,
+        PRIORITY_FORM_OPTIONS[1],
         'Mặc định: Vừa',
       )
       .addSelectField(
         'recurrence_type',
-        '🔁 Lặp lại',
-        RECURRENCE_TYPE_OPTIONS,
-        RECURRENCE_TYPE_OPTIONS[0],
+        'Lặp lại',
+        RECURRENCE_FORM_OPTIONS,
+        RECURRENCE_FORM_OPTIONS[0],
         'Mặc định: Không lặp',
       )
       .addInputField(
         'recurrence_interval',
-        '🔢 Khoảng lặp',
+        'Khoảng lặp',
         '1',
         { type: 'number', defaultValue: '1' },
         'Chỉ áp dụng khi chọn lặp. Vd 2 = mỗi 2 ngày/tuần/tháng.',
       )
       .addInputField(
         'recurrence_until',
-        '🛑 Dừng lặp sau ngày',
+        'Dừng lặp sau ngày',
         'Chọn ngày (tuỳ chọn)',
         { type: 'date' },
         'Tuỳ chọn — để trống = lặp vô hạn. Chỉ áp dụng khi chọn lặp.',
@@ -155,8 +161,8 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       .build();
 
     const buttons = new ButtonBuilder()
-      .addButton(`${INTERACTION_ID}:confirm`, '✅ Xác nhận', EButtonMessageStyle.SUCCESS)
-      .addButton(`${INTERACTION_ID}:cancel`, '❌ Hủy', EButtonMessageStyle.DANGER)
+      .addButton(`${INTERACTION_ID}:confirm`, 'Xác nhận', EButtonMessageStyle.SUCCESS)
+      .addButton(`${INTERACTION_ID}:cancel`, 'Hủy', EButtonMessageStyle.DANGER)
       .build();
 
     await this.botService.sendInteractive(ctx.message.channel_id, embed, buttons);
@@ -167,7 +173,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
   async handleButton(ctx: ButtonInteractionContext): Promise<void> {
     if (ctx.action === 'cancel') {
       await this.closeForm(ctx);
-      await ctx.send(`❌ Đã hủy thêm lịch.`);
+      await ctx.send(`Đã hủy thêm lịch.`);
       return;
     }
 
@@ -204,9 +210,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     );
     if (validation.error) {
       await this.closeForm(ctx);
-      await ctx.send(
-        `${validation.error}\n\n💡 Gõ lại \`*them-lich\` để thử lại.`,
-      );
+      await ctx.send(`${validation.error}\n\nGõ lại \`*them-lich\` để thử lại.`);
       return;
     }
     const itemType = itemTypeRaw as ScheduleItemType;
@@ -222,8 +226,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     if (!user) {
       await this.closeForm(ctx);
       await ctx.send(
-        `⚠️ Bạn chưa khởi tạo tài khoản.\n` +
-          `Vui lòng dùng lệnh \`*batdau\` trước khi thêm lịch.`,
+        `Bạn chưa khởi tạo tài khoản.\n` + `Vui lòng dùng lệnh \`*batdau\` trước khi thêm lịch.`,
       );
       return;
     }
@@ -251,35 +254,31 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     // Tắt form trước khi gửi thông báo
     await this.closeForm(ctx);
 
-    const typeLabel = findItemTypeOption(itemType)?.label ?? itemType;
+    const typeLabel = this.formatItemType(itemType);
     const lines: string[] = [
-      `✅ ĐÃ THÊM LỊCH THÀNH CÔNG!`,
+      `ĐÃ THÊM LỊCH THÀNH CÔNG!`,
       ``,
-      `🆔 ID: \`${schedule.id}\``,
-      `📌 Tiêu đề: ${schedule.title}`,
-      `🏷️ Loại: ${typeLabel}`,
-      `⚡ Ưu tiên: ${formatPriority(priority)}`,
-      `⏰ Bắt đầu: \`${this.dateParser.formatVietnam(startTime)}\``,
+      `ID: \`${schedule.id}\``,
+      `Tiêu đề: ${schedule.title}`,
+      `Loại: ${typeLabel}`,
+      `Ưu tiên: ${this.formatPriority(priority)}`,
+      `Bắt đầu: \`${this.dateParser.formatVietnam(startTime)}\``,
     ];
-    lines.push(`⏱️ Kết thúc: \`${this.dateParser.formatVietnam(endTime)}\``);
+    lines.push(`Kết thúc: \`${this.dateParser.formatVietnam(endTime)}\``);
     if (description) {
-      lines.push(`📝 Mô tả: ${description}`);
+      lines.push(`Mô tả: ${description}`);
     }
     if (remindAt.getTime() > Date.now()) {
       lines.push(
-        `🔔 Sẽ nhắc lúc: \`${this.dateParser.formatVietnam(remindAt)}\` (trước ${remindMinutes} phút)`,
+        `Sẽ nhắc lúc: \`${this.dateParser.formatVietnam(remindAt)}\` (trước ${remindMinutes} phút)`,
       );
     } else {
-      lines.push(`🔔 Sẽ nhắc ngay (thời gian sát quá, cron sẽ ping trong 1 phút tới).`);
+      lines.push(`Sẽ nhắc ngay (thời gian sát quá, cron sẽ ping trong 1 phút tới).`);
     }
     if (recurrenceType !== 'none') {
-      lines.push(
-        `🔁 Lặp: ${formatRecurrence(recurrenceType, recurrenceInterval)}`,
-      );
+      lines.push(`Lặp: ${formatRecurrence(recurrenceType, recurrenceInterval)}`);
       if (recurrenceUntil) {
-        lines.push(
-          `🛑 Dừng lặp sau: \`${this.dateParser.formatVietnam(recurrenceUntil, false)}\``,
-        );
+        lines.push(`Dừng lặp sau: \`${this.dateParser.formatVietnam(recurrenceUntil, false)}\``);
       }
     }
 
@@ -312,48 +311,48 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     recurrenceUntil?: Date | null;
   } {
     if (!title) {
-      return { error: `❌ Thiếu tiêu đề.` };
+      return { error: `Thiếu tiêu đề.` };
     }
     if (!isValidItemType(itemTypeRaw)) {
-      return { error: `❌ Loại lịch không hợp lệ: \`${itemTypeRaw}\`.` };
+      return { error: `Loại lịch không hợp lệ: \`${itemTypeRaw}\`.` };
     }
     const priority = parsePriority(priorityRaw);
     if (!priority) {
-      return { error: `❌ Ưu tiên không hợp lệ: \`${priorityRaw}\`.` };
+      return { error: `Ưu tiên không hợp lệ: \`${priorityRaw}\`.` };
     }
     const startRaw = this.combineDateTime(startDateRaw, startTimeRaw);
     if (!startRaw) {
-      return { error: `❌ Thiếu ngày hoặc giờ bắt đầu.` };
+      return { error: `Thiếu ngày hoặc giờ bắt đầu.` };
     }
     const startTime = this.dateParser.parseVietnamLocal(startRaw);
     if (!startTime) {
       return {
-        error: `❌ Thời gian bắt đầu không hợp lệ: \`${startRaw ?? ''}\`.`,
+        error: `Thời gian bắt đầu không hợp lệ: \`${startRaw ?? ''}\`.`,
       };
     }
     if (startTime.getTime() <= Date.now()) {
-      return { error: `❌ Thời gian bắt đầu phải ở tương lai.` };
+      return { error: `Thời gian bắt đầu phải ở tương lai.` };
     }
     const endRaw = this.combineDateTime(endDateRaw, endTimeRaw);
     if (!endRaw) {
-      return { error: `❌ Thiếu ngày hoặc giờ kết thúc.` };
+      return { error: `Thiếu ngày hoặc giờ kết thúc.` };
     }
     const endTime = this.dateParser.parseVietnamLocal(endRaw);
     if (!endTime) {
       return {
-        error: `❌ Thời gian kết thúc không hợp lệ: \`${endRaw}\`.`,
+        error: `Thời gian kết thúc không hợp lệ: \`${endRaw}\`.`,
       };
     }
     if (endTime.getTime() <= startTime.getTime()) {
       return {
-        error: `❌ Thời gian kết thúc phải sau thời gian bắt đầu.`,
+        error: `Thời gian kết thúc phải sau thời gian bắt đầu.`,
       };
     }
 
     const recurrenceType = parseRecurrenceType(recurrenceTypeRaw);
     if (!recurrenceType) {
       return {
-        error: `❌ Kiểu lặp không hợp lệ: \`${recurrenceTypeRaw}\`.`,
+        error: `Kiểu lặp không hợp lệ: \`${recurrenceTypeRaw}\`.`,
       };
     }
 
@@ -367,23 +366,21 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
         String(parsedInterval) !== recurrenceIntervalRaw.replace(/^0+(?=\d)/, '')
       ) {
         return {
-          error: `❌ Khoảng lặp không hợp lệ: \`${recurrenceIntervalRaw}\` (phải là số nguyên ≥ 1).`,
+          error: `Khoảng lặp không hợp lệ: \`${recurrenceIntervalRaw}\` (phải là số nguyên ≥ 1).`,
         };
       }
       recurrenceInterval = parsedInterval;
 
       if (recurrenceUntilRaw) {
-        const parsedUntil = this.dateParser.parseVietnamLocal(
-          `${recurrenceUntilRaw} 23:59`,
-        );
+        const parsedUntil = this.dateParser.parseVietnamLocal(`${recurrenceUntilRaw} 23:59`);
         if (!parsedUntil) {
           return {
-            error: `❌ Ngày dừng lặp không hợp lệ: \`${recurrenceUntilRaw}\`.`,
+            error: `Ngày dừng lặp không hợp lệ: \`${recurrenceUntilRaw}\`.`,
           };
         }
         if (parsedUntil.getTime() <= startTime.getTime()) {
           return {
-            error: `❌ Ngày dừng lặp phải SAU ngày bắt đầu.`,
+            error: `Ngày dừng lặp phải SAU ngày bắt đầu.`,
           };
         }
         recurrenceUntil = parsedUntil;
@@ -407,6 +404,14 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     return `${date} ${time}`;
   }
 
+  private formatItemType(itemType: ScheduleItemType): string {
+    return ITEM_TYPE_FORM_OPTIONS.find((option) => option.value === itemType)?.label ?? itemType;
+  }
+
+  private formatPriority(priority: SchedulePriority): string {
+    return PRIORITY_FORM_OPTIONS.find((option) => option.value === priority)?.label ?? priority;
+  }
+
   /** Xóa message chứa form; nuốt lỗi nếu SDK không cho xóa (permission, đã xóa, v.v.). */
   private async closeForm(ctx: ButtonInteractionContext): Promise<void> {
     try {
@@ -415,5 +420,4 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
       // Không đẩy lỗi ra ngoài — đóng form là best-effort UX.
     }
   }
-
 }

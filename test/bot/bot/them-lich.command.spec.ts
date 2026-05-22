@@ -54,7 +54,7 @@ describe('ThemLichCommand', () => {
     it('should have correct command metadata', () => {
       expect(command.name).toBe('them-lich');
       expect(command.description).toBe('Thêm lịch mới');
-      expect(command.category).toBe('✏️ QUẢN LÝ LỊCH');
+      expect(command.category).toBe('QUẢN LÝ LỊCH');
       expect(command.syntax).toBe('them-lich');
       expect(command.interactionId).toBe('them-lich');
     });
@@ -107,11 +107,11 @@ describe('ThemLichCommand', () => {
         display_name: 'Test User',
         created_at: new Date(),
         updated_at: new Date(),
-    recurrence_type: 'none',
-    recurrence_interval: 1,
-    recurrence_until: null,
-    priority: "normal",
-    recurrence_parent_id: null,
+        recurrence_type: 'none',
+        recurrence_interval: 1,
+        recurrence_until: null,
+        priority: 'normal',
+        recurrence_parent_id: null,
       } as unknown as User;
 
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
@@ -125,6 +125,29 @@ describe('ThemLichCommand', () => {
         expect.any(Object),
         expect.any(Object),
       );
+
+      const [, embed, buttons] = mockBotService.sendInteractive.mock.calls[0];
+      const payload = JSON.stringify({ embed, buttons });
+      expect(payload).toContain('THÊM LỊCH MỚI');
+      expect(payload).toContain('Tiêu đề *');
+      expect(payload).toContain('Task (công việc)');
+      for (const icon of [
+        '📋',
+        '📌',
+        '📝',
+        '🏷️',
+        '📅',
+        '⏰',
+        '⏱️',
+        '⚡',
+        '🔁',
+        '🔢',
+        '🛑',
+        '✅',
+        '❌',
+      ]) {
+        expect(payload).not.toContain(icon);
+      }
     });
   });
 
@@ -147,9 +170,7 @@ describe('ThemLichCommand', () => {
       await command.handleButton(mockContext);
 
       expect(mockContext.deleteForm).toHaveBeenCalled();
-      expect(mockContext.send).toHaveBeenCalledWith(
-        expect.stringContaining('Đã hủy'),
-      );
+      expect(mockContext.send).toHaveBeenCalledWith(expect.stringContaining('Đã hủy'));
     });
 
     it('should validate required title', async () => {
@@ -164,9 +185,7 @@ describe('ThemLichCommand', () => {
 
       await command.handleButton(mockContext);
 
-      expect(mockContext.send).toHaveBeenCalledWith(
-        expect.stringContaining('Thiếu tiêu đề'),
-      );
+      expect(mockContext.send).toHaveBeenCalledWith(expect.stringContaining('Thiếu tiêu đề'));
       expect(mockSchedulesService.create).not.toHaveBeenCalled();
     });
 
@@ -223,9 +242,7 @@ describe('ThemLichCommand', () => {
 
       await command.handleButton(mockContext);
 
-      expect(mockContext.send).toHaveBeenCalledWith(
-        expect.stringContaining('phải ở tương lai'),
-      );
+      expect(mockContext.send).toHaveBeenCalledWith(expect.stringContaining('phải ở tương lai'));
     });
 
     it('should validate end time must be after start time', async () => {
@@ -241,9 +258,7 @@ describe('ThemLichCommand', () => {
         end_time: '09:00',
       };
 
-      mockDateParser.parseVietnamLocal
-        .mockReturnValueOnce(startTime)
-        .mockReturnValueOnce(endTime);
+      mockDateParser.parseVietnamLocal.mockReturnValueOnce(startTime).mockReturnValueOnce(endTime);
 
       await command.handleButton(mockContext);
 
@@ -275,11 +290,11 @@ describe('ThemLichCommand', () => {
         is_reminded: false,
         created_at: new Date(),
         updated_at: new Date(),
-    recurrence_type: 'none',
-    recurrence_interval: 1,
-    recurrence_until: null,
-    priority: "normal",
-    recurrence_parent_id: null,
+        recurrence_type: 'none',
+        recurrence_interval: 1,
+        recurrence_until: null,
+        priority: 'normal',
+        recurrence_parent_id: null,
       } as Schedule;
 
       mockContext.formData = {
@@ -292,9 +307,7 @@ describe('ThemLichCommand', () => {
         end_time: '11:00',
       };
 
-      mockDateParser.parseVietnamLocal
-        .mockReturnValueOnce(startTime)
-        .mockReturnValueOnce(endTime);
+      mockDateParser.parseVietnamLocal.mockReturnValueOnce(startTime).mockReturnValueOnce(endTime);
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
       mockSchedulesService.create.mockResolvedValue(mockSchedule);
       mockDateParser.formatVietnam.mockReturnValue('25/04/2026 10:00');
@@ -329,9 +342,7 @@ describe('ThemLichCommand', () => {
         end_time: '11:00',
       };
 
-      mockDateParser.parseVietnamLocal
-        .mockReturnValueOnce(startTime)
-        .mockReturnValueOnce(endTime);
+      mockDateParser.parseVietnamLocal.mockReturnValueOnce(startTime).mockReturnValueOnce(endTime);
       mockUsersService.findByUserId.mockResolvedValue(null);
 
       await command.handleButton(mockContext);
@@ -369,9 +380,7 @@ describe('ThemLichCommand', () => {
         recurrence_interval: '1',
       };
 
-      mockDateParser.parseVietnamLocal
-        .mockReturnValueOnce(startTime)
-        .mockReturnValueOnce(endTime);
+      mockDateParser.parseVietnamLocal.mockReturnValueOnce(startTime).mockReturnValueOnce(endTime);
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
       mockSchedulesService.create.mockResolvedValue(mockSchedule);
       mockDateParser.formatVietnam.mockReturnValue('25/04/2099 10:00');
@@ -385,9 +394,7 @@ describe('ThemLichCommand', () => {
           recurrence_until: null,
         }),
       );
-      expect(mockContext.send).toHaveBeenCalledWith(
-        expect.stringContaining('🔁'),
-      );
+      expect(mockContext.send).toHaveBeenCalledWith(expect.stringContaining('Lặp:'));
     });
 
     it('should create recurring schedule with weekly + interval + until', async () => {
@@ -453,9 +460,7 @@ describe('ThemLichCommand', () => {
         recurrence_interval: '0',
       };
 
-      mockDateParser.parseVietnamLocal
-        .mockReturnValueOnce(startTime)
-        .mockReturnValueOnce(endTime);
+      mockDateParser.parseVietnamLocal.mockReturnValueOnce(startTime).mockReturnValueOnce(endTime);
 
       await command.handleButton(mockContext);
 
@@ -538,9 +543,7 @@ describe('ThemLichCommand', () => {
         recurrence_type: 'yearly',
       };
 
-      mockDateParser.parseVietnamLocal
-        .mockReturnValueOnce(startTime)
-        .mockReturnValueOnce(endTime);
+      mockDateParser.parseVietnamLocal.mockReturnValueOnce(startTime).mockReturnValueOnce(endTime);
 
       await command.handleButton(mockContext);
 
@@ -576,9 +579,7 @@ describe('ThemLichCommand', () => {
         end_time: '11:00',
       };
 
-      mockDateParser.parseVietnamLocal
-        .mockReturnValueOnce(startTime)
-        .mockReturnValueOnce(endTime);
+      mockDateParser.parseVietnamLocal.mockReturnValueOnce(startTime).mockReturnValueOnce(endTime);
       mockUsersService.findByUserId.mockResolvedValue(mockUser);
       mockSchedulesService.create.mockResolvedValue(mockSchedule);
       mockDateParser.formatVietnam.mockReturnValue('25/04/2026 10:00');
@@ -593,4 +594,3 @@ describe('ThemLichCommand', () => {
     });
   });
 });
-
