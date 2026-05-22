@@ -1,20 +1,17 @@
-import { randomUUID } from "crypto";
-import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
-import { ButtonBuilder, EButtonMessageStyle } from "mezon-sdk";
-import { BotService } from "../bot.service";
-import { CommandRegistry } from "./command-registry";
-import { BotCommand, CommandContext } from "./command.types";
-import { InteractionRegistry } from "../interactions/interaction-registry";
-import {
-  ButtonInteractionContext,
-  InteractionHandler,
-} from "../interactions/interaction.types";
-import { UsersService } from "../../users/users.service";
-import { SchedulesService } from "../../schedules/schedules.service";
-import { DateParser } from "../../shared/utils/date-parser";
-import { parseIcs, IcsEvent } from "../../shared/utils/ics-parser";
+import { randomUUID } from 'crypto';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ButtonBuilder, EButtonMessageStyle } from 'mezon-sdk';
+import { BotService } from '../bot.service';
+import { CommandRegistry } from './command-registry';
+import { BotCommand, CommandContext } from './command.types';
+import { InteractionRegistry } from '../interactions/interaction-registry';
+import { ButtonInteractionContext, InteractionHandler } from '../interactions/interaction.types';
+import { UsersService } from '../../users/users.service';
+import { SchedulesService } from '../../schedules/schedules.service';
+import { DateParser } from '../../shared/utils/date-parser';
+import { parseIcs, IcsEvent } from '../../shared/utils/ics-parser';
 
-const INTERACTION_ID = "import-ics";
+const INTERACTION_ID = 'import-ics';
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_EVENTS = 100;
 const PENDING_TTL_MS = 10 * 60 * 1000;
@@ -35,16 +32,14 @@ interface PendingImport {
 }
 
 @Injectable()
-export class ImportIcsCommand
-  implements BotCommand, InteractionHandler, OnModuleInit
-{
+export class ImportIcsCommand implements BotCommand, InteractionHandler, OnModuleInit {
   private readonly logger = new Logger(ImportIcsCommand.name);
-  readonly name = "import-ics";
-  readonly aliases = ["importics", "ics-import"];
-  readonly description = "Nhập lịch từ file .ics (Google/Apple Calendar)";
-  readonly category = "✏️ QUẢN LÝ LỊCH";
-  readonly syntax = "import-ics [url_file_ics]";
-  readonly example = "import-ics";
+  readonly name = 'import-ics';
+  readonly aliases = ['importics', 'ics-import'];
+  readonly description = 'Nhập lịch từ file .ics (Google/Apple Calendar)';
+  readonly category = '✏️ QUẢN LÝ LỊCH';
+  readonly syntax = 'import-ics [url_file_ics]';
+  readonly example = 'import-ics';
   readonly interactionId = INTERACTION_ID;
 
   private readonly pending = new Map<string, PendingImport>();
@@ -66,9 +61,7 @@ export class ImportIcsCommand
   async execute(ctx: CommandContext): Promise<void> {
     const user = await this.usersService.findByUserId(ctx.message.sender_id);
     if (!user) {
-      await ctx.reply(
-        `⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước khi import lịch.`,
-      );
+      await ctx.reply(`⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước khi import lịch.`);
       return;
     }
 
@@ -88,7 +81,7 @@ export class ImportIcsCommand
       text = await this.downloadText(source.url);
     } catch (err) {
       await ctx.reply(
-        `❌ Không tải được file .ics: ${err instanceof Error ? err.message : "lỗi không xác định"}.`,
+        `❌ Không tải được file .ics: ${err instanceof Error ? err.message : 'lỗi không xác định'}.`,
       );
       return;
     }
@@ -97,22 +90,18 @@ export class ImportIcsCommand
     if (result.events.length === 0) {
       const errLines =
         result.errors.length > 0
-          ? "\n\n" +
+          ? '\n\n' +
             result.errors
               .slice(0, 5)
               .map((e) => `• Sự kiện #${e.index}: ${e.message}`)
-              .join("\n")
-          : "";
-      await ctx.reply(
-        `⚠️ File .ics không có VEVENT hợp lệ nào để nhập.${errLines}`,
-      );
+              .join('\n')
+          : '';
+      await ctx.reply(`⚠️ File .ics không có VEVENT hợp lệ nào để nhập.${errLines}`);
       return;
     }
 
     const truncated = result.events.length > MAX_EVENTS;
-    const events = truncated
-      ? result.events.slice(0, MAX_EVENTS)
-      : result.events;
+    const events = truncated ? result.events.slice(0, MAX_EVENTS) : result.events;
 
     const token = randomUUID();
     this.cleanupPending();
@@ -125,22 +114,14 @@ export class ImportIcsCommand
     });
 
     const buttons = new ButtonBuilder()
-      .addButton(
-        `${INTERACTION_ID}:confirm:${token}`,
-        "✅ Nhập lịch",
-        EButtonMessageStyle.SUCCESS,
-      )
-      .addButton(
-        `${INTERACTION_ID}:cancel:${token}`,
-        "❌ Hủy",
-        EButtonMessageStyle.DANGER,
-      )
+      .addButton(`${INTERACTION_ID}:confirm:${token}`, '✅ Nhập lịch', EButtonMessageStyle.SUCCESS)
+      .addButton(`${INTERACTION_ID}:cancel:${token}`, '❌ Hủy', EButtonMessageStyle.DANGER)
       .build();
 
     await this.botService.sendInteractive(
       ctx.message.channel_id,
       {
-        title: "📥 PREVIEW IMPORT .ICS",
+        title: '📥 PREVIEW IMPORT .ICS',
         description: this.formatPreview(events, result.errors, truncated),
       },
       buttons,
@@ -148,32 +129,28 @@ export class ImportIcsCommand
   }
 
   async handleButton(ctx: ButtonInteractionContext): Promise<void> {
-    const [actionType, token] = ctx.action.split(":");
+    const [actionType, token] = ctx.action.split(':');
     if (!token) return;
 
     const pending = this.pending.get(token);
     if (!pending) {
-      await ctx.send(
-        `⚠️ Phiên import đã hết hạn hoặc đã được xử lý. Gõ \`*import-ics\` lại.`,
-      );
+      await ctx.send(`⚠️ Phiên import đã hết hạn hoặc đã được xử lý. Gõ \`*import-ics\` lại.`);
       return;
     }
 
     if (pending.userId !== ctx.clickerId) {
-      await ctx.ephemeralSend(
-        `⚠️ Chỉ người tạo phiên import mới được bấm nút này.`,
-      );
+      await ctx.ephemeralSend(`⚠️ Chỉ người tạo phiên import mới được bấm nút này.`);
       return;
     }
 
-    if (actionType === "cancel") {
+    if (actionType === 'cancel') {
       this.pending.delete(token);
       await this.closeForm(ctx);
       await ctx.send(`❌ Đã hủy import .ics.`);
       return;
     }
 
-    if (actionType !== "confirm") return;
+    if (actionType !== 'confirm') return;
 
     this.pending.delete(token);
     const user = await this.usersService.findByUserId(ctx.clickerId);
@@ -182,19 +159,18 @@ export class ImportIcsCommand
     const createdIds: number[] = [];
 
     for (const ev of pending.events) {
-      const idealRemindAt = new Date(
-        ev.start.getTime() - defaultRemindMinutes * 60 * 1000,
-      );
+      const idealRemindAt = new Date(ev.start.getTime() - defaultRemindMinutes * 60 * 1000);
       const remindAt = idealRemindAt.getTime() > now.getTime() ? idealRemindAt : null;
       const schedule = await this.schedulesService.create({
         user_id: pending.userId,
-        item_type: "event",
+        channel_id: pending.channelId,
+        item_type: 'event',
         title: ev.summary,
         description: ev.description,
         start_time: ev.start,
         end_time: ev.end,
         remind_at: remindAt,
-        recurrence_type: ev.recurrence?.type ?? "none",
+        recurrence_type: ev.recurrence?.type ?? 'none',
         recurrence_interval: ev.recurrence?.interval ?? 1,
         recurrence_until: ev.recurrence?.until ?? null,
       });
@@ -205,13 +181,11 @@ export class ImportIcsCommand
     await ctx.send(
       `✅ ĐÃ IMPORT .ICS THÀNH CÔNG!\n\n` +
         `📌 Số lịch đã thêm: \`${createdIds.length}\`\n` +
-        `🆔 ID: ${createdIds.map((id) => `\`#${id}\``).join(", ")}`,
+        `🆔 ID: ${createdIds.map((id) => `\`#${id}\``).join(', ')}`,
     );
   }
 
-  private resolveSource(
-    ctx: CommandContext,
-  ): { url: string; size?: number } | null {
+  private resolveSource(ctx: CommandContext): { url: string; size?: number } | null {
     const attachment = this.findIcsAttachment(
       (ctx.message as { attachments?: IcsAttachment[] }).attachments ?? [],
     );
@@ -222,17 +196,13 @@ export class ImportIcsCommand
     return null;
   }
 
-  private findIcsAttachment(
-    attachments: IcsAttachment[],
-  ): IcsAttachment | null {
+  private findIcsAttachment(attachments: IcsAttachment[]): IcsAttachment | null {
     return (
       attachments.find((a) => {
-        const filename = a.filename?.toLowerCase() ?? "";
-        const filetype = a.filetype?.toLowerCase() ?? "";
+        const filename = a.filename?.toLowerCase() ?? '';
+        const filetype = a.filetype?.toLowerCase() ?? '';
         return (
-          filename.endsWith(".ics") ||
-          filetype.includes("calendar") ||
-          filetype === "text/calendar"
+          filename.endsWith('.ics') || filetype.includes('calendar') || filetype === 'text/calendar'
         );
       }) ?? null
     );
@@ -243,15 +213,15 @@ export class ImportIcsCommand
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
-    const contentLength = Number(res.headers.get("content-length") ?? 0);
+    const contentLength = Number(res.headers.get('content-length') ?? 0);
     if (contentLength > MAX_FILE_BYTES) {
-      throw new Error("File quá lớn (>5MB)");
+      throw new Error('File quá lớn (>5MB)');
     }
     const buf = await res.arrayBuffer();
     if (buf.byteLength > MAX_FILE_BYTES) {
-      throw new Error("File quá lớn (>5MB)");
+      throw new Error('File quá lớn (>5MB)');
     }
-    return Buffer.from(buf).toString("utf-8");
+    return Buffer.from(buf).toString('utf-8');
   }
 
   private formatUsage(prefix: string): string {
@@ -264,7 +234,7 @@ export class ImportIcsCommand
       ``,
       `Bot sẽ parse file, hiển thị preview và xác nhận trước khi tạo lịch.`,
       `Mỗi VEVENT trong file → 1 schedule loại \`event\`. Tối đa ${MAX_EVENTS} sự kiện/lần.`,
-    ].join("\n");
+    ].join('\n');
   }
 
   private formatPreview(
@@ -279,18 +249,14 @@ export class ImportIcsCommand
         `_⚠️ File có nhiều hơn ${MAX_EVENTS} sự kiện — chỉ nhập ${MAX_EVENTS} sự kiện đầu tiên._`,
       );
     }
-    lines.push("");
+    lines.push('');
 
     const preview = events.slice(0, 10);
     for (const ev of preview) {
       const startTxt = ev.allDay
-        ? this.dateParser.formatVietnamDate(ev.start) + " (cả ngày)"
+        ? this.dateParser.formatVietnamDate(ev.start) + ' (cả ngày)'
         : this.dateParser.formatVietnam(ev.start);
-      const endTxt = ev.end
-        ? ev.allDay
-          ? ""
-          : ` → ${this.dateParser.formatVietnam(ev.end)}`
-        : "";
+      const endTxt = ev.end ? (ev.allDay ? '' : ` → ${this.dateParser.formatVietnam(ev.end)}`) : '';
       lines.push(`#${ev.index}. **${ev.summary}**`);
       lines.push(`  ⏰ ${startTxt}${endTxt}`);
       if (ev.recurrence) {
@@ -298,9 +264,7 @@ export class ImportIcsCommand
       }
       if (ev.description) {
         const short =
-          ev.description.length > 80
-            ? ev.description.slice(0, 80) + "…"
-            : ev.description;
+          ev.description.length > 80 ? ev.description.slice(0, 80) + '…' : ev.description;
         lines.push(`  📝 ${short}`);
       }
     }
@@ -310,10 +274,10 @@ export class ImportIcsCommand
 
     const warnEvents = events.filter((e) => e.warnings.length > 0);
     if (warnEvents.length > 0) {
-      lines.push("");
+      lines.push('');
       lines.push(`ℹ️ ${warnEvents.length} sự kiện có cảnh báo RRULE:`);
       for (const ev of warnEvents.slice(0, 5)) {
-        lines.push(`  • #${ev.index}: ${ev.warnings.join("; ")}`);
+        lines.push(`  • #${ev.index}: ${ev.warnings.join('; ')}`);
       }
       if (warnEvents.length > 5) {
         lines.push(`  • …và ${warnEvents.length - 5} sự kiện nữa.`);
@@ -321,7 +285,7 @@ export class ImportIcsCommand
     }
 
     if (errors.length > 0) {
-      lines.push("");
+      lines.push('');
       lines.push(`⚠️ ${errors.length} sự kiện bị bỏ qua:`);
       for (const e of errors.slice(0, 5)) {
         lines.push(`  • Sự kiện #${e.index}: ${e.message}`);
@@ -331,18 +295,16 @@ export class ImportIcsCommand
       }
     }
 
-    return lines.join("\n");
+    return lines.join('\n');
   }
 
   private formatRecurrence(r: {
-    type: "daily" | "weekly" | "monthly";
+    type: 'daily' | 'weekly' | 'monthly';
     interval: number;
     until: Date | null;
   }): string {
-    const label =
-      r.type === "daily" ? "ngày" : r.type === "weekly" ? "tuần" : "tháng";
-    const head =
-      r.interval === 1 ? `Lặp mỗi ${label}` : `Lặp mỗi ${r.interval} ${label}`;
+    const label = r.type === 'daily' ? 'ngày' : r.type === 'weekly' ? 'tuần' : 'tháng';
+    const head = r.interval === 1 ? `Lặp mỗi ${label}` : `Lặp mỗi ${r.interval} ${label}`;
     if (r.until) {
       return `${head} đến ${this.dateParser.formatVietnamDate(r.until)}`;
     }

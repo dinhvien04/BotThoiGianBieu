@@ -194,6 +194,7 @@ export class ReminderService {
     const dispatched = await this.dispatch(
       schedule.user_id,
       settings,
+      schedule.channel_id ?? null,
       embed,
       buttons,
       this.buildStartDmText(schedule, now),
@@ -219,6 +220,7 @@ export class ReminderService {
     const dispatched = await this.dispatch(
       schedule.user_id,
       settings,
+      schedule.channel_id ?? null,
       embed,
       buttons,
       this.buildEndDmText(schedule, now),
@@ -243,6 +245,7 @@ export class ReminderService {
   private async dispatch(
     userId: string,
     settings: NotificationSettings | undefined,
+    scheduleChannelId: string | null,
     embed: ReturnType<InteractiveBuilder['build']>,
     buttons: unknown[],
     dmText: string,
@@ -250,7 +253,10 @@ export class ReminderService {
   ): Promise<boolean> {
     const wantDm = settings?.notify_via_dm === true;
     const wantChannel = settings?.notify_via_channel !== false; // default true
-    const channelIds = this.parseChannelIds(settings?.default_channel_id ?? null);
+    const channelIds = this.collectChannelIds(
+      scheduleChannelId,
+      settings?.default_channel_id ?? null,
+    );
 
     const tasks: Array<Promise<void>> = [];
     let hasInteractiveChannel = false;
@@ -345,6 +351,15 @@ export class ReminderService {
       .map((id) => id.trim())
       .filter(Boolean);
     return [...new Set(ids)];
+  }
+
+  private collectChannelIds(
+    scheduleChannelId: string | null,
+    settingsChannelIds: string | null,
+  ): string[] {
+    const scheduleIds = this.parseChannelIds(scheduleChannelId);
+    if (scheduleIds.length > 0) return scheduleIds;
+    return this.parseChannelIds(settingsChannelIds);
   }
 
   private getVietnamDayRange(now: Date): { start: Date; end: Date } {
@@ -621,9 +636,7 @@ export class ReminderService {
     if (waitMs <= 0) {
       return false;
     }
-    this.logger.debug(
-      `${scope}: bo qua truy van DB, thu lai sau ${Math.ceil(waitMs / 1000)}s.`,
-    );
+    this.logger.debug(`${scope}: bo qua truy van DB, thu lai sau ${Math.ceil(waitMs / 1000)}s.`);
     return true;
   }
 

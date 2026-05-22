@@ -329,6 +329,53 @@ describe('ReminderService', () => {
       expect(mockBotService.sendDmInteractive).not.toHaveBeenCalled();
     });
 
+    it('should prefer the schedule channel over the default settings channel', async () => {
+      const scheduleWithOwnChannel = {
+        ...mockSchedule,
+        channel_id: 'schedule-channel',
+        user: { ...mockUser, settings: mockSettings },
+      };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithOwnChannel]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockResolvedValue(undefined);
+
+      await service.tick();
+
+      expect(mockBotService.sendBuzzInteractive).toHaveBeenCalledTimes(1);
+      expect(mockBotService.sendBuzzInteractive).toHaveBeenCalledWith(
+        'schedule-channel',
+        expect.any(Object),
+        expect.any(Array),
+        expect.stringContaining('@testuser'),
+        expect.any(Array),
+      );
+    });
+
+    it('should use the schedule channel when settings have no default channel', async () => {
+      const noChannelSettings = { ...mockSettings, default_channel_id: null };
+      const scheduleWithOwnChannel = {
+        ...mockSchedule,
+        channel_id: 'schedule-channel',
+        user: { ...mockUser, settings: noChannelSettings },
+      };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithOwnChannel]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockResolvedValue(undefined);
+
+      await service.tick();
+
+      expect(mockBotService.sendBuzzInteractive).toHaveBeenCalledWith(
+        'schedule-channel',
+        expect.any(Object),
+        expect.any(Array),
+        expect.stringContaining('@testuser'),
+        expect.any(Array),
+      );
+      expect(mockBotService.sendDmInteractive).not.toHaveBeenCalled();
+    });
+
     it('should send interactive reminders to multiple configured channels', async () => {
       // Arrange
       const multiChannelSettings = {

@@ -31,6 +31,7 @@ export interface SearchResult {
 
 export interface CreateScheduleInput {
   user_id: string;
+  channel_id?: string | null;
   item_type?: ScheduleItemType;
   title: string;
   description?: string | null;
@@ -46,6 +47,7 @@ export interface CreateScheduleInput {
 }
 
 export interface UpdateSchedulePatch {
+  channel_id?: string | null;
   item_type?: ScheduleItemType;
   title?: string;
   description?: string | null;
@@ -191,6 +193,7 @@ export class SchedulesService {
   async create(input: CreateScheduleInput): Promise<Schedule> {
     const schedule = this.scheduleRepository.create({
       user_id: input.user_id,
+      channel_id: input.channel_id ?? null,
       item_type: input.item_type ?? 'task',
       title: input.title,
       description: input.description ?? null,
@@ -847,6 +850,7 @@ export class SchedulesService {
       item_type: source.item_type,
       title: source.title,
       description: source.description,
+      channel_id: source.channel_id ?? null,
       start_time: nextStart,
       end_time: nextEnd,
       remind_at: nextRemindAt,

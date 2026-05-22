@@ -1,22 +1,22 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
-import { DateParser } from "../../shared/utils/date-parser";
-import { MessageFormatter } from "../../shared/utils/message-formatter";
-import { SchedulesService } from "../../schedules/schedules.service";
-import { UsersService } from "../../users/users.service";
-import { formatPriority } from "../../shared/utils/priority";
-import { CommandRegistry } from "./command-registry";
-import { BotCommand, CommandContext } from "./command.types";
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { DateParser } from '../../shared/utils/date-parser';
+import { MessageFormatter } from '../../shared/utils/message-formatter';
+import { SchedulesService } from '../../schedules/schedules.service';
+import { UsersService } from '../../users/users.service';
+import { formatPriority } from '../../shared/utils/priority';
+import { CommandRegistry } from './command-registry';
+import { BotCommand, CommandContext } from './command.types';
 
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 @Injectable()
 export class CopyLichCommand implements BotCommand, OnModuleInit {
-  readonly name = "copy-lich";
-  readonly aliases = ["copylich", "copy", "duplicate"];
-  readonly description = "Sao chép lịch sang ngày khác";
-  readonly category = "✏️ QUẢN LÝ LỊCH";
-  readonly syntax = "copy-lich <ID> <DD-MM-YYYY> [HH:mm]";
-  readonly example = "copy-lich 5 21-4-2026 09:00";
+  readonly name = 'copy-lich';
+  readonly aliases = ['copylich', 'copy', 'duplicate'];
+  readonly description = 'Sao chép lịch sang ngày khác';
+  readonly category = '✏️ QUẢN LÝ LỊCH';
+  readonly syntax = 'copy-lich <ID> <DD-MM-YYYY> [HH:mm]';
+  readonly example = 'copy-lich 5 21-4-2026 09:00';
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -48,17 +48,14 @@ export class CopyLichCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    const source = await this.schedulesService.findById(
-      scheduleId,
-      user.user_id,
-    );
+    const source = await this.schedulesService.findById(scheduleId, user.user_id);
     if (!source) {
       await ctx.reply(`⚠️ Không tìm thấy lịch #${scheduleId} của bạn.`);
       return;
     }
 
-    const datePart = ctx.args.slice(1).join(" ");
-    const hasExplicitTime = datePart.includes(":");
+    const datePart = ctx.args.slice(1).join(' ');
+    const hasExplicitTime = datePart.includes(':');
     const targetStart = this.dateParser.parseVietnamLocal(datePart);
     if (!targetStart) {
       await ctx.reply(
@@ -80,40 +77,35 @@ export class CopyLichCommand implements BotCommand, OnModuleInit {
 
     const delta = finalStart.getTime() - source.start_time.getTime();
 
-    const newEnd = source.end_time
-      ? new Date(source.end_time.getTime() + delta)
-      : null;
-    const newRemind = source.remind_at
-      ? new Date(source.remind_at.getTime() + delta)
-      : null;
+    const newEnd = source.end_time ? new Date(source.end_time.getTime() + delta) : null;
+    const newRemind = source.remind_at ? new Date(source.remind_at.getTime() + delta) : null;
 
     const created = await this.schedulesService.create({
       user_id: user.user_id,
+      channel_id: source.channel_id ?? ctx.message.channel_id,
       item_type: source.item_type,
       title: source.title,
       description: source.description,
       start_time: finalStart,
       end_time: newEnd,
       remind_at: newRemind,
-      priority: source.priority ?? "normal",
+      priority: source.priority ?? 'normal',
     });
 
     const lines = [
       `📋 Đã sao chép lịch #${source.id} → #${created.id}`,
       `➤ Tiêu đề: ${created.title}`,
       `➤ Bắt đầu: ${this.dateParser.formatVietnam(finalStart)}` +
-        (newEnd ? ` → ${this.dateParser.formatVietnam(newEnd)}` : ""),
+        (newEnd ? ` → ${this.dateParser.formatVietnam(newEnd)}` : ''),
     ];
     if (newRemind) {
       lines.push(`🔔 Nhắc: ${this.dateParser.formatVietnam(newRemind)}`);
     }
-    lines.push(
-      `⚡ Ưu tiên: ${formatPriority(created.priority ?? "normal")}`,
-    );
-    if (source.recurrence_type && source.recurrence_type !== "none") {
+    lines.push(`⚡ Ưu tiên: ${formatPriority(created.priority ?? 'normal')}`);
+    if (source.recurrence_type && source.recurrence_type !== 'none') {
       lines.push(`ℹ️ Bản sao là lịch một lần (không kế thừa lặp).`);
     }
-    await ctx.reply(lines.join("\n"));
+    await ctx.reply(lines.join('\n'));
   }
 
   private usageError(prefix: string): string {
@@ -123,7 +115,7 @@ export class CopyLichCommand implements BotCommand, OnModuleInit {
       `Ví dụ:`,
       `- \`${prefix}copy-lich 5 21-4-2026\` — copy giữ nguyên giờ`,
       `- \`${prefix}copy-lich 5 21-4-2026 09:00\` — copy đổi giờ`,
-    ].join("\n");
+    ].join('\n');
   }
 
   private parsePositiveInteger(input: string): number | null {

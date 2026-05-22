@@ -156,7 +156,11 @@ describe('ThemLichCommand', () => {
 
     beforeEach(() => {
       mockContext = {
+        event: {
+          channel_id: 'channel123',
+        },
         action: 'confirm',
+        channelId: 'channel123',
         formData: {},
         clickerId: '789',
         send: jest.fn(),
@@ -317,6 +321,7 @@ describe('ThemLichCommand', () => {
       expect(mockSchedulesService.create).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: '789',
+          channel_id: 'channel123',
           item_type: 'task',
           title: 'Test Schedule',
           description: 'Test description',
@@ -389,6 +394,7 @@ describe('ThemLichCommand', () => {
 
       expect(mockSchedulesService.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          channel_id: 'channel123',
           recurrence_type: 'daily',
           recurrence_interval: 1,
           recurrence_until: null,
@@ -438,6 +444,7 @@ describe('ThemLichCommand', () => {
 
       expect(mockSchedulesService.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          channel_id: 'channel123',
           recurrence_type: 'weekly',
           recurrence_interval: 2,
           recurrence_until: untilDate,
@@ -588,6 +595,7 @@ describe('ThemLichCommand', () => {
 
       expect(mockSchedulesService.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          channel_id: 'channel123',
           end_time: endTime,
         }),
       );

@@ -50,6 +50,13 @@ export class Schedule {
   @Column({ type: 'varchar', length: 50 })
   user_id!: string;
 
+  /**
+   * Channel nơi lịch được tạo. Reminder ưu tiên gửi về channel này để giữ ngữ cảnh
+   * cuộc trò chuyện; null = fallback theo cài đặt user.
+   */
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  channel_id?: string | null;
+
   @Column({ type: 'varchar', length: 20, default: 'task' })
   item_type!: ScheduleItemType;
 

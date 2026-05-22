@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, IsNull, ILike, MoreThanOrEqual } from 'typeorm';
-import { SchedulesService, CreateScheduleInput, UpdateSchedulePatch } from 'src/schedules/schedules.service';
+import {
+  SchedulesService,
+  CreateScheduleInput,
+  UpdateSchedulePatch,
+} from 'src/schedules/schedules.service';
 import { Schedule } from 'src/schedules/entities/schedule.entity';
 
 describe('SchedulesService', () => {
@@ -26,7 +30,7 @@ describe('SchedulesService', () => {
     recurrence_type: 'none',
     recurrence_interval: 1,
     recurrence_until: null,
-    priority: "normal",
+    priority: 'normal',
     recurrence_parent_id: null,
     is_pinned: false,
     is_hidden: false,
@@ -83,6 +87,7 @@ describe('SchedulesService', () => {
       // Assert
       expect(mockRepository.create).toHaveBeenCalledWith({
         user_id: input.user_id,
+        channel_id: null,
         item_type: input.item_type,
         title: input.title,
         description: input.description,
@@ -96,7 +101,7 @@ describe('SchedulesService', () => {
         recurrence_type: 'none',
         recurrence_interval: 1,
         recurrence_until: null,
-        priority: "normal",
+        priority: 'normal',
         recurrence_parent_id: null,
       });
       expect(mockRepository.save).toHaveBeenCalledWith(createdSchedule);
@@ -128,6 +133,7 @@ describe('SchedulesService', () => {
       // Assert
       expect(mockRepository.create).toHaveBeenCalledWith({
         user_id: input.user_id,
+        channel_id: null,
         item_type: 'task',
         title: input.title,
         description: null,
@@ -141,7 +147,7 @@ describe('SchedulesService', () => {
         recurrence_type: 'none',
         recurrence_interval: 1,
         recurrence_until: null,
-        priority: "normal",
+        priority: 'normal',
         recurrence_parent_id: null,
       });
       expect(result.item_type).toBe('task');
@@ -379,10 +385,7 @@ describe('SchedulesService', () => {
       mockRepository.find.mockResolvedValue([]);
 
       // Act
-      const result = await service.findUpcoming(
-        'user123',
-        new Date('2030-01-01T00:00:00Z'),
-      );
+      const result = await service.findUpcoming('user123', new Date('2030-01-01T00:00:00Z'));
 
       // Assert
       expect(result).toEqual([]);
@@ -1012,7 +1015,7 @@ describe('SchedulesService', () => {
       ({
         ...mockSchedule,
         ...overrides,
-      } as Schedule);
+      }) as Schedule;
 
     it('should return zeros when user has no schedules', async () => {
       mockRepository.find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
@@ -1047,11 +1050,36 @@ describe('SchedulesService', () => {
 
     it('should aggregate counts by status, type, and hour', async () => {
       const items = [
-        mkItem({ id: 1, status: 'completed', item_type: 'task', start_time: new Date(2026, 3, 1, 9, 0) }),
-        mkItem({ id: 2, status: 'completed', item_type: 'task', start_time: new Date(2026, 3, 2, 9, 30) }),
-        mkItem({ id: 3, status: 'pending', item_type: 'meeting', start_time: new Date(2026, 3, 3, 14, 0) }),
-        mkItem({ id: 4, status: 'cancelled', item_type: 'event', start_time: new Date(2026, 3, 4, 14, 0) }),
-        mkItem({ id: 5, status: 'pending', item_type: 'reminder', start_time: new Date(2026, 3, 5, 9, 0) }),
+        mkItem({
+          id: 1,
+          status: 'completed',
+          item_type: 'task',
+          start_time: new Date(2026, 3, 1, 9, 0),
+        }),
+        mkItem({
+          id: 2,
+          status: 'completed',
+          item_type: 'task',
+          start_time: new Date(2026, 3, 2, 9, 30),
+        }),
+        mkItem({
+          id: 3,
+          status: 'pending',
+          item_type: 'meeting',
+          start_time: new Date(2026, 3, 3, 14, 0),
+        }),
+        mkItem({
+          id: 4,
+          status: 'cancelled',
+          item_type: 'event',
+          start_time: new Date(2026, 3, 4, 14, 0),
+        }),
+        mkItem({
+          id: 5,
+          status: 'pending',
+          item_type: 'reminder',
+          start_time: new Date(2026, 3, 5, 9, 0),
+        }),
       ];
       mockRepository.find.mockResolvedValueOnce(items).mockResolvedValueOnce([]);
 
@@ -1066,24 +1094,22 @@ describe('SchedulesService', () => {
 
     it('should count active recurring schedules (pending + future or null until)', async () => {
       const now = new Date('2026-04-15');
-      mockRepository.find
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([
-          mkItem({ id: 10, status: 'pending', recurrence_type: 'weekly', recurrence_until: null }),
-          mkItem({
-            id: 11,
-            status: 'pending',
-            recurrence_type: 'daily',
-            recurrence_until: new Date('2026-12-31'),
-          }),
-          mkItem({
-            id: 12,
-            status: 'pending',
-            recurrence_type: 'monthly',
-            recurrence_until: new Date('2026-01-01'),
-          }),
-          mkItem({ id: 13, status: 'pending', recurrence_type: 'none' }),
-        ]);
+      mockRepository.find.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        mkItem({ id: 10, status: 'pending', recurrence_type: 'weekly', recurrence_until: null }),
+        mkItem({
+          id: 11,
+          status: 'pending',
+          recurrence_type: 'daily',
+          recurrence_until: new Date('2026-12-31'),
+        }),
+        mkItem({
+          id: 12,
+          status: 'pending',
+          recurrence_type: 'monthly',
+          recurrence_until: new Date('2026-01-01'),
+        }),
+        mkItem({ id: 13, status: 'pending', recurrence_type: 'none' }),
+      ]);
 
       const stats = await service.getStatistics('user123', null, null, now);
 
@@ -1188,10 +1214,10 @@ describe('SchedulesService', () => {
       recurrence_type: 'weekly',
       recurrence_interval: 1,
       recurrence_until: null,
-      priority: "normal",
+      priority: 'normal',
       recurrence_parent_id: null,
-    is_pinned: false,
-    is_hidden: false,
+      is_pinned: false,
+      is_hidden: false,
     } as Schedule;
 
     it('should return null for non-recurring schedule', async () => {
@@ -1233,9 +1259,11 @@ describe('SchedulesService', () => {
         id: 99,
       }));
 
-      await service.spawnNextIfRecurring(
-        { ...baseRecurring, id: 50, recurrence_parent_id: 10 } as Schedule,
-      );
+      await service.spawnNextIfRecurring({
+        ...baseRecurring,
+        id: 50,
+        recurrence_parent_id: 10,
+      } as Schedule);
 
       const created = (mockRepository.create as jest.Mock).mock.calls[0][0];
       expect(created.recurrence_parent_id).toBe(10);
@@ -1253,7 +1281,10 @@ describe('SchedulesService', () => {
 
     it('should create daily instance with correct step', async () => {
       mockRepository.create.mockImplementation((data: any) => data as Schedule);
-      mockRepository.save.mockImplementation(async (data: any) => ({ ...(data as Schedule), id: 12 }));
+      mockRepository.save.mockImplementation(async (data: any) => ({
+        ...(data as Schedule),
+        id: 12,
+      }));
 
       await service.spawnNextIfRecurring({
         ...baseRecurring,
@@ -1267,7 +1298,10 @@ describe('SchedulesService', () => {
 
     it('should clamp monthly to last day of target month', async () => {
       mockRepository.create.mockImplementation((data: any) => data as Schedule);
-      mockRepository.save.mockImplementation(async (data: any) => ({ ...(data as Schedule), id: 13 }));
+      mockRepository.save.mockImplementation(async (data: any) => ({
+        ...(data as Schedule),
+        id: 13,
+      }));
 
       await service.spawnNextIfRecurring({
         ...baseRecurring,
@@ -1286,7 +1320,10 @@ describe('SchedulesService', () => {
 
     it('should bump past remind_at up to now if shifted instance would remind in past', async () => {
       mockRepository.create.mockImplementation((data: any) => data as Schedule);
-      mockRepository.save.mockImplementation(async (data: any) => ({ ...(data as Schedule), id: 14 }));
+      mockRepository.save.mockImplementation(async (data: any) => ({
+        ...(data as Schedule),
+        id: 14,
+      }));
 
       const now = new Date('2030-01-01T00:00:00Z'); // far future
       await service.spawnNextIfRecurring(

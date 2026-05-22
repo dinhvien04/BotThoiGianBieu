@@ -239,6 +239,7 @@ export class ThemLichCommand implements BotCommand, InteractionHandler, OnModule
     // ===== Lưu DB =====
     const schedule = await this.schedulesService.create({
       user_id: clickerId,
+      channel_id: ctx.channelId,
       item_type: itemType,
       title: title!,
       description,

@@ -35,6 +35,7 @@ COPY --from=builder /repo/app/bot/node_modules ./app/bot/node_modules
 COPY --from=builder /repo/package.json ./package.json
 COPY --from=builder /repo/app/bot/package.json ./app/bot/package.json
 COPY --from=builder /repo/app/bot/dist ./app/bot/dist
+COPY --from=builder /repo/app/bot/scripts ./app/bot/scripts
 COPY --from=builder /repo/app/bot/migrations ./app/bot/migrations
 COPY --from=builder /repo/app/bot/assets ./app/bot/assets
 
@@ -44,4 +45,4 @@ RUN mkdir -p /app/mezon-cache && chown -R node:node /app
 USER node
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "app/bot/dist/main.js"]
+CMD ["sh", "-c", "node app/bot/scripts/migrate.cjs && node app/bot/dist/main.js"]

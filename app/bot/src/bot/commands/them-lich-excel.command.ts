@@ -1,29 +1,17 @@
 import { randomUUID } from 'crypto';
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import {
-  ButtonBuilder,
-  EButtonMessageStyle,
-} from 'mezon-sdk';
+import { ButtonBuilder, EButtonMessageStyle } from 'mezon-sdk';
 import { readSheet } from 'read-excel-file/node';
 import { BotService } from '../bot.service';
 import { CommandRegistry } from './command-registry';
 import { BotCommand, CommandContext } from './command.types';
 import { InteractionRegistry } from '../interactions/interaction-registry';
-import {
-  ButtonInteractionContext,
-  InteractionHandler,
-} from '../interactions/interaction.types';
+import { ButtonInteractionContext, InteractionHandler } from '../interactions/interaction.types';
 import { UsersService } from '../../users/users.service';
 import { SchedulesService } from '../../schedules/schedules.service';
 import { DateParser } from '../../shared/utils/date-parser';
-import {
-  ScheduleItemType,
-  SchedulePriority,
-} from '../../schedules/entities/schedule.entity';
-import {
-  findItemTypeOption,
-  isValidItemType,
-} from '../../schedules/schedules.constants';
+import { ScheduleItemType, SchedulePriority } from '../../schedules/entities/schedule.entity';
+import { findItemTypeOption, isValidItemType } from '../../schedules/schedules.constants';
 import { formatPriority, parsePriority } from '../../shared/utils/priority';
 
 const INTERACTION_ID = 'them-lich-excel';
@@ -150,7 +138,9 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
 
     const pending = this.pending.get(token);
     if (!pending) {
-      await ctx.send(`⚠️ Phiên import đã hết hạn hoặc đã được xử lý. Vui lòng gửi lại \`*them-lich-excel\`.`);
+      await ctx.send(
+        `⚠️ Phiên import đã hết hạn hoặc đã được xử lý. Vui lòng gửi lại \`*them-lich-excel\`.`,
+      );
       return;
     }
 
@@ -179,6 +169,7 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
       const remindAt = idealRemindAt.getTime() > Date.now() ? idealRemindAt : new Date();
       const schedule = await this.schedulesService.create({
         user_id: pending.userId,
+        channel_id: pending.channelId,
         item_type: row.itemType,
         title: row.title,
         description: row.description,
@@ -208,11 +199,17 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
   }
 
   private findExcelAttachment(attachments: ExcelAttachment[]): ExcelAttachment | null {
-    return attachments.find((a) => {
-      const filename = a.filename?.toLowerCase() ?? '';
-      const filetype = a.filetype?.toLowerCase() ?? '';
-      return filename.endsWith('.xlsx') || filetype.includes('spreadsheet') || filetype.includes('excel');
-    }) ?? null;
+    return (
+      attachments.find((a) => {
+        const filename = a.filename?.toLowerCase() ?? '';
+        const filetype = a.filetype?.toLowerCase() ?? '';
+        return (
+          filename.endsWith('.xlsx') ||
+          filetype.includes('spreadsheet') ||
+          filetype.includes('excel')
+        );
+      }) ?? null
+    );
   }
 
   private async downloadFile(url: string): Promise<Buffer> {
@@ -244,7 +241,8 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
     defaultRemindMinutes: number,
   ): { rows: ParsedExcelRow[]; errors: RowError[] } {
     const sheetName = sheetRows.length > 0 ? 'sheet' : '';
-    if (!sheetName) return { rows: [], errors: [{ rowNumber: 0, message: 'File không có sheet nào.' }] };
+    if (!sheetName)
+      return { rows: [], errors: [{ rowNumber: 0, message: 'File không có sheet nào.' }] };
 
     const headers = sheetRows[0].map((cell) => this.stringifyCell(cell));
     const rawRows = sheetRows
@@ -284,12 +282,7 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
     const itemType = this.parseItemType(itemTypeRaw);
     if (!itemType) return { rowNumber, message: `Loại lịch không hợp lệ: ${itemTypeRaw}.` };
 
-    const priorityRaw = this.getCell(row, [
-      'uu_tien',
-      'priority',
-      'muc_uu_tien',
-      'do_uu_tien',
-    ]);
+    const priorityRaw = this.getCell(row, ['uu_tien', 'priority', 'muc_uu_tien', 'do_uu_tien']);
     let priority: SchedulePriority = 'normal';
     if (priorityRaw) {
       const parsed = parsePriority(priorityRaw);
@@ -389,7 +382,8 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
       const day = String(value.getDate()).padStart(2, '0');
       const hour = String(value.getHours()).padStart(2, '0');
       const minute = String(value.getMinutes()).padStart(2, '0');
-      const hasTime = value.getHours() !== 0 || value.getMinutes() !== 0 || value.getSeconds() !== 0;
+      const hasTime =
+        value.getHours() !== 0 || value.getMinutes() !== 0 || value.getSeconds() !== 0;
       if (year <= 1900) return `${hour}:${minute}`;
       return hasTime ? `${day}/${month}/${year} ${hour}:${minute}` : `${day}/${month}/${year}`;
     }
@@ -489,7 +483,10 @@ export class ThemLichExcelCommand implements BotCommand, InteractionHandler, OnM
     }
 
     if (token && rows.length > 0) {
-      lines.push('', `Bấm **Nhập lịch** để thêm ${rows.length} dòng hợp lệ. Các dòng lỗi sẽ bị bỏ qua.`);
+      lines.push(
+        '',
+        `Bấm **Nhập lịch** để thêm ${rows.length} dòng hợp lệ. Các dòng lỗi sẽ bị bỏ qua.`,
+      );
     }
 
     return lines.join('\n');

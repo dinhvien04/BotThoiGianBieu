@@ -1,20 +1,19 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
-import { DateParser } from "../../shared/utils/date-parser";
-import { MessageFormatter } from "../../shared/utils/message-formatter";
-import { SchedulesService } from "../../schedules/schedules.service";
-import { UsersService } from "../../users/users.service";
-import { CommandRegistry } from "./command-registry";
-import { BotCommand, CommandContext } from "./command.types";
-import { parseNaturalLanguage } from "../../shared/utils/nl-datetime-parser";
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { DateParser } from '../../shared/utils/date-parser';
+import { MessageFormatter } from '../../shared/utils/message-formatter';
+import { SchedulesService } from '../../schedules/schedules.service';
+import { UsersService } from '../../users/users.service';
+import { CommandRegistry } from './command-registry';
+import { BotCommand, CommandContext } from './command.types';
+import { parseNaturalLanguage } from '../../shared/utils/nl-datetime-parser';
 
 @Injectable()
 export class NhanhCommand implements BotCommand, OnModuleInit {
-  readonly name = "nhanh";
-  readonly aliases = ["quick", "qa", "q"];
-  readonly description =
-    "Quick add lịch bằng câu tiếng Việt (vd: họp team 9h sáng mai)";
-  readonly category = "✏️ QUẢN LÝ LỊCH";
-  readonly syntax = "nhanh <câu mô tả>";
+  readonly name = 'nhanh';
+  readonly aliases = ['quick', 'qa', 'q'];
+  readonly description = 'Quick add lịch bằng câu tiếng Việt (vd: họp team 9h sáng mai)';
+  readonly category = '✏️ QUẢN LÝ LỊCH';
+  readonly syntax = 'nhanh <câu mô tả>';
   readonly example = 'nhanh họp team 9h sáng mai';
 
   constructor(
@@ -36,7 +35,7 @@ export class NhanhCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    const raw = ctx.args.join(" ").trim();
+    const raw = ctx.args.join(' ').trim();
     if (!raw) {
       await ctx.reply(this.usageError(ctx.prefix));
       return;
@@ -50,7 +49,7 @@ export class NhanhCommand implements BotCommand, OnModuleInit {
           ``,
           `Mẹo: thêm giờ rõ ràng (vd \`9h\`, \`14:30\`) hoặc ngày (\`mai\`, \`thứ 6\`, \`30/4\`).`,
           `Ví dụ: \`${ctx.prefix}${this.example}\``,
-        ].join("\n"),
+        ].join('\n'),
       );
       return;
     }
@@ -64,6 +63,7 @@ export class NhanhCommand implements BotCommand, OnModuleInit {
 
     const created = await this.schedulesService.create({
       user_id: user.user_id,
+      channel_id: ctx.message.channel_id,
       title: parsed.title,
       start_time: parsed.start,
       end_time: new Date(parsed.start.getTime() + 60 * 60 * 1000),
@@ -77,10 +77,8 @@ export class NhanhCommand implements BotCommand, OnModuleInit {
     if (parsed.notes.length > 0) {
       lines.push(...parsed.notes.map((n) => `ℹ️ ${n}`));
     }
-    lines.push(
-      `💡 Sửa thêm chi tiết: \`${ctx.prefix}sua-lich ${created.id}\``,
-    );
-    await ctx.reply(lines.join("\n"));
+    lines.push(`💡 Sửa thêm chi tiết: \`${ctx.prefix}sua-lich ${created.id}\``);
+    await ctx.reply(lines.join('\n'));
   }
 
   private usageError(prefix: string): string {
@@ -93,6 +91,6 @@ export class NhanhCommand implements BotCommand, OnModuleInit {
       `- \`${prefix}nhanh deadline báo cáo 17h thứ 6\``,
       `- \`${prefix}nhanh chạy bộ 6h30 thứ 2 tuần sau\``,
       `- \`${prefix}nhanh lễ 30/4 sáng\``,
-    ].join("\n");
+    ].join('\n');
   }
 }

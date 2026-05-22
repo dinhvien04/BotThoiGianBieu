@@ -1,41 +1,37 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
-import { CommandRegistry } from "./command-registry";
-import { BotCommand, CommandContext } from "./command.types";
-import { UsersService } from "../../users/users.service";
-import { SchedulesService } from "../../schedules/schedules.service";
-import {
-  TemplatesService,
-  MAX_TEMPLATE_NAME_LENGTH,
-} from "../../schedules/templates.service";
-import { ScheduleTemplate } from "../../schedules/entities/schedule-template.entity";
-import { DateParser } from "../../shared/utils/date-parser";
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { CommandRegistry } from './command-registry';
+import { BotCommand, CommandContext } from './command.types';
+import { UsersService } from '../../users/users.service';
+import { SchedulesService } from '../../schedules/schedules.service';
+import { TemplatesService, MAX_TEMPLATE_NAME_LENGTH } from '../../schedules/templates.service';
+import { ScheduleTemplate } from '../../schedules/entities/schedule-template.entity';
+import { DateParser } from '../../shared/utils/date-parser';
 
 const PRIORITY_BADGE: Record<string, string> = {
-  low: "🟢",
-  normal: "🟡",
-  high: "🔴",
+  low: '🟢',
+  normal: '🟡',
+  high: '🔴',
 };
 
 function formatTemplate(t: ScheduleTemplate): string {
   const lines: string[] = [];
-  lines.push(`• \`${t.name}\` ${PRIORITY_BADGE[t.priority] ?? ""} ${t.title}`);
+  lines.push(`• \`${t.name}\` ${PRIORITY_BADGE[t.priority] ?? ''} ${t.title}`);
   const meta: string[] = [`loại: ${t.item_type}`];
   if (t.duration_minutes) meta.push(`thời lượng: ${t.duration_minutes}p`);
-  if (t.default_remind_minutes)
-    meta.push(`nhắc trước: ${t.default_remind_minutes}p`);
-  lines.push(`  ${meta.join(" · ")}`);
+  if (t.default_remind_minutes) meta.push(`nhắc trước: ${t.default_remind_minutes}p`);
+  lines.push(`  ${meta.join(' · ')}`);
   if (t.description) lines.push(`  📝 ${t.description}`);
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 @Injectable()
 export class TaoTemplateCommand implements BotCommand, OnModuleInit {
-  readonly name = "tao-template";
-  readonly aliases = ["taotemplate", "save-template"];
-  readonly description = "Lưu lịch hiện có thành template để clone nhanh sau";
-  readonly category = "📋 TEMPLATE";
-  readonly syntax = "tao-template <tên> <ID lịch>";
-  readonly example = "tao-template hop-tuan 12";
+  readonly name = 'tao-template';
+  readonly aliases = ['taotemplate', 'save-template'];
+  readonly description = 'Lưu lịch hiện có thành template để clone nhanh sau';
+  readonly category = '📋 TEMPLATE';
+  readonly syntax = 'tao-template <tên> <ID lịch>';
+  readonly example = 'tao-template hop-tuan 12';
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -51,16 +47,13 @@ export class TaoTemplateCommand implements BotCommand, OnModuleInit {
   async execute(ctx: CommandContext): Promise<void> {
     const user = await this.usersService.findByUserId(ctx.message.sender_id);
     if (!user) {
-      await ctx.reply(
-        `⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước.`,
-      );
+      await ctx.reply(`⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước.`);
       return;
     }
 
     if (ctx.args.length < 2) {
       await ctx.reply(
-        `⚠️ Cú pháp: \`${ctx.prefix}${this.syntax}\`\n` +
-          `Vd: \`${ctx.prefix}${this.example}\`.`,
+        `⚠️ Cú pháp: \`${ctx.prefix}${this.syntax}\`\n` + `Vd: \`${ctx.prefix}${this.example}\`.`,
       );
       return;
     }
@@ -83,9 +76,7 @@ export class TaoTemplateCommand implements BotCommand, OnModuleInit {
 
     const schedule = await this.schedulesService.findById(id, user.user_id);
     if (!schedule) {
-      await ctx.reply(
-        `❌ Không tìm thấy lịch #${id} của bạn.`,
-      );
+      await ctx.reply(`❌ Không tìm thấy lịch #${id} của bạn.`);
       return;
     }
 
@@ -97,11 +88,7 @@ export class TaoTemplateCommand implements BotCommand, OnModuleInit {
       return;
     }
 
-    const t = await this.templatesService.createFromSchedule(
-      user.user_id,
-      name,
-      schedule,
-    );
+    const t = await this.templatesService.createFromSchedule(user.user_id, name, schedule);
 
     const lines = [
       `✅ Đã lưu template \`${t.name}\` từ lịch #${id}.`,
@@ -110,18 +97,18 @@ export class TaoTemplateCommand implements BotCommand, OnModuleInit {
       ``,
       `💡 Tạo lịch mới từ template: \`${ctx.prefix}tu-template ${t.name} <DD-MM-YYYY HH:mm>\``,
     ];
-    await ctx.reply(lines.join("\n"));
+    await ctx.reply(lines.join('\n'));
   }
 }
 
 @Injectable()
 export class TuTemplateCommand implements BotCommand, OnModuleInit {
-  readonly name = "tu-template";
-  readonly aliases = ["tutemplate", "from-template"];
-  readonly description = "Tạo lịch mới từ template";
-  readonly category = "📋 TEMPLATE";
-  readonly syntax = "tu-template <tên> <DD-MM-YYYY HH:mm>";
-  readonly example = "tu-template hop-tuan 28-04-2026 09:00";
+  readonly name = 'tu-template';
+  readonly aliases = ['tutemplate', 'from-template'];
+  readonly description = 'Tạo lịch mới từ template';
+  readonly category = '📋 TEMPLATE';
+  readonly syntax = 'tu-template <tên> <DD-MM-YYYY HH:mm>';
+  readonly example = 'tu-template hop-tuan 28-04-2026 09:00';
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -138,22 +125,19 @@ export class TuTemplateCommand implements BotCommand, OnModuleInit {
   async execute(ctx: CommandContext): Promise<void> {
     const user = await this.usersService.findByUserId(ctx.message.sender_id);
     if (!user) {
-      await ctx.reply(
-        `⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước.`,
-      );
+      await ctx.reply(`⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước.`);
       return;
     }
 
     if (ctx.args.length < 2) {
       await ctx.reply(
-        `⚠️ Cú pháp: \`${ctx.prefix}${this.syntax}\`\n` +
-          `Vd: \`${ctx.prefix}${this.example}\`.`,
+        `⚠️ Cú pháp: \`${ctx.prefix}${this.syntax}\`\n` + `Vd: \`${ctx.prefix}${this.example}\`.`,
       );
       return;
     }
 
     const rawName = ctx.args[0];
-    const datetimeRaw = ctx.args.slice(1).join(" ");
+    const datetimeRaw = ctx.args.slice(1).join(' ');
 
     const t = await this.templatesService.findByName(user.user_id, rawName);
     if (!t) {
@@ -174,10 +158,7 @@ export class TuTemplateCommand implements BotCommand, OnModuleInit {
     const endTime = t.duration_minutes
       ? new Date(start.getTime() + t.duration_minutes * 60_000)
       : null;
-    const remindMinutes =
-      t.default_remind_minutes ??
-      user.settings?.default_remind_minutes ??
-      null;
+    const remindMinutes = t.default_remind_minutes ?? user.settings?.default_remind_minutes ?? null;
     const remindAt =
       remindMinutes && remindMinutes > 0
         ? new Date(start.getTime() - remindMinutes * 60_000)
@@ -185,6 +166,7 @@ export class TuTemplateCommand implements BotCommand, OnModuleInit {
 
     const schedule = await this.schedulesService.create({
       user_id: user.user_id,
+      channel_id: ctx.message.channel_id,
       item_type: t.item_type,
       title: t.title,
       description: t.description,
@@ -197,26 +179,25 @@ export class TuTemplateCommand implements BotCommand, OnModuleInit {
     const lines = [
       `✅ Đã tạo lịch #${schedule.id} từ template \`${t.name}\`.`,
       ``,
-      `${PRIORITY_BADGE[schedule.priority] ?? ""} **${schedule.title}**`,
+      `${PRIORITY_BADGE[schedule.priority] ?? ''} **${schedule.title}**`,
       `⏰ Bắt đầu: ${this.dateParser.formatVietnam(start)}`,
     ];
     if (endTime) lines.push(`🏁 Kết thúc: ${this.dateParser.formatVietnam(endTime)}`);
-    if (remindAt)
-      lines.push(`🔔 Nhắc lúc: ${this.dateParser.formatVietnam(remindAt)}`);
+    if (remindAt) lines.push(`🔔 Nhắc lúc: ${this.dateParser.formatVietnam(remindAt)}`);
     if (schedule.description) lines.push(`📝 ${schedule.description}`);
 
-    await ctx.reply(lines.join("\n"));
+    await ctx.reply(lines.join('\n'));
   }
 }
 
 @Injectable()
 export class DsTemplateCommand implements BotCommand, OnModuleInit {
-  readonly name = "ds-template";
-  readonly aliases = ["dstemplate", "list-template", "templates"];
-  readonly description = "Liệt kê các template đã lưu";
-  readonly category = "📋 TEMPLATE";
-  readonly syntax = "ds-template";
-  readonly example = "ds-template";
+  readonly name = 'ds-template';
+  readonly aliases = ['dstemplate', 'list-template', 'templates'];
+  readonly description = 'Liệt kê các template đã lưu';
+  readonly category = '📋 TEMPLATE';
+  readonly syntax = 'ds-template';
+  readonly example = 'ds-template';
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -231,17 +212,14 @@ export class DsTemplateCommand implements BotCommand, OnModuleInit {
   async execute(ctx: CommandContext): Promise<void> {
     const user = await this.usersService.findByUserId(ctx.message.sender_id);
     if (!user) {
-      await ctx.reply(
-        `⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước.`,
-      );
+      await ctx.reply(`⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước.`);
       return;
     }
 
     const list = await this.templatesService.listForUser(user.user_id);
     if (list.length === 0) {
       await ctx.reply(
-        `📋 Bạn chưa có template nào.\n` +
-          `Tạo: \`${ctx.prefix}tao-template <tên> <ID lịch>\`.`,
+        `📋 Bạn chưa có template nào.\n` + `Tạo: \`${ctx.prefix}tao-template <tên> <ID lịch>\`.`,
       );
       return;
     }
@@ -253,18 +231,18 @@ export class DsTemplateCommand implements BotCommand, OnModuleInit {
       ``,
       `💡 Dùng: \`${ctx.prefix}tu-template <tên> <DD-MM-YYYY HH:mm>\`.`,
     ];
-    await ctx.reply(lines.join("\n"));
+    await ctx.reply(lines.join('\n'));
   }
 }
 
 @Injectable()
 export class XoaTemplateCommand implements BotCommand, OnModuleInit {
-  readonly name = "xoa-template";
-  readonly aliases = ["xoatemplate", "delete-template"];
-  readonly description = "Xoá template";
-  readonly category = "📋 TEMPLATE";
-  readonly syntax = "xoa-template <tên>";
-  readonly example = "xoa-template hop-tuan";
+  readonly name = 'xoa-template';
+  readonly aliases = ['xoatemplate', 'delete-template'];
+  readonly description = 'Xoá template';
+  readonly category = '📋 TEMPLATE';
+  readonly syntax = 'xoa-template <tên>';
+  readonly example = 'xoa-template hop-tuan';
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -279,9 +257,7 @@ export class XoaTemplateCommand implements BotCommand, OnModuleInit {
   async execute(ctx: CommandContext): Promise<void> {
     const user = await this.usersService.findByUserId(ctx.message.sender_id);
     if (!user) {
-      await ctx.reply(
-        `⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước.`,
-      );
+      await ctx.reply(`⚠️ Bạn chưa khởi tạo. Gõ \`${ctx.prefix}batdau\` trước.`);
       return;
     }
 
