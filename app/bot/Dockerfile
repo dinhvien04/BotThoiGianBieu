@@ -31,6 +31,7 @@ RUN apk add --no-cache tini tzdata && \
     echo "$TZ" > /etc/timezone
 
 COPY --from=builder /repo/node_modules ./node_modules
+COPY --from=builder /repo/app/bot/node_modules ./app/bot/node_modules
 COPY --from=builder /repo/package.json ./package.json
 COPY --from=builder /repo/app/bot/package.json ./app/bot/package.json
 COPY --from=builder /repo/app/bot/dist ./app/bot/dist
