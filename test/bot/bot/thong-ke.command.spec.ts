@@ -154,7 +154,7 @@ describe('ThongKeCommand', () => {
 
       await command.execute(ctx);
 
-      expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Khong co lich nao'));
+      expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Không có lịch nào'));
     });
 
     it('should render full statistics with completion rate', async () => {
@@ -176,14 +176,14 @@ describe('ThongKeCommand', () => {
       await command.execute(ctx);
 
       const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
-      expect(message).toContain('Tong so lich');
+      expect(message).toContain('Tổng số lịch');
       expect(message).toContain('10');
-      expect(message).toContain('Ti le hoan thanh');
+      expect(message).toContain('Tỉ lệ hoàn thành');
       expect(message).toContain('83.3%');
-      expect(message).toContain('Top gio ban nhat');
+      expect(message).toContain('Top giờ bận nhất');
       expect(message).toContain('09:00');
       expect(message).toContain('14:00');
-      expect(message).toContain('Lich lap dang hoat dong');
+      expect(message).toContain('Lịch lặp đang hoạt động');
       expect(message).toContain('2');
     });
 
@@ -204,7 +204,7 @@ describe('ThongKeCommand', () => {
       await command.execute(ctx);
 
       const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
-      expect(message).toContain('Thong ke lich - 30 ngay qua');
+      expect(message).toContain('Thống kê lịch - 30 ngày qua');
       for (const marker of ['**', '`', '📊', '•', '—', 'Binh chon', 'Chon mot dap an']) {
         expect(message).not.toContain(marker);
       }
@@ -225,8 +225,8 @@ describe('ThongKeCommand', () => {
       await command.execute(ctx);
 
       const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
-      expect(message).not.toContain('Ti le hoan thanh');
-      expect(message).toContain('Tong so lich');
+      expect(message).not.toContain('Tỉ lệ hoàn thành');
+      expect(message).toContain('Tổng số lịch');
     });
 
     it('should pass through "year" and "all" aliases without error', async () => {
