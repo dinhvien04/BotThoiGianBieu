@@ -14,6 +14,7 @@ import { TemplatesService } from './templates.service';
 import { AuditService } from './audit.service';
 import { BackupService } from './backup.service';
 import { StreakService } from './streak.service';
+import { ScheduleSchemaBootstrapService } from './schema-bootstrap.service';
 import { SchedulesController } from './schedules.controller';
 import { TagsController } from './tags.controller';
 import { TemplatesController } from './templates.controller';
@@ -51,6 +52,7 @@ import { UsersModule } from '../users/users.module';
     AuditService,
     BackupService,
     StreakService,
+    ScheduleSchemaBootstrapService,
   ],
   exports: [
     SchedulesService,
