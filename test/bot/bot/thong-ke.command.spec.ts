@@ -2,10 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThongKeCommand } from 'src/bot/commands/thong-ke.command';
 import { CommandRegistry } from 'src/bot/commands/command-registry';
 import { UsersService } from 'src/users/users.service';
-import {
-  ScheduleStatistics,
-  SchedulesService,
-} from 'src/schedules/schedules.service';
+import { ScheduleStatistics, SchedulesService } from 'src/schedules/schedules.service';
 import { CommandContext } from 'src/bot/commands/command.types';
 import { User } from 'src/users/entities/user.entity';
 
@@ -89,9 +86,7 @@ describe('ThongKeCommand', () => {
 
       await command.execute(ctx);
 
-      expect(ctx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('chưa khởi tạo tài khoản'),
-      );
+      expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('chưa khởi tạo tài khoản'));
       expect(mockSchedulesService.getStatistics).not.toHaveBeenCalled();
     });
 
@@ -159,9 +154,7 @@ describe('ThongKeCommand', () => {
 
       await command.execute(ctx);
 
-      expect(ctx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Không có lịch nào'),
-      );
+      expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Khong co lich nao'));
     });
 
     it('should render full statistics with completion rate', async () => {
@@ -183,15 +176,38 @@ describe('ThongKeCommand', () => {
       await command.execute(ctx);
 
       const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
-      expect(message).toContain('Tổng số lịch');
+      expect(message).toContain('Tong so lich');
       expect(message).toContain('10');
-      expect(message).toContain('Tỉ lệ hoàn thành');
+      expect(message).toContain('Ti le hoan thanh');
       expect(message).toContain('83.3%');
-      expect(message).toContain('Top giờ bận nhất');
+      expect(message).toContain('Top gio ban nhat');
       expect(message).toContain('09:00');
       expect(message).toContain('14:00');
-      expect(message).toContain('Lịch lặp đang hoạt động');
+      expect(message).toContain('Lich lap dang hoat dong');
       expect(message).toContain('2');
+    });
+
+    it('should not emit markdown markers that Mezon may render as a poll', async () => {
+      mockUsersService.findByUserId.mockResolvedValue(mockUser);
+      mockSchedulesService.getStatistics.mockResolvedValue(
+        buildStats({
+          total: 2,
+          byStatus: { pending: 1, completed: 1, cancelled: 0 },
+          byItemType: { task: 1, meeting: 1, event: 0, reminder: 0 },
+          byPriority: { low: 0, normal: 1, high: 1 },
+          topHours: [{ hour: 9, count: 2 }],
+          recurringActiveCount: 0,
+        }),
+      );
+      const ctx = buildContext();
+
+      await command.execute(ctx);
+
+      const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
+      expect(message).toContain('Thong ke lich - 30 ngay qua');
+      for (const marker of ['**', '`', '📊', '•', '—', 'Binh chon', 'Chon mot dap an']) {
+        expect(message).not.toContain(marker);
+      }
     });
 
     it('should not display completion rate when no finished schedules', async () => {
@@ -209,8 +225,8 @@ describe('ThongKeCommand', () => {
       await command.execute(ctx);
 
       const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
-      expect(message).not.toContain('Tỉ lệ hoàn thành');
-      expect(message).toContain('Tổng số lịch');
+      expect(message).not.toContain('Ti le hoan thanh');
+      expect(message).toContain('Tong so lich');
     });
 
     it('should pass through "year" and "all" aliases without error', async () => {

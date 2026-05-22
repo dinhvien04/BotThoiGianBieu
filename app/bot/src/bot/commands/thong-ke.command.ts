@@ -1,22 +1,30 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import {
-  ScheduleStatistics,
-  SchedulesService,
-} from '../../schedules/schedules.service';
+import { ScheduleStatistics, SchedulesService } from '../../schedules/schedules.service';
 import { UsersService } from '../../users/users.service';
 import { startOfDay, endOfDay, addDays } from '../../shared/utils/date-utils';
-import { findItemTypeOption } from '../../schedules/schedules.constants';
-import { formatPriority } from '../../shared/utils/priority';
 import { CommandRegistry } from './command-registry';
 import { BotCommand, CommandContext } from './command.types';
 
 type StatRange = 'tuan' | 'thang' | 'nam' | 'all';
 
 const RANGE_LABELS: Record<StatRange, string> = {
-  tuan: '7 ngày qua',
-  thang: '30 ngày qua',
-  nam: '365 ngày qua',
-  all: 'toàn bộ lịch sử',
+  tuan: '7 ngay qua',
+  thang: '30 ngay qua',
+  nam: '365 ngay qua',
+  all: 'toan bo lich su',
+};
+
+const ITEM_TYPE_LABELS: Record<keyof ScheduleStatistics['byItemType'], string> = {
+  task: 'Task (cong viec)',
+  meeting: 'Meeting (hop)',
+  event: 'Event (su kien)',
+  reminder: 'Reminder (nhac nho)',
+};
+
+const PRIORITY_LABELS: Record<keyof ScheduleStatistics['byPriority'], string> = {
+  high: 'Cao',
+  normal: 'Vua',
+  low: 'Thap',
 };
 
 const RANGE_ALIASES: Record<string, StatRange> = {
@@ -32,7 +40,7 @@ const RANGE_ALIASES: Record<string, StatRange> = {
   all: 'all',
   tat: 'all',
   'tat-ca': 'all',
-  'tatca': 'all',
+  tatca: 'all',
 };
 
 @Injectable()
@@ -58,8 +66,7 @@ export class ThongKeCommand implements BotCommand, OnModuleInit {
     const user = await this.usersService.findByUserId(ctx.message.sender_id);
     if (!user) {
       await ctx.reply(
-        `⚠️ Bạn chưa khởi tạo tài khoản.\n` +
-          `Vui lòng dùng lệnh \`${ctx.prefix}batdau\` trước.`,
+        `⚠️ Bạn chưa khởi tạo tài khoản.\n` + `Vui lòng dùng lệnh \`${ctx.prefix}batdau\` trước.`,
       );
       return;
     }
@@ -80,20 +87,12 @@ export class ThongKeCommand implements BotCommand, OnModuleInit {
 
     const now = new Date();
     const { start, end } = this.computeRange(range, now);
-    const stats = await this.schedulesService.getStatistics(
-      user.user_id,
-      start,
-      end,
-      now,
-    );
+    const stats = await this.schedulesService.getStatistics(user.user_id, start, end, now);
 
     await ctx.reply(this.formatStatistics(stats, range));
   }
 
-  private computeRange(
-    range: StatRange,
-    now: Date,
-  ): { start: Date | null; end: Date | null } {
+  private computeRange(range: StatRange, now: Date): { start: Date | null; end: Date | null } {
     if (range === 'all') return { start: null, end: null };
     const days = range === 'tuan' ? 7 : range === 'thang' ? 30 : 365;
     return {
@@ -104,70 +103,67 @@ export class ThongKeCommand implements BotCommand, OnModuleInit {
 
   private formatStatistics(stats: ScheduleStatistics, range: StatRange): string {
     const lines: string[] = [];
-    lines.push(`📊 THỐNG KÊ LỊCH — ${RANGE_LABELS[range]}`);
+    lines.push(`Thong ke lich - ${RANGE_LABELS[range]}`);
     lines.push('');
 
     if (stats.total === 0) {
-      lines.push(`Không có lịch nào trong khoảng này.`);
+      lines.push(`Khong co lich nao trong khoang nay.`);
       if (stats.recurringActiveCount > 0) {
         lines.push('');
-        lines.push(`🔁 Lịch lặp đang hoạt động: \`${stats.recurringActiveCount}\``);
+        lines.push(`Lich lap dang hoat dong: ${stats.recurringActiveCount}`);
       }
       return lines.join('\n');
     }
 
-    lines.push(`📦 Tổng số lịch: \`${stats.total}\``);
-    lines.push(`   • ⏳ Đang chờ: \`${stats.byStatus.pending}\``);
-    lines.push(`   • ✅ Hoàn thành: \`${stats.byStatus.completed}\``);
-    lines.push(`   • ❌ Đã hủy: \`${stats.byStatus.cancelled}\``);
+    lines.push(`Tong so lich: ${stats.total}`);
+    lines.push(`Dang cho: ${stats.byStatus.pending}`);
+    lines.push(`Hoan thanh: ${stats.byStatus.completed}`);
+    lines.push(`Da huy: ${stats.byStatus.cancelled}`);
 
     const finished = stats.byStatus.completed + stats.byStatus.cancelled;
     if (finished > 0) {
       const rate = (stats.byStatus.completed / finished) * 100;
       lines.push('');
       lines.push(
-        `🎯 Tỉ lệ hoàn thành: **${rate.toFixed(1)}%** ` +
-          `(${stats.byStatus.completed}/${finished} lịch đã chốt)`,
+        `Ti le hoan thanh: ${rate.toFixed(1)}% (${stats.byStatus.completed}/${finished} lich da chot)`,
       );
     }
 
-    const typeEntries = (Object.entries(stats.byItemType) as [
-      keyof typeof stats.byItemType,
-      number,
-    ][])
+    const typeEntries = (
+      Object.entries(stats.byItemType) as [keyof typeof stats.byItemType, number][]
+    )
       .filter(([, count]) => count > 0)
       .sort((a, b) => b[1] - a[1]);
     if (typeEntries.length > 0) {
       lines.push('');
-      lines.push(`🏷️ Theo loại:`);
+      lines.push(`Theo loai:`);
       for (const [type, count] of typeEntries) {
-        const label = findItemTypeOption(type)?.label ?? type;
-        lines.push(`   • ${label}: \`${count}\``);
+        lines.push(`${ITEM_TYPE_LABELS[type]}: ${count}`);
       }
     }
 
-    const priorityEntries = (
-      ['high', 'normal', 'low'] as const
-    ).filter((p) => stats.byPriority[p] > 0);
+    const priorityEntries = (['high', 'normal', 'low'] as const).filter(
+      (p) => stats.byPriority[p] > 0,
+    );
     if (priorityEntries.length > 0) {
       lines.push('');
-      lines.push(`⚡ Theo ưu tiên:`);
+      lines.push(`Theo uu tien:`);
       for (const p of priorityEntries) {
-        lines.push(`   • ${formatPriority(p)}: \`${stats.byPriority[p]}\``);
+        lines.push(`${PRIORITY_LABELS[p]}: ${stats.byPriority[p]}`);
       }
     }
 
     if (stats.topHours.length > 0) {
       lines.push('');
-      lines.push(`⏰ Top giờ bận nhất:`);
+      lines.push(`Top gio ban nhat:`);
       for (const { hour, count } of stats.topHours) {
-        const slot = `${this.pad(hour)}:00 – ${this.pad((hour + 1) % 24)}:00`;
-        lines.push(`   • \`${slot}\` — ${count} lịch`);
+        const slot = `${this.pad(hour)}:00 - ${this.pad((hour + 1) % 24)}:00`;
+        lines.push(`${slot}: ${count} lich`);
       }
     }
 
     lines.push('');
-    lines.push(`🔁 Lịch lặp đang hoạt động: \`${stats.recurringActiveCount}\``);
+    lines.push(`Lich lap dang hoat dong: ${stats.recurringActiveCount}`);
 
     return lines.join('\n');
   }
