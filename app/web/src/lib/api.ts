@@ -114,6 +114,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(msg, res.status, body);
   }
 
+  if (typeof body === 'object' && body !== null && 'success' in body && (body as { success: unknown }).success === false) {
+    const msg =
+      ('error' in body ? String((body as { error: unknown }).error) : null) ||
+      ('message' in body ? String((body as { message: unknown }).message) : null) ||
+      'Operation failed';
+    throw new ApiError(msg, res.status, body);
+  }
+
   return body as T;
 }
 

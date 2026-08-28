@@ -2,8 +2,6 @@
 -- Thêm các partial và composite indexes để tối ưu hóa hiệu năng
 -- truy vấn reminder ticks, end notifications và dashboard.
 
-BEGIN;
-
 -- 1. Index tối ưu hóa cron tìm start reminders đến hạn
 CREATE INDEX IF NOT EXISTS idx_schedules_due_reminders
   ON schedules (remind_at)
@@ -25,4 +23,3 @@ CREATE INDEX IF NOT EXISTS idx_schedules_created_at
 CREATE INDEX IF NOT EXISTS idx_users_created_at
   ON users (created_at);
 
-COMMIT;

@@ -3,7 +3,9 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -220,15 +222,15 @@ export class SchedulesController {
 
   @Get(':id')
   async findOne(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) id: number) {
+    const existing = await this.schedulesService.findById(id);
+    if (!existing) {
+      throw new NotFoundException('Schedule not found');
+    }
     const allowed = await this.sharesService.canView(id, req.session.sub);
     if (!allowed) {
-      return { success: false, error: 'Schedule not found' };
+      throw new NotFoundException('Schedule not found');
     }
-    const schedule = await this.schedulesService.findById(id);
-    if (!schedule) {
-      return { success: false, error: 'Schedule not found' };
-    }
-    return { success: true, schedule };
+    return { success: true, schedule: existing };
   }
 
   @Patch(':id')
@@ -237,13 +239,13 @@ export class SchedulesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: UpdateScheduleDto,
   ) {
-    const allowed = await this.sharesService.canEdit(id, req.session.sub);
-    if (!allowed) {
-      return { success: false, error: 'Schedule not found or permission denied' };
-    }
     const existing = await this.schedulesService.findById(id);
     if (!existing) {
-      return { success: false, error: 'Schedule not found' };
+      throw new NotFoundException('Schedule not found');
+    }
+    const allowed = await this.sharesService.canEdit(id, req.session.sub);
+    if (!allowed) {
+      throw new ForbiddenException('Permission denied');
     }
 
     const patch: UpdateSchedulePatch = {};
@@ -275,13 +277,13 @@ export class SchedulesController {
 
   @Patch(':id/complete')
   async complete(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) id: number) {
-    const allowed = await this.sharesService.canEdit(id, req.session.sub);
-    if (!allowed) {
-      return { success: false, error: 'Schedule not found or permission denied' };
-    }
     const existing = await this.schedulesService.findById(id);
     if (!existing) {
-      return { success: false, error: 'Schedule not found' };
+      throw new NotFoundException('Schedule not found');
+    }
+    const allowed = await this.sharesService.canEdit(id, req.session.sub);
+    if (!allowed) {
+      throw new ForbiddenException('Permission denied');
     }
     await this.schedulesService.markCompleted(id);
     return { success: true };
@@ -289,9 +291,12 @@ export class SchedulesController {
 
   @Delete(':id')
   async remove(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) id: number) {
-    const existing = await this.schedulesService.findById(id, req.session.sub);
+    const existing = await this.schedulesService.findById(id);
     if (!existing) {
-      return { success: false, error: 'Schedule not found' };
+      throw new NotFoundException('Schedule not found');
+    }
+    if (existing.user_id !== req.session.sub) {
+      throw new ForbiddenException('Only owner can delete schedule');
     }
     await this.schedulesService.delete(id);
     return { success: true };

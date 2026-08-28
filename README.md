@@ -37,8 +37,8 @@ BotThoiGianBieu/
 │   │   │   ├── admin/                # Admin module (guard, service, controller, broadcast)
 │   │   │   ├── reminder/             # Cron jobs nhắc nhở tự động
 │   │   │   └── shared/utils/         # Parsers, formatters, helpers
-│   │   ├── test/                     # Jest test suite (1136+ tests)
-│   │   ├── migrations/               # SQL migrations 001–021 (sequential, checksum-tracked)
+│   │   ├── test/                     # Jest test suite (1148+ tests)
+│   │   ├── migrations/               # SQL migrations (filename-ordered, tracked in bot_schema_migrations)
 │   │   └── assets/                   # Excel template, bot assets
 │   │
 │   └── web/                          # Next.js 16 frontend
@@ -107,7 +107,8 @@ Chỉnh `.env`:
 npm run bot:migrate
 ```
 
-> Hệ thống migration runner chạy tuần tự các file migration `001` - `021`, lưu trạng thái và checksum vào bảng `schema_migrations`.
+> Hệ thống migration runner chạy các file SQL migration theo thứ tự tên file trong `app/bot/migrations`, lưu trạng thái và SHA-256 checksum vào bảng `bot_schema_migrations`.
+
 
 ### 4. Chạy dự án
 

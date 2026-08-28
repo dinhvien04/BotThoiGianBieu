@@ -9,9 +9,16 @@ const MIGRATIONS_TABLE = "bot_schema_migrations";
 
 const LEGACY_CHECKSUMS = {
   // Allows migration sanitization without throwing checksum mismatch on existing DBs
+  "001-init-base-schema.sql": [
+    "0e91da5a1b32d2077e68bc92d0ff1dbfc03d1ee31f137ebce1f422e1caecae54",
+  ],
   "014-drop-unrelated-shared-db-tables.sql": [
     "e9d8cb4081c708170c0c7743d5c90714ee67bebf2ff1e15e8d89e5a88e994e43",
     "b8cfc54efdae55aa1a5bba6614138e65c093aee86c35c345ca033d5966699eb3",
+    "5d70f98fb7fe16cebbd9dd3a0da4e5bfa780d60c41fc86a5df9c017d8481308a",
+  ],
+  "021-add-performance-indexes.sql": [
+    "b1bf47ee455e96a4dc372f7dbda360155b4b1a43a04a3f3a8b2dfa4f009efb46",
   ],
 };
 

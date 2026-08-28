@@ -5,11 +5,11 @@ import { Schedule } from "./entities/schedule.entity";
 import { User } from "../users/entities/user.entity";
 
 /**
- * Logic share lịch (view-only) cho user khác.
+ * Logic share lịch và quản lý quyền cộng tác (view/edit) cho user khác.
  *
- * - Owner = `schedules.user_id` — chỉ owner mới sửa/xoá.
- * - Junction `schedule_shares(schedule_id, shared_with_user_id)` lưu
- *   các user khác có quyền xem.
+ * - Owner = `schedules.user_id` — có toàn quyền (sửa/xoá/quản lý shares & editors).
+ * - Junction `schedule_shares(schedule_id, shared_with_user_id)` lưu các user có quyền xem.
+ * - Junction `schedule_editors(schedule_id, user_id)` lưu các user có quyền sửa.
  * - Reminder broadcast sẽ mention thêm các participants.
  */
 @Injectable()
@@ -100,20 +100,28 @@ export class SharesService {
   }
 
   /**
-   * List schedules được share TỚI `userId` (user là participant, không
-   * phải owner). Sắp theo start_time tăng dần.
+   * List schedules được share TỚI `userId` (user là viewer hoặc editor, không
+   * phải owner). Sắp theo start_time tăng dần và không trùng lặp.
    */
   async findSchedulesSharedWith(userId: string): Promise<Schedule[]> {
     return this.scheduleRepository
       .createQueryBuilder("schedule")
-      .innerJoin(
+      .leftJoin(
         "schedule_shares",
         "ss",
         "ss.schedule_id = schedule.id AND ss.shared_with_user_id = :userId",
         { userId },
       )
+      .leftJoin(
+        "schedule_editors",
+        "se",
+        "se.schedule_id = schedule.id AND se.user_id = :userId",
+        { userId },
+      )
+      .where("ss.shared_with_user_id IS NOT NULL OR se.user_id IS NOT NULL")
       .leftJoinAndSelect("schedule.user", "owner")
       .orderBy("schedule.start_time", "ASC")
+      .distinct(true)
       .getMany();
   }
 

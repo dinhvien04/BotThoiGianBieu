@@ -34,8 +34,6 @@
 --
 -- Idempotent: dùng IF EXISTS để chạy lại không lỗi.
 
-BEGIN;
-
 -- Bảng con / junction của app khác.
 DROP TABLE IF EXISTS public."ReviewLike";
 DROP TABLE IF EXISTS public."CollectionItem";
@@ -55,4 +53,3 @@ DROP TABLE IF EXISTS public."Category";
 DROP TABLE IF EXISTS public."Region";
 DROP TABLE IF EXISTS public."User";
 
-COMMIT;

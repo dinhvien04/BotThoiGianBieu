@@ -3,8 +3,6 @@
 -- Creates core tables: users, user_settings, schedules.
 -- Safe to re-run on existing databases (all statements use IF NOT EXISTS).
 
-BEGIN;
-
 -- 1. Base Users Table
 CREATE TABLE IF NOT EXISTS users (
   user_id       VARCHAR(50) PRIMARY KEY,
@@ -54,4 +52,3 @@ CREATE INDEX IF NOT EXISTS idx_schedules_remind
 CREATE INDEX IF NOT EXISTS idx_schedules_status
   ON schedules (status);
 
-COMMIT;

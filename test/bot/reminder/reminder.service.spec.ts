@@ -188,9 +188,14 @@ describe('ReminderService', () => {
     });
 
     it('should skip tick when advisory lock cannot be acquired', async () => {
+      const mockQueryRunner = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        query: jest.fn().mockResolvedValue([{ locked: false }]),
+        release: jest.fn().mockResolvedValue(undefined),
+      };
       const mockDataSource = {
         isInitialized: true,
-        query: jest.fn().mockResolvedValue([{ locked: false }]),
+        createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
       };
 
       const module: TestingModule = await Test.createTestingModule({
@@ -209,11 +214,12 @@ describe('ReminderService', () => {
       await serviceWithDb.tick();
 
       expect(mockSchedulesService.findDueReminders).not.toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
     });
 
     it('should release advisory lock after tick completes', async () => {
-      const mockDataSource = {
-        isInitialized: true,
+      const mockQueryRunner = {
+        connect: jest.fn().mockResolvedValue(undefined),
         query: jest.fn().mockImplementation((queryStr: string) => {
           if (queryStr.includes('pg_try_advisory_lock')) {
             return Promise.resolve([{ locked: true }]);
@@ -223,6 +229,11 @@ describe('ReminderService', () => {
           }
           return Promise.resolve([]);
         }),
+        release: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockDataSource = {
+        isInitialized: true,
+        createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
       };
 
       mockSchedulesService.findDueReminders.mockResolvedValue([]);
@@ -243,12 +254,15 @@ describe('ReminderService', () => {
       const serviceWithDb = module.get<ReminderService>(ReminderService);
       await serviceWithDb.tick();
 
-      expect(mockDataSource.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT pg_try_advisory_lock(81001)'),
+      expect(mockQueryRunner.query).toHaveBeenCalledWith(
+        'SELECT pg_try_advisory_lock($1) as locked',
+        [81001],
       );
-      expect(mockDataSource.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT pg_advisory_unlock(81001)'),
+      expect(mockQueryRunner.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_unlock($1)',
+        [81001],
       );
+      expect(mockQueryRunner.release).toHaveBeenCalled();
     });
 
     it('should handle errors in start reminder gracefully', async () => {

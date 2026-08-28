@@ -1,7 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryRunner } from 'typeorm';
 import {
   ApiMessageMention,
   ButtonBuilder,
@@ -40,6 +40,8 @@ type NotificationSettings = {
   notify_via_channel?: boolean;
   default_channel_id?: string | null;
 };
+
+export type DispatchResult = 'delivered' | 'transient-failure' | 'no-route';
 
 /**
  * Các preset snooze nhanh hiển thị dạng button row ngoài cùng với nút "Hoãn
@@ -84,12 +86,16 @@ export class ReminderService {
     }
     this.running = true;
 
+    let queryRunner: QueryRunner | null = null;
     let hasLock = false;
     try {
       if (this.dataSource?.isInitialized) {
         try {
-          const lockResult = await this.dataSource.query(
-            `SELECT pg_try_advisory_lock(${REMINDER_TICK_ADVISORY_LOCK_ID}) as locked`,
+          queryRunner = this.dataSource.createQueryRunner();
+          await queryRunner.connect();
+          const lockResult = await queryRunner.query(
+            'SELECT pg_try_advisory_lock($1) as locked',
+            [REMINDER_TICK_ADVISORY_LOCK_ID],
           );
           if (lockResult && lockResult[0] && lockResult[0].locked === false) {
             this.logger.debug('Another instance is currently running reminder tick; skipping.');
@@ -97,7 +103,10 @@ export class ReminderService {
           }
           hasLock = true;
         } catch (lockErr) {
-          this.logger.warn('Failed to acquire advisory lock for tick; proceeding with local lock only: ' + (lockErr as Error).message);
+          this.logger.warn(
+            'Failed to acquire advisory lock for tick; proceeding with local lock only: ' +
+              (lockErr as Error).message,
+          );
         }
       }
 
@@ -134,13 +143,25 @@ export class ReminderService {
         this.deferAfterTransientInfrastructureError(err);
       }
     } finally {
-      if (hasLock && this.dataSource?.isInitialized) {
+      if (queryRunner) {
         try {
-          await this.dataSource.query(
-            `SELECT pg_advisory_unlock(${REMINDER_TICK_ADVISORY_LOCK_ID})`,
-          );
+          if (hasLock) {
+            await queryRunner.query('SELECT pg_advisory_unlock($1)', [
+              REMINDER_TICK_ADVISORY_LOCK_ID,
+            ]);
+          }
         } catch (unlockErr) {
-          this.logger.warn('Failed to release advisory lock for tick: ' + (unlockErr as Error).message);
+          this.logger.warn(
+            'Failed to release advisory lock for tick: ' + (unlockErr as Error).message,
+          );
+        } finally {
+          try {
+            await queryRunner.release();
+          } catch (releaseErr) {
+            this.logger.warn(
+              'Failed to release queryRunner for tick: ' + (releaseErr as Error).message,
+            );
+          }
         }
       }
       this.running = false;
@@ -158,12 +179,16 @@ export class ReminderService {
     }
     this.dailyDigestRunning = true;
 
+    let queryRunner: QueryRunner | null = null;
     let hasLock = false;
     try {
       if (this.dataSource?.isInitialized) {
         try {
-          const lockResult = await this.dataSource.query(
-            `SELECT pg_try_advisory_lock(${DAILY_DIGEST_ADVISORY_LOCK_ID}) as locked`,
+          queryRunner = this.dataSource.createQueryRunner();
+          await queryRunner.connect();
+          const lockResult = await queryRunner.query(
+            'SELECT pg_try_advisory_lock($1) as locked',
+            [DAILY_DIGEST_ADVISORY_LOCK_ID],
           );
           if (lockResult && lockResult[0] && lockResult[0].locked === false) {
             this.logger.debug('Another instance is currently running daily digest; skipping.');
@@ -171,7 +196,10 @@ export class ReminderService {
           }
           hasLock = true;
         } catch (lockErr) {
-          this.logger.warn('Failed to acquire advisory lock for daily digest; proceeding with local lock only: ' + (lockErr as Error).message);
+          this.logger.warn(
+            'Failed to acquire advisory lock for daily digest; proceeding with local lock only: ' +
+              (lockErr as Error).message,
+          );
         }
       }
 
@@ -200,8 +228,8 @@ export class ReminderService {
           );
           if (!digestText) continue;
 
-          const dispatched = await this.dispatchText(user.user_id, user.settings, digestText);
-          if (dispatched) {
+          const dispatchResult = await this.dispatchText(user.user_id, user.settings, digestText);
+          if (dispatchResult === 'delivered') {
             this.logger.log(`Da gui daily digest cho user ${user.user_id}`);
           }
         } catch (err) {
@@ -212,13 +240,25 @@ export class ReminderService {
       this.logError('Daily digest loi o tang truy van / ha tang', err);
       this.deferAfterTransientInfrastructureError(err);
     } finally {
-      if (hasLock && this.dataSource?.isInitialized) {
+      if (queryRunner) {
         try {
-          await this.dataSource.query(
-            `SELECT pg_advisory_unlock(${DAILY_DIGEST_ADVISORY_LOCK_ID})`,
-          );
+          if (hasLock) {
+            await queryRunner.query('SELECT pg_advisory_unlock($1)', [
+              DAILY_DIGEST_ADVISORY_LOCK_ID,
+            ]);
+          }
         } catch (unlockErr) {
-          this.logger.warn('Failed to release advisory lock for daily digest: ' + (unlockErr as Error).message);
+          this.logger.warn(
+            'Failed to release advisory lock for daily digest: ' + (unlockErr as Error).message,
+          );
+        } finally {
+          try {
+            await queryRunner.release();
+          } catch (releaseErr) {
+            this.logger.warn(
+              'Failed to release queryRunner for daily digest: ' + (releaseErr as Error).message,
+            );
+          }
         }
       }
       this.dailyDigestRunning = false;
@@ -249,7 +289,7 @@ export class ReminderService {
     const buttons = this.buildStartButtons(schedule.id, snoozeMinutes);
     const mention = this.buildMentionPayload(schedule);
 
-    const dispatched = await this.dispatch(
+    const dispatchResult = await this.dispatch(
       schedule.user_id,
       settings,
       schedule.channel_id ?? null,
@@ -259,18 +299,24 @@ export class ReminderService {
       mention,
     );
 
-    if (dispatched) {
+    if (dispatchResult === 'delivered') {
       // Đẩy `remind_at` về future → nếu user ignore thì cron sẽ ping lại sau `snoozeMinutes` phút.
       await this.schedulesService.rescheduleAfterPing(schedule.id, snoozeMinutes, now);
       this.logger.log(
         `Da gui start reminder #${schedule.id} (repeat sau ${snoozeMinutes} phut neu ignore)`,
       );
-    } else {
-      // Nếu dispatch thất bại do lỗi mạng tạm thời hoặc không có route, retry nhanh sau 2 phút để không bỏ lỡ nhắc nhở
+    } else if (dispatchResult === 'transient-failure') {
+      // Nếu dispatch thất bại do lỗi mạng tạm thời, retry nhanh sau 2 phút để không bỏ lỡ nhắc nhở
       const fastRetryMinutes = Math.min(2, snoozeMinutes);
       await this.schedulesService.rescheduleAfterPing(schedule.id, fastRetryMinutes, now);
       this.logger.warn(
-        `Khong the gui start reminder #${schedule.id}, hen thu lai sau ${fastRetryMinutes} phut`,
+        `Khong the gui start reminder #${schedule.id} do loi tam thoi, hen thu lai sau ${fastRetryMinutes} phut`,
+      );
+    } else {
+      // no-route: không có route hợp lệ, lùi lại theo snooze chuẩn (ví dụ 30-60 phút) để tránh hot-loop ghi DB 2 phút một lần
+      await this.schedulesService.rescheduleAfterPing(schedule.id, snoozeMinutes, now);
+      this.logger.warn(
+        `Khong co route gui reminder #${schedule.id} cho user ${schedule.user_id}; hoan lai ${snoozeMinutes} phut de tranh hot-loop`,
       );
     }
   }
@@ -282,7 +328,7 @@ export class ReminderService {
     const buttons = this.buildEndButtons(schedule.id);
     const mention = this.buildMentionPayload(schedule);
 
-    const dispatched = await this.dispatch(
+    const dispatchResult = await this.dispatch(
       schedule.user_id,
       settings,
       schedule.channel_id ?? null,
@@ -292,13 +338,17 @@ export class ReminderService {
       mention,
     );
 
-    if (dispatched) {
+    if (dispatchResult === 'delivered') {
       // Chỉ gửi 1 lần — set timestamp để cron không gửi lại khi đã gửi thành công.
       await this.schedulesService.markEndNotified(schedule.id, now);
       this.logger.log(`Da gui end notification #${schedule.id}`);
+    } else if (dispatchResult === 'transient-failure') {
+      this.logger.warn(
+        `Khong the gui end notification #${schedule.id} do loi mang; chua danh dau da gui de cho co hoi retry`,
+      );
     } else {
       this.logger.warn(
-        `Khong the gui end notification #${schedule.id}; chua danh dau da gui de cho co hoi retry`,
+        `Khong the gui end notification #${schedule.id} vi khong co route hop le cho user ${schedule.user_id}`,
       );
     }
   }
@@ -317,7 +367,7 @@ export class ReminderService {
     buttons: unknown[],
     dmText: string,
     mention?: { text: string; mentions: ApiMessageMention[] } | null,
-  ): Promise<boolean> {
+  ): Promise<DispatchResult> {
     const wantDm = settings?.notify_via_dm === true;
     const wantChannel = settings?.notify_via_channel !== false; // default true
     const channelIds = this.collectChannelIds(
@@ -358,7 +408,7 @@ export class ReminderService {
         this.logger.warn(
           `Khong co route reminder hop le cho user ${userId}; bo qua gui thong bao.`,
         );
-        return false;
+        return 'no-route';
       }
     }
 
@@ -372,14 +422,14 @@ export class ReminderService {
         successfulDispatches += 1;
       }
     }
-    return successfulDispatches > 0;
+    return successfulDispatches > 0 ? 'delivered' : 'transient-failure';
   }
 
   private async dispatchText(
     userId: string,
     settings: NotificationSettings | undefined,
     text: string,
-  ): Promise<boolean> {
+  ): Promise<DispatchResult> {
     const wantDm = settings?.notify_via_dm === true;
     const wantChannel = settings?.notify_via_channel !== false; // default true
     const channelIds = this.parseChannelIds(settings?.default_channel_id ?? null);
@@ -401,7 +451,7 @@ export class ReminderService {
         tasks.push(this.botService.sendDirectMessage(userId, text));
       } else {
         this.logger.warn(`Khong co route digest hop le cho user ${userId}; bo qua.`);
-        return false;
+        return 'no-route';
       }
     }
 
@@ -414,7 +464,7 @@ export class ReminderService {
         successfulDispatches += 1;
       }
     }
-    return successfulDispatches > 0;
+    return successfulDispatches > 0 ? 'delivered' : 'transient-failure';
   }
 
   private parseChannelIds(raw: string | null): string[] {
