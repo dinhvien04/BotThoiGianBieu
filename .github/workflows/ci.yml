@@ -95,3 +95,5 @@ jobs:
 
       - name: Build Bot & Web
         run: npm run build:all
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
