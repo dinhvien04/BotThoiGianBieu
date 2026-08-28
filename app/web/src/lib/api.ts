@@ -222,6 +222,7 @@ export interface UserSettings {
   user_id: string;
   timezone: string;
   language: 'vi' | 'en';
+  default_channel_id?: string | null;
   default_remind_minutes: number;
   notify_via_dm: boolean;
   notify_via_channel: boolean;
@@ -247,7 +248,7 @@ export interface ScheduleStats {
 }
 
 export interface AuditLogEntry {
-  id: number;
+  id: string | number;
   schedule_id: number;
   user_id: string;
   action: string;

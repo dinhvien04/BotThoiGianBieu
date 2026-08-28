@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -83,21 +83,23 @@ export default function EditSchedulePage() {
   } | null>(null);
 
   // Populate form once schedule loads
-  if (schedule && !form) {
-    setForm({
-      type: toApiScheduleItemType(schedule.item_type),
-      title: schedule.title || '',
-      description: schedule.description || '',
-      startDate: toDateInputValue(schedule.start_time),
-      startTime: toTimeInputValue(schedule.start_time),
-      endDate: toDateInputValue(schedule.end_time),
-      endTime: toTimeInputValue(schedule.end_time),
-      priority: toApiSchedulePriority(schedule.priority),
-      reminder: '15',
-      recurrence: schedule.recurrence_type || '',
-      tags: schedule.tags ? schedule.tags.map((t) => t.name || '') : [],
-    });
-  }
+  useEffect(() => {
+    if (schedule && !form) {
+      setForm({
+        type: toApiScheduleItemType(schedule.item_type),
+        title: schedule.title || '',
+        description: schedule.description || '',
+        startDate: toDateInputValue(schedule.start_time),
+        startTime: toTimeInputValue(schedule.start_time),
+        endDate: toDateInputValue(schedule.end_time),
+        endTime: toTimeInputValue(schedule.end_time),
+        priority: toApiSchedulePriority(schedule.priority),
+        reminder: '15',
+        recurrence: schedule.recurrence_type || '',
+        tags: schedule.tags ? schedule.tags.map((t) => t.name || '') : [],
+      });
+    }
+  }, [schedule, form]);
 
   const canSave = Boolean(form?.title && form?.startDate && form?.startTime) && !saving;
 

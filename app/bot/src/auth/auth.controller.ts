@@ -71,7 +71,9 @@ export class AuthController {
       this.authService.createSessionCookie(result.accessToken),
       this.authService.createCsrfCookie(this.authService.createCsrfToken()),
     ]);
-    return result;
+    const { accessToken, ...safeResult } = result;
+    void accessToken;
+    return safeResult;
   }
 
   @Get('csrf')

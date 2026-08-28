@@ -4,14 +4,14 @@
 
 Hệ thống chatbot hỗ trợ quản lý sự kiện, lịch trình cá nhân và nhắc việc tự động hoạt động trực tiếp trên nền tảng **Mezon**, đi kèm **Web Dashboard** trực quan để theo dõi và quản lý.
 
-- **Mezon Bot**: NestJS + `mezon-sdk` (WebSocket) — nhận lệnh, xử lý nghiệp vụ, nhắc nhở qua cron.
-- **Web Dashboard**: Next.js 14 + Tailwind CSS — đăng nhập bằng Mezon OAuth, quản lý lịch và thống kê.
+- **Mezon Bot**: NestJS 11 + `mezon-sdk` (WebSocket) — nhận lệnh, xử lý nghiệp vụ, nhắc nhở qua cron.
+- **Web Dashboard**: Next.js 16 + Tailwind CSS — đăng nhập bằng Mezon OAuth, quản lý lịch và thống kê.
 - **Cơ sở dữ liệu**: PostgreSQL (TypeORM) — lưu người dùng, lịch, cấu hình, nhắc việc.
 
 [![CI](https://github.com/dinhvien04/BotThoiGianBieu/actions/workflows/ci.yml/badge.svg)](https://github.com/dinhvien04/BotThoiGianBieu/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
-[![NestJS](https://img.shields.io/badge/NestJS-10.x-red)](https://nestjs.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-11.x-red)](https://nestjs.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 
 > 📖 **Tài liệu đầy đủ**: Xem [`doc/README.md`](./doc/README.md) để có **15+ tài liệu chi tiết** về setup, development, deployment và troubleshooting.
 
@@ -38,10 +38,10 @@ BotThoiGianBieu/
 │   │   │   ├── reminder/             # Cron jobs nhắc nhở tự động
 │   │   │   └── shared/utils/         # Parsers, formatters, helpers
 │   │   ├── test/                     # Jest test suite (1136+ tests)
-│   │   ├── migrations/               # SQL migrations 007–019 (idempotent)
+│   │   ├── migrations/               # SQL migrations 001–021 (sequential, checksum-tracked)
 │   │   └── assets/                   # Excel template, bot assets
 │   │
-│   └── web/                          # Next.js 14 frontend
+│   └── web/                          # Next.js 16 frontend
 │       └── src/
 │           ├── app/
 │           │   ├── (auth)/           # Auth pages (Mezon OAuth login)
@@ -103,11 +103,11 @@ Chỉnh `.env`:
 ### 3. Chạy migrations
 
 ```bash
-# Chạy tất cả migrations (007–019)
-for f in app/bot/migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done
+# Chạy migrations với migration runner
+npm run bot:migrate
 ```
 
-> Tất cả migration đều **idempotent** — chạy lại nhiều lần vẫn an toàn.
+> Hệ thống migration runner chạy tuần tự các file migration `001` - `021`, lưu trạng thái và checksum vào bảng `schema_migrations`.
 
 ### 4. Chạy dự án
 

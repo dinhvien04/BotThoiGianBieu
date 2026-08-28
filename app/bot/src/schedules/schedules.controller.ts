@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { SessionGuard, AuthenticatedRequest } from '../auth/session.guard';
 import { SchedulesService, CreateScheduleInput, UpdateSchedulePatch } from './schedules.service';
+import { SharesService } from './shares.service';
 import { SCHEDULE_PRIORITIES, SchedulePriority } from './entities/schedule.entity';
 import { StreakService } from './streak.service';
 import {
@@ -60,6 +61,7 @@ function parseListStatus(status?: string): 'all' | 'pending' | 'completed' | 'ca
 export class SchedulesController {
   constructor(
     private readonly schedulesService: SchedulesService,
+    private readonly sharesService: SharesService,
     private readonly streakService: StreakService,
   ) {}
 
@@ -218,7 +220,11 @@ export class SchedulesController {
 
   @Get(':id')
   async findOne(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) id: number) {
-    const schedule = await this.schedulesService.findById(id, req.session.sub);
+    const allowed = await this.sharesService.canView(id, req.session.sub);
+    if (!allowed) {
+      return { success: false, error: 'Schedule not found' };
+    }
+    const schedule = await this.schedulesService.findById(id);
     if (!schedule) {
       return { success: false, error: 'Schedule not found' };
     }
@@ -231,7 +237,11 @@ export class SchedulesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: UpdateScheduleDto,
   ) {
-    const existing = await this.schedulesService.findById(id, req.session.sub);
+    const allowed = await this.sharesService.canEdit(id, req.session.sub);
+    if (!allowed) {
+      return { success: false, error: 'Schedule not found or permission denied' };
+    }
+    const existing = await this.schedulesService.findById(id);
     if (!existing) {
       return { success: false, error: 'Schedule not found' };
     }
@@ -265,7 +275,11 @@ export class SchedulesController {
 
   @Patch(':id/complete')
   async complete(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) id: number) {
-    const existing = await this.schedulesService.findById(id, req.session.sub);
+    const allowed = await this.sharesService.canEdit(id, req.session.sub);
+    if (!allowed) {
+      return { success: false, error: 'Schedule not found or permission denied' };
+    }
+    const existing = await this.schedulesService.findById(id);
     if (!existing) {
       return { success: false, error: 'Schedule not found' };
     }

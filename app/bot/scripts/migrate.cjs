@@ -7,6 +7,14 @@ const { Client } = require("pg");
 
 const MIGRATIONS_TABLE = "bot_schema_migrations";
 
+const LEGACY_CHECKSUMS = {
+  // Allows migration sanitization without throwing checksum mismatch on existing DBs
+  "014-drop-unrelated-shared-db-tables.sql": [
+    "e9d8cb4081c708170c0c7743d5c90714ee67bebf2ff1e15e8d89e5a88e994e43",
+    "b8cfc54efdae55aa1a5bba6614138e65c093aee86c35c345ca033d5966699eb3",
+  ],
+};
+
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
   const content = fs.readFileSync(filePath, "utf8");
@@ -87,7 +95,12 @@ async function main() {
       );
 
       if (existing.rowCount > 0) {
-        if (existing.rows[0].checksum !== checksum) {
+        const recordedChecksum = existing.rows[0].checksum;
+        const isLegacyMatch =
+          LEGACY_CHECKSUMS[file] &&
+          LEGACY_CHECKSUMS[file].includes(recordedChecksum);
+
+        if (recordedChecksum !== checksum && !isLegacyMatch) {
           throw new Error(
             `Migration ${file} was already applied with a different checksum`,
           );

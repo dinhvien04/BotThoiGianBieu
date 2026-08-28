@@ -1,18 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { typeLabels, typeColors, priorityLabels, priorityColors, statusLabels, statusColors } from "@/lib/mock-data";
 import DeleteConfirmDialog from "@/components/dashboard/DeleteConfirmDialog";
-import { deleteSchedule, completeSchedule } from "@/lib/api";
+import { deleteSchedule, completeSchedule, getAuditLog, type AuditLogEntry } from "@/lib/api";
 import { useScheduleById, apiToDisplay } from "@/lib/hooks";
 import { useToast } from "@/components/dashboard/Toast";
+
+function formatActionText(entry: AuditLogEntry): string {
+  switch (entry.action) {
+    case "create":
+      return `Lịch được tạo bởi ${entry.user_id}`;
+    case "update": {
+      if (entry.changes) {
+        const fields = Object.keys(entry.changes).join(", ");
+        return `Cập nhật thông tin (${fields}) bởi ${entry.user_id}`;
+      }
+      return `Lịch được cập nhật bởi ${entry.user_id}`;
+    }
+    case "complete":
+      return `Đánh dấu hoàn thành bởi ${entry.user_id}`;
+    case "cancel":
+      return `Đã hủy bởi ${entry.user_id}`;
+    case "delete":
+      return `Đã xóa bởi ${entry.user_id}`;
+    case "restore":
+      return `Đã khôi phục bởi ${entry.user_id}`;
+    case "share-add":
+      return `Chia sẻ lịch cho thành viên`;
+    case "share-remove":
+      return `Hủy chia sẻ lịch`;
+    case "tag-add":
+      return `Gắn thẻ mới vào lịch`;
+    case "tag-remove":
+      return `Gỡ thẻ khỏi lịch`;
+    default:
+      return `Hành động ${entry.action} bởi ${entry.user_id}`;
+  }
+}
+
+function getActionColor(action: string): string {
+  switch (action) {
+    case "create":
+      return "bg-primary";
+    case "complete":
+      return "bg-[#27AE60]";
+    case "update":
+      return "bg-[#2F80ED]";
+    case "cancel":
+    case "delete":
+      return "bg-error";
+    default:
+      return "bg-on-surface-variant";
+  }
+}
 
 export default function ScheduleDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [, setDeleting] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -20,13 +70,40 @@ export default function ScheduleDetailPage() {
   const { data: apiSchedule, loading, refetch } = useScheduleById(id);
   const schedule = apiSchedule ? apiToDisplay(apiSchedule) : null;
 
+  useEffect(() => {
+    if (!id || isNaN(id)) return;
+    let isMounted = true;
+    setLoadingAudit(true);
+    getAuditLog(id)
+      .then((res) => {
+        if (isMounted && res.success && Array.isArray(res.items)) {
+          setAuditLogs(res.items);
+        }
+      })
+      .catch(() => {
+        // Fallback silently if audit log endpoint fails
+      })
+      .finally(() => {
+        if (isMounted) setLoadingAudit(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
   const handleComplete = async () => {
-    if (!schedule || schedule.status === "hoan-thanh" || completing) return;
+    if (!schedule || schedule.status === "completed" || completing) return;
     setCompleting(true);
     try {
       await completeSchedule(id);
       showToast("Đã đánh dấu hoàn thành!", "success");
       refetch();
+      // Reload audit log
+      getAuditLog(id).then((res) => {
+        if (res.success && Array.isArray(res.items)) {
+          setAuditLogs(res.items);
+        }
+      });
     } catch {
       showToast("Không thể cập nhật trạng thái. Vui lòng thử lại.", "error");
     } finally {
@@ -40,12 +117,6 @@ export default function ScheduleDetailPage() {
 
   const startDate = new Date(schedule.start);
   const endDate = new Date(schedule.end);
-
-  const changeLog = [
-    { time: "Hôm nay, 14:20", text: `Admin đã thay đổi thời gian kết thúc sự kiện từ 11:30 lên 12:00.`, color: "bg-primary" },
-    { time: "Hôm qua, 09:15", text: `Bạn đã thêm tag "Ưu tiên cao" và đính kèm tệp tin.`, color: "bg-[#27AE60]" },
-    { time: "12/10/2023, 16:00", text: "Sự kiện đã được tạo bởi Lê Văn A.", color: "bg-on-surface-variant" },
-  ];
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -66,14 +137,14 @@ export default function ScheduleDetailPage() {
           <button
             type="button"
             onClick={handleComplete}
-            disabled={schedule.status === "hoan-thanh" || completing}
+            disabled={schedule.status === "completed" || completing}
             className="px-4 py-2 rounded-xl text-on-primary font-medium text-sm flex items-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ backgroundColor: statusColors[schedule.status] }}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {schedule.status === "hoan-thanh" ? "Đã hoàn thành" : completing ? "Đang lưu..." : "Hoàn thành"}
+            {schedule.status === "completed" ? "Đã hoàn thành" : completing ? "Đang lưu..." : "Hoàn thành"}
           </button>
           <Link
             href={`/lich/${id}/sua`}
@@ -108,14 +179,7 @@ export default function ScheduleDetailPage() {
               <h2 className="font-bold text-on-surface uppercase text-sm tracking-wider">Mô tả chi tiết</h2>
             </div>
             <div className="p-4 bg-surface-container-low rounded-xl text-sm text-on-surface leading-relaxed">
-              <p>{schedule.description}</p>
-              {schedule.id === 17 && (
-                <ul className="list-disc list-inside mt-3 space-y-1 text-on-surface-variant">
-                  <li>Trình bày báo cáo tài chính T9</li>
-                  <li>Phê duyệt ngân sách Marketing cho chiến dịch &quot;End-of-year&quot;</li>
-                  <li>Quyết định nhân sự cấp cao cho dự án Cloud</li>
-                </ul>
-              )}
+              <p>{schedule.description || "Không có mô tả chi tiết."}</p>
             </div>
           </div>
 
@@ -127,20 +191,28 @@ export default function ScheduleDetailPage() {
               </svg>
               <h2 className="font-bold text-on-surface uppercase text-sm tracking-wider">Lịch sử thay đổi</h2>
             </div>
-            <div className="space-y-6">
-              {changeLog.map((item, idx) => (
-                <div key={idx} className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                    {idx < changeLog.length - 1 && <div className="w-0.5 flex-1 bg-surface-container-high mt-1" />}
+            {loadingAudit ? (
+              <div className="text-sm text-on-surface-variant py-4">Đang tải lịch sử...</div>
+            ) : auditLogs.length > 0 ? (
+              <div className="space-y-6">
+                {auditLogs.map((item, idx) => (
+                  <div key={item.id} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-3 h-3 rounded-full ${getActionColor(item.action)}`} />
+                      {idx < auditLogs.length - 1 && <div className="w-0.5 flex-1 bg-surface-container-high mt-1" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-primary">
+                        {new Date(item.created_at).toLocaleString("vi-VN")}
+                      </p>
+                      <p className="text-sm text-on-surface-variant mt-0.5">{formatActionText(item)}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-primary">{item.time}</p>
-                    <p className="text-sm text-on-surface-variant mt-0.5">{item.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-on-surface-variant py-4">Chưa có bản ghi lịch sử thay đổi.</div>
+            )}
           </div>
         </div>
 
@@ -235,9 +307,9 @@ export default function ScheduleDetailPage() {
                   #{tag}
                 </span>
               ))}
-              <button className="px-3 py-1 text-primary text-sm font-medium hover:bg-primary/5 rounded-full">
-                + Thêm
-              </button>
+              <Link href="/the" className="px-3 py-1 text-primary text-sm font-medium hover:bg-primary/5 rounded-full">
+                + Quản lý thẻ
+              </Link>
             </div>
           </div>
 
@@ -248,7 +320,6 @@ export default function ScheduleDetailPage() {
                 <p className="text-xs text-on-surface-variant font-semibold uppercase">
                   Người tham gia ({schedule.participants.length})
                 </p>
-                <button className="text-primary text-sm font-medium">Mời</button>
               </div>
               <div className="flex -space-x-2">
                 {schedule.participants.map((p, i) => (
@@ -265,31 +336,34 @@ export default function ScheduleDetailPage() {
       {/* Bottom Actions */}
       <div className="flex items-center justify-between mt-6 pt-6 border-t border-surface-container-high">
         <div className="flex gap-4">
-          <button className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+          <Link
+            href="/nhac-viec"
+            className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-colors"
+          >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.143 17.082a24.248 24.248 0 005.714 0m-5.714 0a23.849 23.849 0 01-5.455-1.31A8.967 8.967 0 016 9.75V9A6 6 0 0118 9v.75a8.967 8.967 0 01-2.312 6.022 23.848 23.848 0 01-5.455 1.31M9.143 17.082A3 3 0 0012 20.25a3 3 0 002.857-3.168" />
             </svg>
-            <span className="text-xs">Tắt nhắc</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+            <span className="text-xs">Nhắc việc</span>
+          </Link>
+          <Link
+            href={`/lich/tao-moi?template=${encodeURIComponent(schedule.title)}`}
+            className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-colors"
+          >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.5a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
             </svg>
             <span className="text-xs">Nhân bản</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l1.657-1.657" />
-            </svg>
-            <span className="text-xs">Bật/Tắt lặp</span>
-          </button>
+          </Link>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 text-primary border border-primary/30 rounded-xl hover:bg-primary/5 text-sm font-medium">
+        <Link
+          href="/chia-se"
+          className="flex items-center gap-2 px-4 py-2 text-primary border border-primary/30 rounded-xl hover:bg-primary/5 text-sm font-medium"
+        >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
           </svg>
           Chia sẻ lịch
-        </button>
+        </Link>
       </div>
 
       <DeleteConfirmDialog

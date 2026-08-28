@@ -70,4 +70,50 @@ export class SharesController {
     }
     return { success: true, removed: result.removed };
   }
+
+  @Get(":scheduleId/editors")
+  async listEditors(
+    @Req() req: AuthenticatedRequest,
+    @Param("scheduleId", ParseIntPipe) scheduleId: number,
+  ) {
+    const editors = await this.sharesService.listEditors(
+      scheduleId,
+      req.session.sub,
+    );
+    return { success: true, editors };
+  }
+
+  @Post(":scheduleId/editors")
+  async grantEdit(
+    @Req() req: AuthenticatedRequest,
+    @Param("scheduleId", ParseIntPipe) scheduleId: number,
+    @Body() body: { target_user_id: string },
+  ) {
+    const result = await this.sharesService.grantEdit(
+      scheduleId,
+      req.session.sub,
+      body.target_user_id,
+    );
+    if (!result) {
+      return { success: false, error: "Schedule not found or invalid target" };
+    }
+    return { success: true, added: result.added, editors: result.editors };
+  }
+
+  @Delete(":scheduleId/editors/:targetUserId")
+  async revokeEdit(
+    @Req() req: AuthenticatedRequest,
+    @Param("scheduleId", ParseIntPipe) scheduleId: number,
+    @Param("targetUserId") targetUserId: string,
+  ) {
+    const result = await this.sharesService.revokeEdit(
+      scheduleId,
+      req.session.sub,
+      targetUserId,
+    );
+    if (!result) {
+      return { success: false, error: "Schedule not found" };
+    }
+    return { success: true, removed: result.removed };
+  }
 }

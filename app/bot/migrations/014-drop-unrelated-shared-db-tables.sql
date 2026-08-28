@@ -36,9 +36,6 @@
 
 BEGIN;
 
--- Bảng dư nhưng có FK vào bảng bot hiện tại.
-DROP TABLE IF EXISTS public.schedule_editors;
-
 -- Bảng con / junction của app khác.
 DROP TABLE IF EXISTS public."ReviewLike";
 DROP TABLE IF EXISTS public."CollectionItem";

@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { DataSource } from 'typeorm';
 import {
   ApiMessageMention,
   ButtonBuilder,
@@ -14,6 +15,12 @@ import { DateParser } from '../shared/utils/date-parser';
 import { isWithinWorkingHours, nextWorkingStart } from '../shared/utils/working-hours';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+
+/**
+ * Advisory lock IDs for multi-instance cron execution synchronization in PostgreSQL.
+ */
+const REMINDER_TICK_ADVISORY_LOCK_ID = 81001;
+const DAILY_DIGEST_ADVISORY_LOCK_ID = 81002;
 
 /**
  * Interval mặc định (phút) để auto-resend khi user bấm hoãn lấy theo
@@ -59,6 +66,7 @@ export class ReminderService {
     private readonly dateParser: DateParser,
     private readonly usersService: UsersService,
     private readonly config: ConfigService,
+    @Optional() private readonly dataSource?: DataSource,
   ) {
     const configured = Number(this.config.get<string>('REMINDER_INFRA_BACKOFF_MS'));
     this.infraBackoffMs =
@@ -76,7 +84,23 @@ export class ReminderService {
     }
     this.running = true;
 
+    let hasLock = false;
     try {
+      if (this.dataSource?.isInitialized) {
+        try {
+          const lockResult = await this.dataSource.query(
+            `SELECT pg_try_advisory_lock(${REMINDER_TICK_ADVISORY_LOCK_ID}) as locked`,
+          );
+          if (lockResult && lockResult[0] && lockResult[0].locked === false) {
+            this.logger.debug('Another instance is currently running reminder tick; skipping.');
+            return;
+          }
+          hasLock = true;
+        } catch (lockErr) {
+          this.logger.warn('Failed to acquire advisory lock for tick; proceeding with local lock only: ' + (lockErr as Error).message);
+        }
+      }
+
       try {
         const now = new Date();
 
@@ -110,6 +134,15 @@ export class ReminderService {
         this.deferAfterTransientInfrastructureError(err);
       }
     } finally {
+      if (hasLock && this.dataSource?.isInitialized) {
+        try {
+          await this.dataSource.query(
+            `SELECT pg_advisory_unlock(${REMINDER_TICK_ADVISORY_LOCK_ID})`,
+          );
+        } catch (unlockErr) {
+          this.logger.warn('Failed to release advisory lock for tick: ' + (unlockErr as Error).message);
+        }
+      }
       this.running = false;
     }
   }
@@ -125,7 +158,23 @@ export class ReminderService {
     }
     this.dailyDigestRunning = true;
 
+    let hasLock = false;
     try {
+      if (this.dataSource?.isInitialized) {
+        try {
+          const lockResult = await this.dataSource.query(
+            `SELECT pg_try_advisory_lock(${DAILY_DIGEST_ADVISORY_LOCK_ID}) as locked`,
+          );
+          if (lockResult && lockResult[0] && lockResult[0].locked === false) {
+            this.logger.debug('Another instance is currently running daily digest; skipping.');
+            return;
+          }
+          hasLock = true;
+        } catch (lockErr) {
+          this.logger.warn('Failed to acquire advisory lock for daily digest; proceeding with local lock only: ' + (lockErr as Error).message);
+        }
+      }
+
       const users = await this.usersService.findActiveWithSettings();
       if (users.length === 0) return;
 
@@ -163,6 +212,15 @@ export class ReminderService {
       this.logError('Daily digest loi o tang truy van / ha tang', err);
       this.deferAfterTransientInfrastructureError(err);
     } finally {
+      if (hasLock && this.dataSource?.isInitialized) {
+        try {
+          await this.dataSource.query(
+            `SELECT pg_advisory_unlock(${DAILY_DIGEST_ADVISORY_LOCK_ID})`,
+          );
+        } catch (unlockErr) {
+          this.logger.warn('Failed to release advisory lock for daily digest: ' + (unlockErr as Error).message);
+        }
+      }
       this.dailyDigestRunning = false;
     }
   }
@@ -201,13 +259,20 @@ export class ReminderService {
       mention,
     );
 
-    // Đẩy `remind_at` về future → nếu user ignore thì cron sẽ ping lại sau `snoozeMinutes` phút.
-    await this.schedulesService.rescheduleAfterPing(schedule.id, snoozeMinutes, now);
-    this.logger.log(
-      dispatched
-        ? `Da gui start reminder #${schedule.id} (repeat sau ${snoozeMinutes} phut neu ignore)`
-        : `Da bo qua start reminder #${schedule.id} vi khong co route hop le`,
-    );
+    if (dispatched) {
+      // Đẩy `remind_at` về future → nếu user ignore thì cron sẽ ping lại sau `snoozeMinutes` phút.
+      await this.schedulesService.rescheduleAfterPing(schedule.id, snoozeMinutes, now);
+      this.logger.log(
+        `Da gui start reminder #${schedule.id} (repeat sau ${snoozeMinutes} phut neu ignore)`,
+      );
+    } else {
+      // Nếu dispatch thất bại do lỗi mạng tạm thời hoặc không có route, retry nhanh sau 2 phút để không bỏ lỡ nhắc nhở
+      const fastRetryMinutes = Math.min(2, snoozeMinutes);
+      await this.schedulesService.rescheduleAfterPing(schedule.id, fastRetryMinutes, now);
+      this.logger.warn(
+        `Khong the gui start reminder #${schedule.id}, hen thu lai sau ${fastRetryMinutes} phut`,
+      );
+    }
   }
 
   private async sendEndNotification(schedule: Schedule, now: Date): Promise<void> {
@@ -227,13 +292,15 @@ export class ReminderService {
       mention,
     );
 
-    // Chỉ gửi 1 lần — set timestamp để cron không gửi lại.
-    await this.schedulesService.markEndNotified(schedule.id, now);
-    this.logger.log(
-      dispatched
-        ? `Da gui end notification #${schedule.id}`
-        : `Da bo qua end notification #${schedule.id} vi khong co route hop le`,
-    );
+    if (dispatched) {
+      // Chỉ gửi 1 lần — set timestamp để cron không gửi lại khi đã gửi thành công.
+      await this.schedulesService.markEndNotified(schedule.id, now);
+      this.logger.log(`Da gui end notification #${schedule.id}`);
+    } else {
+      this.logger.warn(
+        `Khong the gui end notification #${schedule.id}; chua danh dau da gui de cho co hoi retry`,
+      );
+    }
   }
 
   /**
@@ -295,14 +362,17 @@ export class ReminderService {
       }
     }
 
-    // Gửi song song. Một route lỗi không ảnh hưởng route khác.
+    // Gửi song song. Kiểm tra xem có ít nhất 1 route gửi thành công hay không.
     const results = await Promise.allSettled(tasks);
+    let successfulDispatches = 0;
     for (const r of results) {
       if (r.status === 'rejected') {
         this.logError('Reminder dispatch lỗi 1 route', r.reason);
+      } else {
+        successfulDispatches += 1;
       }
     }
-    return true;
+    return successfulDispatches > 0;
   }
 
   private async dispatchText(
@@ -336,12 +406,15 @@ export class ReminderService {
     }
 
     const results = await Promise.allSettled(tasks);
+    let successfulDispatches = 0;
     for (const r of results) {
       if (r.status === 'rejected') {
         this.logError('Daily digest dispatch loi 1 route', r.reason);
+      } else {
+        successfulDispatches += 1;
       }
     }
-    return true;
+    return successfulDispatches > 0;
   }
 
   private parseChannelIds(raw: string | null): string[] {

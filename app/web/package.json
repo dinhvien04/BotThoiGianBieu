@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "jest --watch",
+    "lint:fix": "eslint . --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"

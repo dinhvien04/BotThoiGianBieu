@@ -205,6 +205,21 @@ export class SharesService {
     return (schedule.editors ?? []).some((u) => u.user_id === userId);
   }
 
+  /**
+   * Trả `true` nếu `userId` được phép xem lịch — owner, participant (sharedWith) hoặc editor.
+   */
+  async canView(scheduleId: number, userId: string): Promise<boolean> {
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id: scheduleId },
+      relations: ["sharedWith", "editors"],
+    });
+    if (!schedule) return false;
+    if (schedule.user_id === userId) return true;
+    const inShared = (schedule.sharedWith ?? []).some((u) => u.user_id === userId);
+    const inEditors = (schedule.editors ?? []).some((u) => u.user_id === userId);
+    return inShared || inEditors;
+  }
+
   /** List editors của schedule. Chỉ owner mới được gọi. */
   async listEditors(
     scheduleId: number,

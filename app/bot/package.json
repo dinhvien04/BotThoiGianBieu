@@ -13,8 +13,10 @@
     "start:local": "node dist/main",
     "start:prod": "node scripts/migrate.cjs && node dist/main",
     "migrate": "node scripts/migrate.cjs",
-    "lint": "eslint --config .eslintrc.js --resolve-plugins-relative-to . \"src/**/*.ts\" \"../../test/bot/**/*.ts\" --fix",
-    "test": "jest"
+    "lint": "eslint --config .eslintrc.js --resolve-plugins-relative-to . \"src/**/*.ts\" \"../../test/bot/**/*.ts\"",
+    "lint:fix": "eslint --config .eslintrc.js --resolve-plugins-relative-to . \"src/**/*.ts\" \"../../test/bot/**/*.ts\" --fix",
+    "test": "jest",
+    "test:ci": "jest --ci --maxWorkers=2"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.21",

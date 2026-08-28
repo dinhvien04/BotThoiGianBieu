@@ -1,4 +1,5 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { timingSafeEqual } from 'node:crypto';
 
 interface HttpRequestLike {
   method?: string;
@@ -9,6 +10,15 @@ interface HttpRequestLike {
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const CSRF_COOKIE = 'btgb_csrf';
+
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
 
 @Injectable()
 export class CsrfGuard implements CanActivate {
@@ -31,7 +41,7 @@ export class CsrfGuard implements CanActivate {
       requestedWith?.toLowerCase() === 'xmlhttprequest' &&
       csrfHeader &&
       csrfCookie &&
-      csrfHeader === csrfCookie
+      safeCompare(csrfHeader, csrfCookie)
     ) {
       return true;
     }

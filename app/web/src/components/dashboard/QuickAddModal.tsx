@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { mutate } from "swr";
+import { createSchedule } from "@/lib/api";
+import { useToast } from "./Toast";
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -8,18 +11,48 @@ interface QuickAddModalProps {
 }
 
 export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
+  const { showToast } = useToast();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [type, setType] = useState("meeting");
+  const [type, setType] = useState("task");
+  const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = () => {
-    onClose();
-    setTitle("");
-    setDate("");
-    setTime("");
+  const handleSubmit = async () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      showToast("Vui lòng nhập tiêu đề", "warning");
+      return;
+    }
+
+    const startDate = date || new Date().toISOString().slice(0, 10);
+    const startTime = time || "09:00";
+    const startIso = new Date(`${startDate}T${startTime}:00`).toISOString();
+
+    setSubmitting(true);
+    try {
+      const res = await createSchedule({
+        title: trimmedTitle,
+        item_type: type,
+        start_time: startIso,
+      });
+
+      if (res.success) {
+        showToast("Đã tạo lịch mới", "success");
+        await mutate((key) => Array.isArray(key) && (key[0] === "schedules" || key[0] === "statistics" || key[0] === "overdue-count"));
+        onClose();
+        setTitle("");
+        setDate("");
+        setTime("");
+        setType("task");
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Lỗi khi tạo lịch", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -78,13 +111,14 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
             <label className="block text-sm font-medium text-on-surface mb-1.5">Loại sự kiện</label>
             <div className="flex gap-2 flex-wrap">
               {[
+                { value: "task", label: "Công việc", color: "#2196F3" },
                 { value: "meeting", label: "Cuộc họp", color: "#6750A4" },
-                { value: "work", label: "Công việc", color: "#2196F3" },
                 { value: "event", label: "Sự kiện", color: "#27AE60" },
-                { value: "personal", label: "Cá nhân", color: "#F2994A" },
+                { value: "reminder", label: "Nhắc nhở", color: "#F2994A" },
               ].map((t) => (
                 <button
                   key={t.value}
+                  type="button"
                   onClick={() => setType(t.value)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${type === t.value ? "text-on-primary" : "bg-surface-container text-on-surface-variant"
                     }`}
@@ -99,11 +133,11 @@ export default function QuickAddModal({ isOpen, onClose }: QuickAddModalProps) {
 
         {/* Footer */}
         <div className="flex gap-3 p-5 border-t border-surface-container-high">
-          <button onClick={onClose} className="flex-1 py-3 border border-outline-variant rounded-xl font-medium text-on-surface hover:bg-surface-container transition-colors">
+          <button onClick={onClose} disabled={submitting} className="flex-1 py-3 border border-outline-variant rounded-xl font-medium text-on-surface hover:bg-surface-container transition-colors">
             Hủy
           </button>
-          <button onClick={handleSubmit} className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors">
-            Tạo lịch
+          <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+            {submitting ? "Đang tạo..." : "Tạo lịch"}
           </button>
         </div>
       </div>

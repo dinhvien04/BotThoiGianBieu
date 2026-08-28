@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
 import { ReminderService, REMINDER_INTERACTION_ID } from 'src/reminder/reminder.service';
 import { SchedulesService } from 'src/schedules/schedules.service';
 import { BotService } from 'src/bot/bot.service';
@@ -184,6 +185,70 @@ describe('ReminderService', () => {
 
       // Assert
       expect(mockSchedulesService.findDueReminders).toHaveBeenCalledTimes(1);
+    });
+
+    it('should skip tick when advisory lock cannot be acquired', async () => {
+      const mockDataSource = {
+        isInitialized: true,
+        query: jest.fn().mockResolvedValue([{ locked: false }]),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          ReminderService,
+          { provide: SchedulesService, useValue: mockSchedulesService },
+          { provide: BotService, useValue: mockBotService },
+          { provide: DateParser, useValue: mockDateParser },
+          { provide: UsersService, useValue: mockUsersService },
+          { provide: ConfigService, useValue: { get: jest.fn(() => undefined) } },
+          { provide: DataSource, useValue: mockDataSource },
+        ],
+      }).compile();
+
+      const serviceWithDb = module.get<ReminderService>(ReminderService);
+      await serviceWithDb.tick();
+
+      expect(mockSchedulesService.findDueReminders).not.toHaveBeenCalled();
+    });
+
+    it('should release advisory lock after tick completes', async () => {
+      const mockDataSource = {
+        isInitialized: true,
+        query: jest.fn().mockImplementation((queryStr: string) => {
+          if (queryStr.includes('pg_try_advisory_lock')) {
+            return Promise.resolve([{ locked: true }]);
+          }
+          if (queryStr.includes('pg_advisory_unlock')) {
+            return Promise.resolve();
+          }
+          return Promise.resolve([]);
+        }),
+      };
+
+      mockSchedulesService.findDueReminders.mockResolvedValue([]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          ReminderService,
+          { provide: SchedulesService, useValue: mockSchedulesService },
+          { provide: BotService, useValue: mockBotService },
+          { provide: DateParser, useValue: mockDateParser },
+          { provide: UsersService, useValue: mockUsersService },
+          { provide: ConfigService, useValue: { get: jest.fn(() => undefined) } },
+          { provide: DataSource, useValue: mockDataSource },
+        ],
+      }).compile();
+
+      const serviceWithDb = module.get<ReminderService>(ReminderService);
+      await serviceWithDb.tick();
+
+      expect(mockDataSource.query).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT pg_try_advisory_lock(81001)'),
+      );
+      expect(mockDataSource.query).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT pg_advisory_unlock(81001)'),
+      );
     });
 
     it('should handle errors in start reminder gracefully', async () => {
@@ -473,7 +538,7 @@ describe('ReminderService', () => {
       expect(mockBotService.sendBuzzInteractive).not.toHaveBeenCalled();
       expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(
         1,
-        15,
+        2,
         expect.any(Date),
       );
     });
@@ -647,6 +712,39 @@ describe('ReminderService', () => {
       const buttonsCall = mockBotService.sendBuzzInteractive.mock.calls[0][2];
       expect(buttonsCall).toBeDefined();
       expect(Array.isArray(buttonsCall)).toBe(true);
+    });
+
+    it('should retry fast (2 min) when dispatch returns false (e.g. all routes reject)', async () => {
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockRejectedValue(new Error('Network offline'));
+
+      await service.tick();
+
+      expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(
+        1,
+        2, // Fast retry interval
+        expect.any(Date),
+      );
+    });
+
+    it('should not mark end notified when dispatch fails', async () => {
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
+      mockSchedulesService.findDueReminders.mockResolvedValue([]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([scheduleWithSettings]);
+      mockBotService.sendBuzzInteractive.mockRejectedValue(new Error('Network offline'));
+
+      await service.tick();
+
+      expect(mockSchedulesService.markEndNotified).not.toHaveBeenCalled();
     });
 
     it('should use custom snooze minutes from settings', async () => {

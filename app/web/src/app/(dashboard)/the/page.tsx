@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTags, useSchedules } from "@/lib/hooks";
-import { createTag, deleteTag } from "@/lib/api";
+import { createTag, deleteTag, detachTag } from "@/lib/api";
 import { useLanguage } from "@/components/dashboard/LanguageContext";
 
 const defaultColors = ["#6750A4", "#F2994A", "#27AE60", "#2F80ED", "#EB5757", "#9B51E0"];
@@ -30,6 +30,13 @@ export default function TagsPage() {
     if (!confirm(isEnglish ? `Delete tag "${name}"?` : `Xóa thẻ "${name}"?`)) return;
     await deleteTag(name);
     refetchTags();
+  };
+
+  const handleDetachTag = async (scheduleId: number, name: string) => {
+    if (!confirm(isEnglish ? `Remove tag "${name}" from this schedule?` : `Gỡ thẻ "${name}" khỏi lịch này?`)) return;
+    await detachTag(scheduleId, name);
+    refetchTags();
+    scheduleData && (await import("swr")).mutate(["schedules", { limit: 50 }]);
   };
 
   const { data: scheduleData } = useSchedules({ limit: 50 });
@@ -129,7 +136,11 @@ export default function TagsPage() {
                         </p>
                       )}
                     </div>
-                    <button onClick={() => handleDeleteTag(selectedTag.name)} className="p-1 text-on-surface-variant hover:bg-surface-container-high rounded">
+                    <button
+                      title={isEnglish ? "Remove tag from schedule" : "Gỡ thẻ khỏi lịch"}
+                      onClick={() => handleDetachTag(schedule.id, selectedTag.name)}
+                      className="p-1 text-on-surface-variant hover:bg-surface-container-high rounded"
+                    >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
                       </svg>

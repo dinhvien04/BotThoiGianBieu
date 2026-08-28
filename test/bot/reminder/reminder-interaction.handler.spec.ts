@@ -3,6 +3,7 @@ import { ReminderInteractionHandler } from 'src/reminder/reminder-interaction.ha
 import { InteractionRegistry } from 'src/bot/interactions/interaction-registry';
 import { BotService } from 'src/bot/bot.service';
 import { SchedulesService } from 'src/schedules/schedules.service';
+import { SharesService } from 'src/schedules/shares.service';
 import { UsersService } from 'src/users/users.service';
 import { DateParser } from 'src/shared/utils/date-parser';
 import { ButtonInteractionContext } from 'src/bot/interactions/interaction.types';
@@ -14,6 +15,7 @@ describe('ReminderInteractionHandler', () => {
   let handler: ReminderInteractionHandler;
   let mockRegistry: jest.Mocked<InteractionRegistry>;
   let mockSchedulesService: jest.Mocked<SchedulesService>;
+  let mockSharesService: jest.Mocked<SharesService>;
   let mockUsersService: jest.Mocked<UsersService>;
   let mockBotService: jest.Mocked<BotService>;
   let mockDateParser: jest.Mocked<DateParser>;
@@ -42,6 +44,12 @@ describe('ReminderInteractionHandler', () => {
       markCompleted: jest.fn(),
       spawnNextIfRecurring: jest.fn().mockResolvedValue(null),
     } as any;
+    mockSharesService = {
+      canEdit: jest.fn().mockResolvedValue(false),
+      canView: jest.fn().mockResolvedValue(false),
+      isEditor: jest.fn().mockResolvedValue(false),
+      isViewerOrEditor: jest.fn().mockResolvedValue(false),
+    } as any;
     mockUsersService = { findByUserId: jest.fn() } as any;
     mockBotService = {
       sendEphemeralInteractive: jest.fn().mockResolvedValue(undefined),
@@ -56,6 +64,7 @@ describe('ReminderInteractionHandler', () => {
         ReminderInteractionHandler,
         { provide: InteractionRegistry, useValue: mockRegistry },
         { provide: SchedulesService, useValue: mockSchedulesService },
+        { provide: SharesService, useValue: mockSharesService },
         { provide: UsersService, useValue: mockUsersService },
         { provide: BotService, useValue: mockBotService },
         { provide: DateParser, useValue: mockDateParser },

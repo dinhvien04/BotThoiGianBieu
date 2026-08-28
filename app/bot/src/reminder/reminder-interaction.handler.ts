@@ -14,6 +14,7 @@ import { DateParser } from '../shared/utils/date-parser';
 import { parseSnoozeFrame } from '../shared/utils/snooze-frame';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { SchedulesService } from '../schedules/schedules.service';
+import { SharesService } from '../schedules/shares.service';
 import { UsersService } from '../users/users.service';
 import { REMINDER_INTERACTION_ID } from './reminder.service';
 
@@ -39,23 +40,6 @@ const MAX_CUSTOM_SNOOZE_MINUTES = 7 * 24 * 60;
  *   - "reminder:ccancel:<scheduleId>"          → đóng form custom snooze
  *   - "reminder:done:<scheduleId>"             → end notification: mark completed
  *   - "reminder:later:<scheduleId>"            → end notification: đóng form, không làm gì
-import { Schedule } from '../schedules/entities/schedule.entity';
-import { SchedulesService } from '../schedules/schedules.service';
-import { UsersService } from '../users/users.service';
-import { REMINDER_INTERACTION_ID } from './reminder.service';
-
-const DEFAULT_SNOOZE_MINUTES = 30;
-const MAX_CUSTOM_SNOOZE_MINUTES = 7 * 24 * 60;
-
-/**
- * Xử lý button click trên reminder:
- * - "reminder:ack:<scheduleId>"
- * - "reminder:snooze:<scheduleId>[:minutes]"
- * - "reminder:custom:<scheduleId>"  → mở form ephemeral
- * - "reminder:csub:<scheduleId>"    → submit form custom snooze
- * - "reminder:ccancel:<scheduleId>" → đóng form custom snooze
- * - "reminder:done:<scheduleId>"
- * - "reminder:later:<scheduleId>"
  */
 @Injectable()
 export class ReminderInteractionHandler implements InteractionHandler, OnModuleInit {
@@ -67,6 +51,7 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
     private readonly registry: InteractionRegistry,
     private readonly botService: BotService,
     private readonly schedulesService: SchedulesService,
+    private readonly sharesService: SharesService,
     private readonly usersService: UsersService,
     private readonly dateParser: DateParser,
   ) {}
@@ -90,7 +75,10 @@ export class ReminderInteractionHandler implements InteractionHandler, OnModuleI
       return;
     }
 
-    if (schedule.user_id !== ctx.clickerId) {
+    const isOwner = schedule.user_id === ctx.clickerId;
+    const canEdit = isOwner || (await this.sharesService.canEdit(schedule.id, ctx.clickerId));
+
+    if (!canEdit) {
       await this.replyByAction(
         ctx,
         actionType,
