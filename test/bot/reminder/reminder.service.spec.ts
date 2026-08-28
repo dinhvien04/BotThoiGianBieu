@@ -1110,6 +1110,81 @@ describe('ReminderService', () => {
     });
   });
 
+  describe('calculateEndNotificationRetryMinutes', () => {
+    it('progressively backs off transient failures (2m -> 5m -> 15m -> 30m -> 60m)', () => {
+      expect(service.calculateEndNotificationRetryMinutes('transient-failure', 0)).toBe(2);
+      expect(service.calculateEndNotificationRetryMinutes('transient-failure', 1)).toBe(5);
+      expect(service.calculateEndNotificationRetryMinutes('transient-failure', 2)).toBe(15);
+      expect(service.calculateEndNotificationRetryMinutes('transient-failure', 3)).toBe(30);
+      expect(service.calculateEndNotificationRetryMinutes('transient-failure', 4)).toBe(60);
+      expect(service.calculateEndNotificationRetryMinutes('transient-failure', 10)).toBe(60);
+    });
+
+    it('progressively backs off no-route failures (15m -> 30m -> 60m -> 120m -> 360m)', () => {
+      expect(service.calculateEndNotificationRetryMinutes('no-route', 0, 15)).toBe(15);
+      expect(service.calculateEndNotificationRetryMinutes('no-route', 1, 15)).toBe(30);
+      expect(service.calculateEndNotificationRetryMinutes('no-route', 2, 15)).toBe(60);
+      expect(service.calculateEndNotificationRetryMinutes('no-route', 3, 15)).toBe(120);
+      expect(service.calculateEndNotificationRetryMinutes('no-route', 4, 15)).toBe(360);
+      expect(service.calculateEndNotificationRetryMinutes('no-route', 10, 15)).toBe(360);
+    });
+
+    it('respects user baseSnoozeMinutes if larger than 15 for first no-route attempt', () => {
+      expect(service.calculateEndNotificationRetryMinutes('no-route', 0, 45)).toBe(45);
+    });
+  });
+
+  describe('end notification retry dispatch progression', () => {
+    it('defers with transient failure progression using current end_notification_attempts', async () => {
+      const scheduleTransient = {
+        ...mockSchedule,
+        end_notification_attempts: 2,
+        user: { ...mockUser, settings: mockSettings },
+      };
+      mockSchedulesService.findDueReminders.mockResolvedValue([]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([scheduleTransient]);
+      mockSchedulesService.deferEndNotification.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockRejectedValue(new Error('Network temporary drop'));
+
+      await service.tick();
+
+      // attempt count 2 -> index 2 -> 15 minutes
+      expect(mockSchedulesService.deferEndNotification).toHaveBeenCalledWith(
+        1,
+        15,
+        expect.any(Date),
+      );
+      expect(mockSchedulesService.markEndNotified).not.toHaveBeenCalled();
+    });
+
+    it('defers with no-route progression using current end_notification_attempts', async () => {
+      const noRouteSettings = {
+        ...mockSettings,
+        notify_via_dm: false,
+        notify_via_channel: false,
+      };
+      const scheduleNoRoute = {
+        ...mockSchedule,
+        channel_id: null,
+        end_notification_attempts: 1,
+        user: { ...mockUser, settings: noRouteSettings },
+      };
+      mockSchedulesService.findDueReminders.mockResolvedValue([]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([scheduleNoRoute]);
+      mockSchedulesService.deferEndNotification.mockResolvedValue();
+
+      await service.tick();
+
+      // attempt count 1 -> index 1 -> 30 minutes
+      expect(mockSchedulesService.deferEndNotification).toHaveBeenCalledWith(
+        1,
+        30,
+        expect.any(Date),
+      );
+      expect(mockSchedulesService.markEndNotified).not.toHaveBeenCalled();
+    });
+  });
+
   describe('REMINDER_INTERACTION_ID constant', () => {
     it('should export correct interaction ID', () => {
       expect(REMINDER_INTERACTION_ID).toBe('reminder');

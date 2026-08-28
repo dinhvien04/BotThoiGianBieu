@@ -2,16 +2,20 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
-// Import exported objects from migrate.cjs
+// Import actual production exported objects and functions from migrate.cjs
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { LEGACY_CHECKSUM_TRANSITIONS, MIGRATIONS_TABLE } = require(
-  path.resolve(__dirname, '../../../app/bot/scripts/migrate.cjs'),
-);
+const {
+  LEGACY_CHECKSUM_TRANSITIONS,
+  MIGRATIONS_TABLE,
+  resolveMigrationChecksumAction,
+  normalizeMigrationChecksum,
+  applyMigration,
+} = require(path.resolve(__dirname, '../../../app/bot/scripts/migrate.cjs'));
 
-describe('Database Migration Runner Logic', () => {
+describe('Database Migration Runner Production Logic', () => {
   const migrationsDir = path.resolve(__dirname, '../../../app/bot/migrations');
 
-  it('should have exact checksum transitions mapped to actual current migration file checksums', () => {
+  it('should map every legacy checksum entry to the actual current migration file SHA-256', () => {
     for (const [file, transitionMap] of Object.entries(
       LEGACY_CHECKSUM_TRANSITIONS as Record<string, Record<string, string>>,
     )) {
@@ -24,145 +28,113 @@ describe('Database Migration Runner Logic', () => {
       for (const [legacyHash, approvedTargetHash] of Object.entries(transitionMap)) {
         expect(legacyHash).toHaveLength(64);
         expect(approvedTargetHash).toBe(expectedChecksum);
+        // Ensure the legacy hash is not identical to current hash (prevent redundant transitions)
+        expect(legacyHash).not.toBe(expectedChecksum);
       }
     }
   });
 
-  describe('checksum verification and transaction behavior simulation', () => {
-    function simulateMigrationCheck(params: {
-      file: string;
-      fileChecksum: string;
-      recordedChecksum: string | null;
-      transitionMap: Record<string, Record<string, string>>;
-    }) {
-      const { file, fileChecksum, recordedChecksum, transitionMap } = params;
-
-      if (recordedChecksum === null) {
-        return { action: 'apply', updateRecord: false };
-      }
-
-      const allowedCurrentChecksum = transitionMap[file]?.[recordedChecksum];
-
-      if (recordedChecksum !== fileChecksum && allowedCurrentChecksum !== fileChecksum) {
-        throw new Error(`Migration ${file} was already applied with a different checksum`);
-      }
-
-      if (allowedCurrentChecksum === fileChecksum && recordedChecksum !== fileChecksum) {
-        return { action: 'normalize', updateRecord: true };
-      }
-
-      return { action: 'skip', updateRecord: false };
-    }
-
+  describe('resolveMigrationChecksumAction (production function)', () => {
     const testFile = '001-init-base-schema.sql';
     const currentHash = '9f266a18d85bfff2aea80d960d598f4bd3919f3a27641525dbe63ce85b49b08b';
     const approvedOldHash = '0e91da5a1b32d2077e68bc92d0ff1dbfc03d1ee31f137ebce1f422e1caecae54';
     const unknownHash = '1111111111111111111111111111111111111111111111111111111111111111';
 
-    it('1. exact checksum -> pass (skip)', () => {
-      const result = simulateMigrationCheck({
-        file: testFile,
-        fileChecksum: currentHash,
-        recordedChecksum: currentHash,
-        transitionMap: LEGACY_CHECKSUM_TRANSITIONS,
-      });
-      expect(result.action).toBe('skip');
-      expect(result.updateRecord).toBe(false);
+    it('1. current exact checksum -> skip', () => {
+      const result = resolveMigrationChecksumAction(testFile, currentHash, currentHash);
+      expect(result).toEqual({ action: 'skip' });
     });
 
-    it('2. approved OLD -> CURRENT transition -> pass (normalize checksum in DB)', () => {
-      const result = simulateMigrationCheck({
-        file: testFile,
-        fileChecksum: currentHash,
-        recordedChecksum: approvedOldHash,
-        transitionMap: LEGACY_CHECKSUM_TRANSITIONS,
-      });
-      expect(result.action).toBe('normalize');
-      expect(result.updateRecord).toBe(true);
+    it('2. approved legacy -> actual current checksum -> normalize', () => {
+      const result = resolveMigrationChecksumAction(testFile, currentHash, approvedOldHash);
+      expect(result).toEqual({ action: 'normalize' });
     });
 
-    it('3. OLD checksum + unexpected future modified file -> FAIL', () => {
-      const modifiedFutureHash = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    it('3. legacy checksum + unexpectedly modified current migration -> reject (throw)', () => {
+      const modifiedCurrentHash = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
       expect(() => {
-        simulateMigrationCheck({
-          file: testFile,
-          fileChecksum: modifiedFutureHash,
-          recordedChecksum: approvedOldHash,
-          transitionMap: LEGACY_CHECKSUM_TRANSITIONS,
-        });
+        resolveMigrationChecksumAction(testFile, modifiedCurrentHash, approvedOldHash);
       }).toThrow(`Migration ${testFile} was already applied with a different checksum`);
     });
 
-    it('4. unknown legacy checksum -> FAIL', () => {
+    it('4. unknown legacy checksum -> reject (throw)', () => {
       expect(() => {
-        simulateMigrationCheck({
-          file: testFile,
-          fileChecksum: currentHash,
-          recordedChecksum: unknownHash,
-          transitionMap: LEGACY_CHECKSUM_TRANSITIONS,
-        });
+        resolveMigrationChecksumAction(testFile, currentHash, unknownHash);
       }).toThrow(`Migration ${testFile} was already applied with a different checksum`);
     });
 
-    it('5. migration SQL failure -> transaction rollback', async () => {
+    it('5. new migration -> apply', () => {
+      const result = resolveMigrationChecksumAction(testFile, currentHash, null);
+      expect(result).toEqual({ action: 'apply' });
+    });
+  });
+
+  describe('transaction execution helpers (production functions)', () => {
+    const testFile = '001-init-base-schema.sql';
+    const currentHash = '9f266a18d85bfff2aea80d960d598f4bd3919f3a27641525dbe63ce85b49b08b';
+
+    it('normalizeMigrationChecksum executes UPDATE in transaction and commits', async () => {
+      const mockClient = { query: jest.fn().mockResolvedValue({}) };
+
+      await normalizeMigrationChecksum(mockClient, testFile, currentHash);
+
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith(
+        `UPDATE ${MIGRATIONS_TABLE} SET checksum = $1 WHERE id = $2`,
+        [currentHash, testFile],
+      );
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    it('normalizeMigrationChecksum rolls back on DB error', async () => {
       const mockClient = {
-        query: jest.fn(),
+        query: jest
+          .fn()
+          .mockResolvedValueOnce({}) // BEGIN
+          .mockRejectedValueOnce(new Error('DB connection reset')) // UPDATE fails
+          .mockResolvedValueOnce({}), // ROLLBACK
       };
 
-      mockClient.query
-        .mockResolvedValueOnce({}) // BEGIN
-        .mockRejectedValueOnce(new Error('syntax error in migration SQL')) // migration SQL fails
-        .mockResolvedValueOnce({}); // ROLLBACK
-
-      const executeMigration = async () => {
-        await mockClient.query('BEGIN');
-        try {
-          await mockClient.query('INVALID SQL STATEMENT');
-          await mockClient.query(`INSERT INTO ${MIGRATIONS_TABLE} (id, checksum) VALUES ($1, $2)`, [
-            testFile,
-            currentHash,
-          ]);
-          await mockClient.query('COMMIT');
-        } catch (error) {
-          await mockClient.query('ROLLBACK');
-          throw error;
-        }
-      };
-
-      await expect(executeMigration()).rejects.toThrow('syntax error in migration SQL');
+      await expect(normalizeMigrationChecksum(mockClient, testFile, currentHash)).rejects.toThrow(
+        'DB connection reset',
+      );
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
       expect(mockClient.query).not.toHaveBeenCalledWith('COMMIT');
     });
 
-    it('6. migration record is not written after failed SQL', async () => {
+    it('applyMigration executes SQL, records in migrations table, and commits', async () => {
+      const mockClient = { query: jest.fn().mockResolvedValue({}) };
+      const sql = 'CREATE TABLE test_table (id INT);';
+
+      await applyMigration(mockClient, testFile, sql, currentHash);
+
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith(sql);
+      expect(mockClient.query).toHaveBeenCalledWith(
+        `INSERT INTO ${MIGRATIONS_TABLE} (id, checksum) VALUES ($1, $2)`,
+        [testFile, currentHash],
+      );
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    it('applyMigration rolls back and does not insert record if SQL execution fails', async () => {
       const mockClient = {
-        query: jest.fn(),
+        query: jest
+          .fn()
+          .mockResolvedValueOnce({}) // BEGIN
+          .mockRejectedValueOnce(new Error('syntax error in migration SQL')) // SQL fails
+          .mockResolvedValueOnce({}), // ROLLBACK
       };
 
-      mockClient.query
-        .mockResolvedValueOnce({}) // BEGIN
-        .mockRejectedValueOnce(new Error('table already exists')) // migration SQL fails
-        .mockResolvedValueOnce({}); // ROLLBACK
+      await expect(
+        applyMigration(mockClient, testFile, 'INVALID SQL', currentHash),
+      ).rejects.toThrow('syntax error in migration SQL');
 
-      const executeMigration = async () => {
-        await mockClient.query('BEGIN');
-        try {
-          await mockClient.query('CREATE TABLE fail_table()');
-          await mockClient.query(`INSERT INTO ${MIGRATIONS_TABLE} (id, checksum) VALUES ($1, $2)`, [
-            testFile,
-            currentHash,
-          ]);
-          await mockClient.query('COMMIT');
-        } catch (error) {
-          await mockClient.query('ROLLBACK');
-          throw error;
-        }
-      };
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.query).not.toHaveBeenCalledWith('COMMIT');
 
-      await expect(executeMigration()).rejects.toThrow('table already exists');
-
-      // Verify INSERT INTO migrations table was never called
       const insertCalls = mockClient.query.mock.calls.filter((call) =>
         typeof call[0] === 'string' && call[0].includes(`INSERT INTO ${MIGRATIONS_TABLE}`),
       );

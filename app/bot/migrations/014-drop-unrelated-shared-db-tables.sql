@@ -8,6 +8,7 @@
 --   tags
 --   schedule_tags
 --   schedule_shares
+--   schedule_editors
 --   schedule_templates
 --   schedule_audit_logs
 --
@@ -27,7 +28,6 @@
 --   "Review"
 --   "ReviewLike"
 --   "User"
---   schedule_editors
 --
 -- Chạy:
 --   psql "$DATABASE_URL" -f migrations/014-drop-unrelated-shared-db-tables.sql

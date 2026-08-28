@@ -327,6 +327,39 @@ export class ReminderService {
     }
   }
 
+  /**
+   * Tính số phút hoãn cho lần thử tiếp theo dựa trên kết quả dispatch và số lần đã thử trước đó.
+   * `previousAttempts`: số lần đã thử trước lần thử hiện tại (mặc định 0 cho lần thử đầu).
+   */
+  calculateEndNotificationRetryMinutes(
+    result: 'transient-failure' | 'no-route',
+    previousAttempts: number,
+    baseSnoozeMinutes: number = DEFAULT_SNOOZE_MINUTES,
+  ): number {
+    const attemptIndex = Math.max(0, previousAttempts);
+
+    if (result === 'transient-failure') {
+      // attempt 1 (index 0): 2m
+      // attempt 2 (index 1): 5m
+      // attempt 3 (index 2): 15m
+      // attempt 4 (index 3): 30m
+      // attempt 5+ (index >= 4): 60m
+      const transientDelays = [2, 5, 15, 30, 60];
+      const delay = transientDelays[Math.min(attemptIndex, transientDelays.length - 1)];
+      return Math.min(delay, 60);
+    }
+
+    // no-route:
+    // attempt 1 (index 0): Math.max(15, baseSnoozeMinutes)
+    // attempt 2 (index 1): 30m
+    // attempt 3 (index 2): 60m (1h)
+    // attempt 4 (index 3): 120m (2h)
+    // attempt 5+ (index >= 4): 360m (6h)
+    const initialNoRoute = Math.max(15, baseSnoozeMinutes);
+    const noRouteDelays = [initialNoRoute, 30, 60, 120, 360];
+    return noRouteDelays[Math.min(attemptIndex, noRouteDelays.length - 1)];
+  }
+
   private async sendEndNotification(schedule: Schedule, now: Date): Promise<void> {
     const settings = schedule.user?.settings;
 
@@ -345,23 +378,33 @@ export class ReminderService {
     );
 
     const snoozeMinutes = settings?.default_remind_minutes ?? DEFAULT_SNOOZE_MINUTES;
+    const currentAttempts = schedule.end_notification_attempts ?? 0;
 
     if (dispatchResult === 'delivered') {
       // Chỉ gửi 1 lần — set timestamp để cron không gửi lại khi đã gửi thành công.
       await this.schedulesService.markEndNotified(schedule.id, now);
       this.logger.log(`Da gui end notification #${schedule.id}`);
     } else if (dispatchResult === 'transient-failure') {
-      // Lỗi mạng tạm thời -> retry sau 2 phút (hoặc ít hơn)
-      const fastRetryMinutes = Math.min(2, snoozeMinutes);
-      await this.schedulesService.deferEndNotification(schedule.id, fastRetryMinutes, now);
+      // Bounded exponential backoff cho transient network errors (2m, 5m, 15m, 30m, 60m)
+      const retryMinutes = this.calculateEndNotificationRetryMinutes(
+        'transient-failure',
+        currentAttempts,
+        snoozeMinutes,
+      );
+      await this.schedulesService.deferEndNotification(schedule.id, retryMinutes, now);
       this.logger.warn(
-        `Khong the gui end notification #${schedule.id} do loi mang; hen thu lai sau ${fastRetryMinutes} phut`,
+        `Khong the gui end notification #${schedule.id} do loi mang (lan thu ${currentAttempts + 1}); hen thu lai sau ${retryMinutes} phut`,
       );
     } else {
-      // no-route: không có route hợp lệ -> hoãn lại theo snooze chuẩn (ví dụ 15-60 phút) để tránh hot loop mỗi phút
-      await this.schedulesService.deferEndNotification(schedule.id, snoozeMinutes, now);
+      // no-route: progressive backoff (15m, 30m, 60m, 120m, 360m) để tránh hot loop
+      const retryMinutes = this.calculateEndNotificationRetryMinutes(
+        'no-route',
+        currentAttempts,
+        snoozeMinutes,
+      );
+      await this.schedulesService.deferEndNotification(schedule.id, retryMinutes, now);
       this.logger.warn(
-        `Khong the gui end notification #${schedule.id} vi khong co route hop le cho user ${schedule.user_id}; hoan lai ${snoozeMinutes} phut de tranh hot loop`,
+        `Khong the gui end notification #${schedule.id} vi khong co route hop le (lan thu ${currentAttempts + 1}) cho user ${schedule.user_id}; hoan lai ${retryMinutes} phut de tranh hot loop`,
       );
     }
   }
