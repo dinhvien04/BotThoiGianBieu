@@ -80,6 +80,7 @@ describe('ReminderService', () => {
       findDueEndNotifications: jest.fn(),
       rescheduleAfterPing: jest.fn(),
       markEndNotified: jest.fn(),
+      deferEndNotification: jest.fn(),
       findByDateRange: jest.fn(),
       findOverdue: jest.fn(),
     } as any;
@@ -187,10 +188,10 @@ describe('ReminderService', () => {
       expect(mockSchedulesService.findDueReminders).toHaveBeenCalledTimes(1);
     });
 
-    it('should skip tick when advisory lock cannot be acquired', async () => {
+    it('should skip tick when advisory lock query throws (fail closed)', async () => {
       const mockQueryRunner = {
         connect: jest.fn().mockResolvedValue(undefined),
-        query: jest.fn().mockResolvedValue([{ locked: false }]),
+        query: jest.fn().mockRejectedValue(new Error('Connection lost')),
         release: jest.fn().mockResolvedValue(undefined),
       };
       const mockDataSource = {
@@ -214,6 +215,89 @@ describe('ReminderService', () => {
       await serviceWithDb.tick();
 
       expect(mockSchedulesService.findDueReminders).not.toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+
+    it('should still unlock and release QueryRunner when reminder processing throws', async () => {
+      const mockQueryRunner = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        query: jest.fn().mockImplementation((queryStr: string) => {
+          if (queryStr.includes('pg_try_advisory_lock')) {
+            return Promise.resolve([{ locked: true }]);
+          }
+          if (queryStr.includes('pg_advisory_unlock')) {
+            return Promise.resolve();
+          }
+          return Promise.resolve([]);
+        }),
+        release: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockDataSource = {
+        isInitialized: true,
+        createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+      };
+
+      mockSchedulesService.findDueReminders.mockRejectedValue(new Error('Database select failure'));
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          ReminderService,
+          { provide: SchedulesService, useValue: mockSchedulesService },
+          { provide: BotService, useValue: mockBotService },
+          { provide: DateParser, useValue: mockDateParser },
+          { provide: UsersService, useValue: mockUsersService },
+          { provide: ConfigService, useValue: { get: jest.fn(() => undefined) } },
+          { provide: DataSource, useValue: mockDataSource },
+        ],
+      }).compile();
+
+      const serviceWithDb = module.get<ReminderService>(ReminderService);
+      await serviceWithDb.tick();
+
+      expect(mockQueryRunner.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_unlock($1)',
+        [81001],
+      );
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+
+    it('should release QueryRunner even if advisory unlock throws', async () => {
+      const mockQueryRunner = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        query: jest.fn().mockImplementation((queryStr: string) => {
+          if (queryStr.includes('pg_try_advisory_lock')) {
+            return Promise.resolve([{ locked: true }]);
+          }
+          if (queryStr.includes('pg_advisory_unlock')) {
+            return Promise.reject(new Error('Unlock failed'));
+          }
+          return Promise.resolve([]);
+        }),
+        release: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockDataSource = {
+        isInitialized: true,
+        createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+      };
+
+      mockSchedulesService.findDueReminders.mockResolvedValue([]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          ReminderService,
+          { provide: SchedulesService, useValue: mockSchedulesService },
+          { provide: BotService, useValue: mockBotService },
+          { provide: DateParser, useValue: mockDateParser },
+          { provide: UsersService, useValue: mockUsersService },
+          { provide: ConfigService, useValue: { get: jest.fn(() => undefined) } },
+          { provide: DataSource, useValue: mockDataSource },
+        ],
+      }).compile();
+
+      const serviceWithDb = module.get<ReminderService>(ReminderService);
+      await serviceWithDb.tick();
+
       expect(mockQueryRunner.release).toHaveBeenCalled();
     });
 
@@ -533,9 +617,9 @@ describe('ReminderService', () => {
       expect(mockBotService.sendDmInteractive).not.toHaveBeenCalled();
     });
 
-    it('should not fallback to DM when user disabled DM and channel is not set', async () => {
+    it('should not fallback to DM when user disabled DM and channel is not set, backing off with normal snooze', async () => {
       // Arrange
-      const noChannelSettings = { ...mockSettings, default_channel_id: null };
+      const noChannelSettings = { ...mockSettings, default_channel_id: null, default_remind_minutes: 15 };
       const scheduleNoChannel = {
         ...mockSchedule,
         user: { ...mockUser, settings: noChannelSettings },
@@ -552,9 +636,64 @@ describe('ReminderService', () => {
       expect(mockBotService.sendBuzzInteractive).not.toHaveBeenCalled();
       expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(
         1,
+        15,
+        expect.any(Date),
+      );
+    });
+
+    it('should retry quickly on transient delivery failures for start reminders', async () => {
+      const scheduleWithSettings = {
+        ...mockSchedule,
+        user: { ...mockUser, settings: mockSettings },
+      };
+      mockSchedulesService.findDueReminders.mockResolvedValue([scheduleWithSettings]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([]);
+      mockSchedulesService.rescheduleAfterPing.mockResolvedValue();
+      mockBotService.sendBuzzInteractive.mockRejectedValue(new Error('Network transient error'));
+
+      await service.tick();
+
+      expect(mockSchedulesService.rescheduleAfterPing).toHaveBeenCalledWith(
+        1,
         2,
         expect.any(Date),
       );
+    });
+
+    it('should handle end notification delivery outcomes (delivered, transient failure, no-route)', async () => {
+      const deliveredSchedule = {
+        ...mockSchedule,
+        id: 10,
+        user: { ...mockUser, settings: mockSettings },
+      };
+      const transientFailSchedule = {
+        ...mockSchedule,
+        id: 20,
+        user: { ...mockUser, settings: mockSettings },
+      };
+      const noRouteSchedule = {
+        ...mockSchedule,
+        id: 30,
+        user: { ...mockUser, settings: { ...mockSettings, default_channel_id: null } },
+      };
+
+      // 1. Delivered
+      mockSchedulesService.findDueReminders.mockResolvedValue([]);
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([deliveredSchedule]);
+      mockBotService.sendBuzzInteractive.mockResolvedValue(undefined);
+      await service.tick();
+      expect(mockSchedulesService.markEndNotified).toHaveBeenCalledWith(10, expect.any(Date));
+
+      // 2. Transient failure
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([transientFailSchedule]);
+      mockBotService.sendBuzzInteractive.mockRejectedValue(new Error('Network error'));
+      await service.tick();
+      expect(mockSchedulesService.deferEndNotification).toHaveBeenCalledWith(20, 2, expect.any(Date));
+
+      // 3. No route
+      mockSchedulesService.findDueEndNotifications.mockResolvedValue([noRouteSchedule]);
+      await service.tick();
+      expect(mockSchedulesService.deferEndNotification).toHaveBeenCalledWith(30, 15, expect.any(Date));
     });
 
     it('should fallback to DM when settings are undefined', async () => {

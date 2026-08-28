@@ -97,16 +97,19 @@ export class ReminderService {
             'SELECT pg_try_advisory_lock($1) as locked',
             [REMINDER_TICK_ADVISORY_LOCK_ID],
           );
-          if (lockResult && lockResult[0] && lockResult[0].locked === false) {
+          if (!lockResult || !lockResult[0] || lockResult[0].locked !== true) {
             this.logger.debug('Another instance is currently running reminder tick; skipping.');
             return;
           }
           hasLock = true;
         } catch (lockErr) {
-          this.logger.warn(
-            'Failed to acquire advisory lock for tick; proceeding with local lock only: ' +
+          this.logError(
+            'Failed to acquire advisory lock for tick; failing closed to prevent duplicate runs: ' +
               (lockErr as Error).message,
+            lockErr,
           );
+          this.deferAfterTransientInfrastructureError(lockErr);
+          return;
         }
       }
 
@@ -190,16 +193,19 @@ export class ReminderService {
             'SELECT pg_try_advisory_lock($1) as locked',
             [DAILY_DIGEST_ADVISORY_LOCK_ID],
           );
-          if (lockResult && lockResult[0] && lockResult[0].locked === false) {
+          if (!lockResult || !lockResult[0] || lockResult[0].locked !== true) {
             this.logger.debug('Another instance is currently running daily digest; skipping.');
             return;
           }
           hasLock = true;
         } catch (lockErr) {
-          this.logger.warn(
-            'Failed to acquire advisory lock for daily digest; proceeding with local lock only: ' +
+          this.logError(
+            'Failed to acquire advisory lock for daily digest; failing closed to prevent duplicate runs: ' +
               (lockErr as Error).message,
+            lockErr,
           );
+          this.deferAfterTransientInfrastructureError(lockErr);
+          return;
         }
       }
 
@@ -338,17 +344,24 @@ export class ReminderService {
       mention,
     );
 
+    const snoozeMinutes = settings?.default_remind_minutes ?? DEFAULT_SNOOZE_MINUTES;
+
     if (dispatchResult === 'delivered') {
       // Chỉ gửi 1 lần — set timestamp để cron không gửi lại khi đã gửi thành công.
       await this.schedulesService.markEndNotified(schedule.id, now);
       this.logger.log(`Da gui end notification #${schedule.id}`);
     } else if (dispatchResult === 'transient-failure') {
+      // Lỗi mạng tạm thời -> retry sau 2 phút (hoặc ít hơn)
+      const fastRetryMinutes = Math.min(2, snoozeMinutes);
+      await this.schedulesService.deferEndNotification(schedule.id, fastRetryMinutes, now);
       this.logger.warn(
-        `Khong the gui end notification #${schedule.id} do loi mang; chua danh dau da gui de cho co hoi retry`,
+        `Khong the gui end notification #${schedule.id} do loi mang; hen thu lai sau ${fastRetryMinutes} phut`,
       );
     } else {
+      // no-route: không có route hợp lệ -> hoãn lại theo snooze chuẩn (ví dụ 15-60 phút) để tránh hot loop mỗi phút
+      await this.schedulesService.deferEndNotification(schedule.id, snoozeMinutes, now);
       this.logger.warn(
-        `Khong the gui end notification #${schedule.id} vi khong co route hop le cho user ${schedule.user_id}`,
+        `Khong the gui end notification #${schedule.id} vi khong co route hop le cho user ${schedule.user_id}; hoan lai ${snoozeMinutes} phut de tranh hot loop`,
       );
     }
   }

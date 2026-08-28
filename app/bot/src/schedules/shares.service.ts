@@ -9,7 +9,7 @@ import { User } from "../users/entities/user.entity";
  *
  * - Owner = `schedules.user_id` — có toàn quyền (sửa/xoá/quản lý shares & editors).
  * - Junction `schedule_shares(schedule_id, shared_with_user_id)` lưu các user có quyền xem.
- * - Junction `schedule_editors(schedule_id, user_id)` lưu các user có quyền sửa.
+ * - Junction `schedule_editors(schedule_id, editor_user_id)` lưu các user có quyền sửa.
  * - Reminder broadcast sẽ mention thêm các participants.
  */
 @Injectable()
@@ -115,10 +115,10 @@ export class SharesService {
       .leftJoin(
         "schedule_editors",
         "se",
-        "se.schedule_id = schedule.id AND se.user_id = :userId",
+        "se.schedule_id = schedule.id AND se.editor_user_id = :userId",
         { userId },
       )
-      .where("ss.shared_with_user_id IS NOT NULL OR se.user_id IS NOT NULL")
+      .where("ss.shared_with_user_id IS NOT NULL OR se.editor_user_id IS NOT NULL")
       .leftJoinAndSelect("schedule.user", "owner")
       .orderBy("schedule.start_time", "ASC")
       .distinct(true)

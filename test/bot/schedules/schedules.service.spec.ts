@@ -737,7 +737,7 @@ describe('SchedulesService', () => {
   });
 
   describe('findDueEndNotifications', () => {
-    it('should find schedules due for end notification', async () => {
+    it('should find schedules due for end notification respecting next attempt', async () => {
       // Arrange
       const now = new Date('2026-04-23T11:00:00Z');
       const dueSchedules = [mockSchedule];
@@ -748,11 +748,20 @@ describe('SchedulesService', () => {
 
       // Assert
       expect(mockRepository.find).toHaveBeenCalledWith({
-        where: {
-          end_time: LessThanOrEqual(now),
-          end_notified_at: IsNull(),
-          status: 'pending',
-        },
+        where: [
+          {
+            end_time: LessThanOrEqual(now),
+            end_notified_at: IsNull(),
+            end_notification_next_attempt_at: IsNull(),
+            status: 'pending',
+          },
+          {
+            end_time: LessThanOrEqual(now),
+            end_notified_at: IsNull(),
+            end_notification_next_attempt_at: LessThanOrEqual(now),
+            status: 'pending',
+          },
+        ],
         relations: ['user', 'user.settings', 'sharedWith'],
         order: { end_time: 'ASC' },
       });
@@ -768,8 +777,9 @@ describe('SchedulesService', () => {
       await service.findDueEndNotifications(now);
 
       // Assert
-      const whereClause = mockRepository.find.mock.calls[0]?.[0]?.where as any;
-      expect(whereClause?.end_notified_at).toEqual(IsNull());
+      const whereClause = mockRepository.find.mock.calls[0]?.[0]?.where as any[];
+      expect(whereClause[0]?.end_notified_at).toEqual(IsNull());
+      expect(whereClause[1]?.end_notified_at).toEqual(IsNull());
     });
 
     it('should only return pending status schedules', async () => {
@@ -781,13 +791,14 @@ describe('SchedulesService', () => {
       await service.findDueEndNotifications(now);
 
       // Assert
-      const whereClause = mockRepository.find.mock.calls[0]?.[0]?.where as any;
-      expect(whereClause?.status).toBe('pending');
+      const whereClause = mockRepository.find.mock.calls[0]?.[0]?.where as any[];
+      expect(whereClause[0]?.status).toBe('pending');
+      expect(whereClause[1]?.status).toBe('pending');
     });
   });
 
   describe('markEndNotified', () => {
-    it('should mark schedule as end notified with provided timestamp', async () => {
+    it('should mark schedule as end notified with provided timestamp and clear next attempt', async () => {
       // Arrange
       const now = new Date('2026-04-23T11:00:00Z');
       mockRepository.update.mockResolvedValue({ affected: 1 } as any);
@@ -798,10 +809,11 @@ describe('SchedulesService', () => {
       // Assert
       expect(mockRepository.update).toHaveBeenCalledWith(1, {
         end_notified_at: now,
+        end_notification_next_attempt_at: null,
       });
     });
 
-    it('should mark schedule as end notified with default timestamp', async () => {
+    it('should mark schedule as end notified with default timestamp and clear next attempt', async () => {
       // Arrange
       mockRepository.update.mockResolvedValue({ affected: 1 } as any);
       const beforeCall = Date.now();
@@ -812,8 +824,29 @@ describe('SchedulesService', () => {
       // Assert
       const callArgs = mockRepository.update.mock.calls[0][1];
       const endNotifiedAt = (callArgs as any).end_notified_at;
-      expect(endNotifiedAt).toBeInstanceOf(Date);
-      expect(endNotifiedAt.getTime()).toBeGreaterThanOrEqual(beforeCall);
+      expect((callArgs as any).end_notification_next_attempt_at).toBeNull();
+      expect(endNotifiedAt.getTime()).toBeGreaterThanOrEqual(beforeCall - 100);
+      expect(endNotifiedAt.getTime()).toBeLessThanOrEqual(Date.now() + 100);
+    });
+  });
+
+  describe('deferEndNotification', () => {
+    it('should defer next attempt with query builder', async () => {
+      const mockQb = {
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+      mockRepository.createQueryBuilder = jest.fn().mockReturnValue(mockQb);
+
+      const now = new Date('2026-04-23T11:00:00Z');
+      await service.deferEndNotification(1, 15, now);
+
+      expect(mockRepository.createQueryBuilder).toHaveBeenCalled();
+      expect(mockQb.update).toHaveBeenCalledWith(Schedule);
+      expect(mockQb.where).toHaveBeenCalledWith('id = :id', { id: 1 });
+      expect(mockQb.execute).toHaveBeenCalled();
     });
   });
 

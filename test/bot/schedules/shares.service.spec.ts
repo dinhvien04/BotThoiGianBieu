@@ -16,9 +16,11 @@ describe("SharesService", () => {
 
   beforeEach(async () => {
     mockQb = {
-      innerJoin: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
       getMany: jest.fn(),
     };
     mockScheduleRepo = {
@@ -206,19 +208,46 @@ describe("SharesService", () => {
   });
 
   describe("findSchedulesSharedWith", () => {
-    it("queries schedules joined via schedule_shares", async () => {
+    it("queries schedules joined via schedule_shares and schedule_editors with editor_user_id column", async () => {
       const fixture: Schedule = { id: 5 } as any;
       mockQb.getMany.mockResolvedValue([fixture]);
 
       const result = await service.findSchedulesSharedWith(targetId);
 
       expect(result).toEqual([fixture]);
-      expect(mockQb.innerJoin).toHaveBeenCalledWith(
+      expect(mockScheduleRepo.createQueryBuilder).toHaveBeenCalledWith("schedule");
+      expect(mockQb.leftJoin).toHaveBeenCalledWith(
         "schedule_shares",
         "ss",
-        expect.stringContaining("ss.shared_with_user_id = :userId"),
+        "ss.schedule_id = schedule.id AND ss.shared_with_user_id = :userId",
         { userId: targetId },
       );
+      expect(mockQb.leftJoin).toHaveBeenCalledWith(
+        "schedule_editors",
+        "se",
+        "se.schedule_id = schedule.id AND se.editor_user_id = :userId",
+        { userId: targetId },
+      );
+      expect(mockQb.where).toHaveBeenCalledWith(
+        "ss.shared_with_user_id IS NOT NULL OR se.editor_user_id IS NOT NULL",
+      );
+      expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith("schedule.user", "owner");
+      expect(mockQb.orderBy).toHaveBeenCalledWith("schedule.start_time", "ASC");
+      expect(mockQb.distinct).toHaveBeenCalledWith(true);
+      expect(mockQb.getMany).toHaveBeenCalled();
+    });
+
+    it("returns schedules for viewer-only, editor-only, and viewer+editor users deduplicated", async () => {
+      const viewerSchedule: Schedule = { id: 10, title: "Viewer only" } as any;
+      const editorSchedule: Schedule = { id: 20, title: "Editor only" } as any;
+      const bothSchedule: Schedule = { id: 30, title: "Both viewer and editor" } as any;
+
+      mockQb.getMany.mockResolvedValue([viewerSchedule, editorSchedule, bothSchedule]);
+
+      const result = await service.findSchedulesSharedWith(targetId);
+
+      expect(result).toEqual([viewerSchedule, editorSchedule, bothSchedule]);
+      expect(mockQb.distinct).toHaveBeenCalledWith(true);
     });
   });
 

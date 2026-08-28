@@ -477,15 +477,25 @@ export class SchedulesService {
    * Lấy các lịch tới giờ kết thúc nhưng chưa được notify:
    * - `end_time <= now`
    * - `end_notified_at IS NULL`
+   * - `end_notification_next_attempt_at IS NULL OR end_notification_next_attempt_at <= now`
    * - `status = 'pending'`
    */
   findDueEndNotifications(now: Date): Promise<Schedule[]> {
     return this.scheduleRepository.find({
-      where: {
-        end_time: LessThanOrEqual(now),
-        end_notified_at: IsNull(),
-        status: 'pending',
-      },
+      where: [
+        {
+          end_time: LessThanOrEqual(now),
+          end_notified_at: IsNull(),
+          end_notification_next_attempt_at: IsNull(),
+          status: 'pending',
+        },
+        {
+          end_time: LessThanOrEqual(now),
+          end_notified_at: IsNull(),
+          end_notification_next_attempt_at: LessThanOrEqual(now),
+          status: 'pending',
+        },
+      ],
       relations: ['user', 'user.settings', 'sharedWith'],
       order: { end_time: 'ASC' },
     });
@@ -493,7 +503,28 @@ export class SchedulesService {
 
   /** Đánh dấu đã gửi notification kết thúc (chỉ gửi 1 lần). */
   async markEndNotified(id: number, now: Date = new Date()): Promise<void> {
-    await this.scheduleRepository.update(id, { end_notified_at: now });
+    await this.scheduleRepository.update(id, {
+      end_notified_at: now,
+      end_notification_next_attempt_at: null,
+    });
+  }
+
+  /** Hoãn lần gửi end notification tiếp theo do lỗi tạm thời hoặc không có route. */
+  async deferEndNotification(
+    id: number,
+    retryMinutes: number,
+    now: Date = new Date(),
+  ): Promise<void> {
+    const nextAttemptAt = new Date(now.getTime() + retryMinutes * 60 * 1000);
+    await this.scheduleRepository
+      .createQueryBuilder()
+      .update(Schedule)
+      .set({
+        end_notification_next_attempt_at: nextAttemptAt,
+        end_notification_attempts: () => 'end_notification_attempts + 1',
+      })
+      .where('id = :id', { id })
+      .execute();
   }
 
   /**

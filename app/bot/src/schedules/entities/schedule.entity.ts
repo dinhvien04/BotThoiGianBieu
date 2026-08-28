@@ -104,6 +104,19 @@ export class Schedule {
   end_notified_at!: Date | null;
 
   /**
+   * Thời điểm retry gửi end notification tiếp theo.
+   * Null = chưa từng bị hoãn/lỗi hoặc đã gửi thành công.
+   */
+  @Column({ type: 'timestamp with time zone', nullable: true })
+  end_notification_next_attempt_at?: Date | null;
+
+  /**
+   * Số lần thử gửi end notification đã thực hiện.
+   */
+  @Column({ type: 'integer', default: 0 })
+  end_notification_attempts?: number;
+
+  /**
    * Kiểu lặp lại (daily/weekly/monthly). `none` = lịch một lần, không sinh
    * instance tiếp theo khi hoàn thành.
    */
